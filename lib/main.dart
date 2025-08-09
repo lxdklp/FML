@@ -1,20 +1,10 @@
-import 'dart:async';
-
-import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
-
 import 'package:flutter/material.dart';
-import 'package:fml/pages/new.dart';
 import 'package:fml/pages/home.dart';
 import 'package:fml/pages/download.dart';
 import 'package:fml/pages/setting.dart';
 
 //软件版本
-String version = '1.0.0';
-
-//程序数据库
-String dbName = 'config.db';
-int dbVersion = 1;
+const version = '1.0.0';
 
 // 应用程序入口
 void main() {
@@ -102,6 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     return Scaffold(
       appBar: AppBar(
+        title: const Text('FML'),
       ),
       body: Row(
         children: [
@@ -115,8 +106,8 @@ class _MyHomePageState extends State<MyHomePage> {
             labelType: NavigationRailLabelType.all,
             destinations: const [
               NavigationRailDestination(
-                icon: Icon(Icons.home),
-                label: Text('主页'),
+                icon: Icon(Icons.play_arrow),
+                label: Text('启动'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.download),

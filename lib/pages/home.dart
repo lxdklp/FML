@@ -1,10 +1,6 @@
-import 'dart:async';
-
-import 'package:flutter/widgets.dart';
-import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
-
 import 'package:flutter/material.dart';
+import 'package:fml/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fml/pages/home child/account.dart';
 import 'package:fml/pages/home child/version.dart';
@@ -18,8 +14,28 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  String _selectedAccount = '未知账号';
+  String _gameVersion = '未知版本';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGameInfo();
+  }
+
+  Future<void> _loadGameInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _selectedAccount = prefs.getString('SelectedAccount') ?? '获取失败';
+    });
+    setState(() {
+      _gameVersion = prefs.getString('GameVersion') ?? '获取失败';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    _loadGameInfo();
     return Scaffold(
       appBar: AppBar(
       ),
@@ -29,7 +45,8 @@ class _HomePageState extends State<HomePage> {
             Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
-              title: const Text('\n 账号 \n [离线] lxdklp \n'),
+              title: Text('\n当前账号'),
+              subtitle: Text('$_selectedAccount\n'),
               leading: const Icon(Icons.account_circle),
               onTap: () {
                 Navigator.push(
@@ -42,7 +59,8 @@ class _HomePageState extends State<HomePage> {
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: ListTile(
-                title: Text('\n 当前版本 \n 1.0.0 \n'),
+                title: Text('\n当前版本'),
+                subtitle: Text('$_gameVersion\n'),
                 leading: const Icon(Icons.view_list),
                 onTap: () {
                 Navigator.push(

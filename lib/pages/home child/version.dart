@@ -12,6 +12,7 @@ class _VersionPageState extends State<VersionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text('版本管理'),
       ),
       body: const Center(
         child: Text('版本'),

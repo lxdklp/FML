@@ -57,7 +57,7 @@ class _ThemePageState extends State<ThemePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('主题设置'), // 应用栏标题
+        title: const Text('主题设置'), // 主题设置页面标题
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
