@@ -17,6 +17,12 @@ class _VersionPageState extends State<VersionPage> {
       body: const Center(
         child: Text('版本'),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // TODO: Implement version update logic
+        },
+        child: const Icon(Icons.library_add),
+      ),
     );
   }
 }

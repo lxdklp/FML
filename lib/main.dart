@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:fml/pages/home.dart';
 import 'package:fml/pages/download.dart';
 import 'package:fml/pages/setting.dart';
 
-//软件版本
+// 软件版本
 const version = '1.0.0';
 
-// 应用程序入口
 void main() {
   runApp(const MyApp());
 }
 
-// MyApp 类定义了应用程序的根组件
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -23,52 +23,93 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  ThemeMode _themeMode = ThemeMode.system; // 默认跟随系统模式
-  Color _themeColor = Colors.blue; // 默认主题色
+  ThemeMode _themeMode = ThemeMode.system;
+  Color _themeColor = Colors.blue;
 
-  ThemeMode get themeMode => _themeMode; // 添加 themeMode getter
-  Color get themeColor => _themeColor; // 添加 themeColor getter
+  ThemeMode get themeMode => _themeMode;
+  Color get themeColor => _themeColor;
 
-  void changeTheme(ThemeMode themeMode) {
-    setState(() {
-      _themeMode = themeMode; // 更新主题模式
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadThemePrefs();
   }
 
-  void changeThemeColor(Color color) {
+  Future<void> _loadThemePrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final modeStr = prefs.getString('themeMode');
+    final colorInt = prefs.getInt('themeColor');
+    if (modeStr != null) {
+      switch (modeStr) {
+        case 'dark':
+          _themeMode = ThemeMode.dark;
+          break;
+        case 'light':
+          _themeMode = ThemeMode.light;
+          break;
+        default:
+          _themeMode = ThemeMode.system;
+      }
+    }
+    if (colorInt != null) {
+      _themeColor = Color(colorInt);
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> changeTheme(ThemeMode themeMode) async {
     setState(() {
-      _themeColor = color; // 更新主题色
+      _themeMode = themeMode;
     });
+    final prefs = await SharedPreferences.getInstance();
+    String modeStr;
+    switch (themeMode) {
+      case ThemeMode.dark:
+        modeStr = 'dark';
+        break;
+      case ThemeMode.light:
+        modeStr = 'light';
+        break;
+      default:
+        modeStr = 'system';
+    }
+    await prefs.setString('themeMode', modeStr);
+  }
+
+  Future<void> changeThemeColor(Color color) async {
+    setState(() {
+      _themeColor = color;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('themeColor', color.value);
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FML', // 应用程序标题
+      title: 'FML',
       theme: ThemeData(
-        useMaterial3: true, // 启用MD3
+        useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: _themeColor, // 使用MD3的颜色系统
-          brightness: Brightness.light, // 亮色主题
+          seedColor: _themeColor,
+          brightness: Brightness.light,
         ),
       ),
       darkTheme: ThemeData(
-        useMaterial3: true, // 启用MD3
+        useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: _themeColor, // 使用MD3的颜色系统
-          brightness: Brightness.dark, // 暗色主题
+          seedColor: _themeColor,
+          brightness: Brightness.dark,
         ),
       ),
-      themeMode: _themeMode, // 应用当前主题模式
-      home: const MyHomePage(), // 设置主页
+      themeMode: _themeMode,
+      home: const MyHomePage(),
     );
   }
 }
 
-// MyHomePage 类定义了主页组件
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
-
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
@@ -76,32 +117,28 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
 
+  Widget _buildPage(int index) {
+    switch (index) {
+      case 1:
+        return const DownloadPage();
+      case 2:
+        return const SettingPage();
+      case 0:
+      default:
+        return const HomePage();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    Widget _buildPage(int _selectedIndex) {
-      switch (_selectedIndex) {
-        case 1:
-          return const DownloadPage();
-        case 2:
-          return const SettingPage();
-        case 0:
-          return const HomePage();
-        default:
-            return const HomePage();
-      }
-    }
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('FML'),
-      ),
+      appBar: AppBar(title: const Text('FML')),
       body: Row(
         children: [
           NavigationRail(
             selectedIndex: _selectedIndex,
             onDestinationSelected: (int index) {
-              setState(() {
-                _selectedIndex = index;
-              });
+              setState(() => _selectedIndex = index);
             },
             labelType: NavigationRailLabelType.all,
             destinations: const [
@@ -119,10 +156,8 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ],
           ),
-          Expanded(
-            child: Center(
-              child: _buildPage(_selectedIndex),
-            ),
+            Expanded(
+            child: Center(child: _buildPage(_selectedIndex)),
           ),
         ],
       ),
