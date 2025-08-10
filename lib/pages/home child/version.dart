@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:fml/pages/home child/version child/addPath.dart';
+import 'package:fml/pages/home child/version child/SelectedGame.dart';
 
 class VersionPage extends StatefulWidget {
   const VersionPage({super.key});
@@ -8,19 +12,64 @@ class VersionPage extends StatefulWidget {
 }
 
 class _VersionPageState extends State<VersionPage> {
+  List<String> _pathList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPaths();
+  }
+
+  // 读取游戏文件夹列表
+  Future<void> _loadPaths() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _pathList = prefs.getStringList('PathList') ?? [];
+    });
+  }
+
+  // 添加文件夹后刷新
+  Future <void> _addPath() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AddPathPage()),
+    );
+    _loadPaths();
+  }
+
+  // 刷新文件夹列表
+  Future<void> _refreshPaths(path) async {
+    Navigator.push(context,
+    MaterialPageRoute(builder: (context) => SelectedGamePage(path: path))
+    );
+    await _loadPaths();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('版本管理'),
+        title: const Text('版本文件夹管理'),
       ),
-      body: const Center(
-        child: Text('版本'),
-      ),
+      body: _pathList.isEmpty
+          ? const Center(child: Text('暂无版本文件夹'))
+          : ListView.builder(
+              itemCount: _pathList.length,
+              itemBuilder: (context, index) {
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: ListTile(
+                    title: Text(_pathList[index]),
+                    leading: const Icon(Icons.folder),
+                    onTap: () {
+                      _refreshPaths(_pathList[index]);
+                    },
+                  ),
+                );
+                },
+              ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Implement version update logic
-        },
+        onPressed: _addPath,
         child: const Icon(Icons.library_add),
       ),
     );

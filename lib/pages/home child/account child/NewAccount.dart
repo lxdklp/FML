@@ -48,6 +48,7 @@ class _NewAccountPageState extends State<NewAccountPage> {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: SwitchListTile(
               title: const Text('正版模式'),
+              secondary: const Icon(Icons.language),
               value: _online,
               onChanged: (bool value) {
                 setState(() {
@@ -62,6 +63,7 @@ class _NewAccountPageState extends State<NewAccountPage> {
                 child: TextField(
                   decoration: const InputDecoration(
                   labelText: '离线ID \n',
+                  prefixIcon: Icon(Icons.account_circle),
                   border: OutlineInputBorder(),
                 ),
                 onChanged: (String value) {
@@ -91,6 +93,7 @@ class _NewAccountPageState extends State<NewAccountPage> {
                         : '正在添加离线账号: $_name'),
                   ),
                 );
+          // 离线UUID生成
           if (!_online) {
             _uuid = md5.convert(utf8.encode('OfflinePlayer:$_name')).toString();
           }

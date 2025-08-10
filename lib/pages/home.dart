@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fml/pages/home child/account.dart';
 import 'package:fml/pages/home child/version.dart';
 import 'package:fml/pages/home child/management.dart';
+import 'package:fml/pages/home child/play.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,10 +26,10 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadGameInfo() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _selectedAccount = prefs.getString('SelectedAccount') ?? '获取失败';
+      _selectedAccount = prefs.getString('SelectedAccount') ?? '未选择账号';
     });
     setState(() {
-      _gameVersion = prefs.getString('GameVersion') ?? '获取失败';
+      _gameVersion = prefs.getString('SelectedGame') ?? '未选择版本';
     });
   }
 
@@ -75,10 +76,18 @@ class _HomePageState extends State<HomePage> {
                 title: Text('\n 版本设置 \n'),
                 leading: const Icon(Icons.tune),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ManagementPage()),
-                  );
+                  if (_gameVersion == '未选择版本') {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('请先选择游戏版本')),
+                    );
+                    return;
+                  }
+                  else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ManagementPage()),
+                    );
+                  }
                 },
               ),
             ),
@@ -87,11 +96,18 @@ class _HomePageState extends State<HomePage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('正在启动游戏...'),
-                  ),
-                );
+          if (_gameVersion == '未选择版本') {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('请先选择游戏版本')),
+            );
+            return;
+          }
+          else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PlayPage()),
+            );
+          }
         },
         child: const Icon(Icons.play_arrow),
       ),

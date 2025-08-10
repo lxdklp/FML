@@ -74,11 +74,12 @@ class _AccountPageState extends State<AccountPage> {
                             '${_online == 'true' ? '正版账号' : '离线账号'}'),
                         onTap: () async {
                           final prefs = await SharedPreferences.getInstance();
-                      await prefs.setString('SelectedAccount', _accounts[index]);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('已切换账号: ${_accounts[index]}')),
-                      );
-                    },
+                          await prefs.setString('SelectedAccount', _accounts[index]);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('已切换账号: ${_accounts[index]}')),
+                          );
+                          Navigator.pop(context);
+                        },
                     trailing: IconButton(
                       icon: const Icon(Icons.edit),
                       onPressed: () {

@@ -66,11 +66,12 @@ class _ThemePageState extends State<ThemePage> {
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: SwitchListTile(
-                title: const Text('暗色模式跟随系统'), // 暗色模式跟随系统开关标题
-                value: _followSystem, // 暗色模式跟随系统开关状态
+                title: const Text('暗色模式跟随系统'),
+                secondary: const Icon(Icons.brightness_6),
+                value: _followSystem,
                 onChanged: (bool value) {
                   setState(() {
-                    _followSystem = value; // 更新暗色模式跟随系统开关状态
+                    _followSystem = value;
                     // 更新应用主题
                     MyApp.of(context).changeTheme(_followSystem ? ThemeMode.system : (_isDarkMode ? ThemeMode.dark : ThemeMode.light));
                   });
@@ -81,8 +82,9 @@ class _ThemePageState extends State<ThemePage> {
               Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: SwitchListTile(
-                  title: const Text('暗色模式'), // 亮暗色模式开关标题
-                  value: _isDarkMode, // 亮暗色模式开关状态
+                  title: const Text('暗色模式'),
+                  secondary: const Icon(Icons.dark_mode),
+                  value: _isDarkMode,
                   onChanged: (bool value) {
                     setState(() {
                       _isDarkMode = value; // 更新亮暗色模式开关状态
@@ -95,13 +97,14 @@ class _ThemePageState extends State<ThemePage> {
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: ListTile(
-                title: const Text('主题色'), // 主题色标题
+                title: const Text('主题色'),
+                leading: const Icon(Icons.color_lens),
                 trailing: Container(
                   width: 24,
                   height: 24,
                   color: _themeColor,
                 ),
-                onTap: _selectColor, // 点击选择颜色
+                onTap: _selectColor,
               ),
             ),
           ],

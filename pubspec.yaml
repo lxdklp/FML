@@ -39,6 +39,10 @@ dependencies:
   path: ^1.9.1
   shared_preferences: ^2.5.3
   crypto: ^3.0.6
+  file_selector: ^1.0.3
+  system_info2: ^4.0.0
+  file_picker: ^10.2.4
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:

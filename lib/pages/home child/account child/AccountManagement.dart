@@ -84,6 +84,9 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
     accounts.remove(widget.accountName);
     await prefs.setStringList('AccountsList', accounts);
     await prefs.remove('Account_${widget.accountName}');
+    if (widget.accountName == prefs.getString('SelectedAccount')) {
+      await prefs.remove('SelectedAccount');
+    }
     if (!mounted) return;
     Navigator.pop(context); // 关闭对话框
     Navigator.pop(context); // 返回上一页
@@ -92,6 +95,7 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
     );
   }
 
+  // 删除账号提示框
   void _showDeleteDialog() {
     showDialog(
       context: context,
