@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:ui' show FontVariation; // 新增
 
 import 'package:fml/pages/home.dart';
 import 'package:fml/pages/download.dart';
@@ -25,6 +26,11 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   ThemeMode _themeMode = ThemeMode.system;
   Color _themeColor = Colors.blue;
+  // 字体可变权重参数（可按需调高/调低）
+  static const double bodyWght = 520;     // 正文
+  static const double labelWght = 520;    // 标签/按钮
+  static const double titleWght = 700;    // 标题
+  static const double headlineWght = 850; // 更大标题
 
   ThemeMode get themeMode => _themeMode;
   Color get themeColor => _themeColor;
@@ -84,26 +90,71 @@ class _MyAppState extends State<MyApp> {
     await prefs.setInt('themeColor', color.value);
   }
 
+  // ===== 可变字体权重统一处理 =====
+  TextTheme _withVariableWeights(TextTheme base) {
+    TextStyle setW(TextStyle? s, double w) => (s ?? const TextStyle()).copyWith(
+          fontFamily: 'NotoSans',
+          fontVariations: [FontVariation('wght', w)],
+        );
+    return base.copyWith(
+      bodySmall: setW(base.bodySmall, bodyWght),
+      bodyMedium: setW(base.bodyMedium, bodyWght),
+      bodyLarge: setW(base.bodyLarge, bodyWght),
+      labelSmall: setW(base.labelSmall, labelWght),
+      labelMedium: setW(base.labelMedium, labelWght),
+      labelLarge: setW(base.labelLarge, labelWght),
+      titleSmall: setW(base.titleSmall, titleWght),
+      titleMedium: setW(base.titleMedium, titleWght),
+      titleLarge: setW(base.titleLarge, titleWght),
+      headlineSmall: setW(base.headlineSmall, headlineWght),
+      headlineMedium: setW(base.headlineMedium, headlineWght),
+      headlineLarge: setW(base.headlineLarge, headlineWght),
+      displaySmall: setW(base.displaySmall, headlineWght),
+      displayMedium: setW(base.displayMedium, headlineWght),
+      displayLarge: setW(base.displayLarge, headlineWght),
+    );
+  }
+
+  ThemeData _buildTheme(Brightness brightness) {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: _themeColor,
+      brightness: brightness,
+    );
+    final baseTypography = Typography.material2021();
+    final raw = brightness == Brightness.dark ? baseTypography.white : baseTypography.black;
+    final textTheme = _withVariableWeights(raw);
+    return ThemeData(
+      useMaterial3: true,
+      fontFamily: 'NotoSans',
+      fontFamilyFallback: const ['Microsoft YaHei', 'Segoe UI', 'Arial'],
+      colorScheme: scheme,
+      textTheme: textTheme,
+      appBarTheme: AppBarTheme(
+        backgroundColor: scheme.surface,
+        foregroundColor: scheme.onSurface,
+        titleTextStyle: textTheme.titleLarge,
+        elevation: 0,
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        selectedLabelTextStyle: textTheme.labelLarge,
+        unselectedLabelTextStyle: textTheme.labelMedium,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'FML',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: _themeColor,
-          brightness: Brightness.light,
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: _themeColor,
-          brightness: Brightness.dark,
-        ),
-      ),
+      theme: _buildTheme(Brightness.light),
+      darkTheme: _buildTheme(Brightness.dark),
       themeMode: _themeMode,
       home: const MyHomePage(),
+      // 如需锁定系统文字放大: 解除注释
+      // builder: (context, child) {
+      //   final mq = MediaQuery.of(context);
+      //   return MediaQuery(data: mq.copyWith(textScaler: const TextScaler.linear(1.0)), child: child!);
+      // },
     );
   }
 }
@@ -156,7 +207,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ],
           ),
-            Expanded(
+          Expanded(
             child: Center(child: _buildPage(_selectedIndex)),
           ),
         ],
