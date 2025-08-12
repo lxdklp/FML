@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:ui' show FontVariation; // 新增
+import 'dart:ui' show FontVariation;
 
 import 'package:fml/pages/home.dart';
 import 'package:fml/pages/download.dart';
 import 'package:fml/pages/setting.dart';
 
 // 软件版本
-const version = '1.0.0';
+const String version = '1.0.0';
+const int buildVersion= 1;
 
 void main() {
   runApp(const MyApp());
@@ -145,16 +146,11 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FML',
+      title: 'Flutter Minecraft Launcher',
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: _themeMode,
       home: const MyHomePage(),
-      // 如需锁定系统文字放大: 解除注释
-      // builder: (context, child) {
-      //   final mq = MediaQuery.of(context);
-      //   return MediaQuery(data: mq.copyWith(textScaler: const TextScaler.linear(1.0)), child: child!);
-      // },
     );
   }
 }
@@ -167,6 +163,19 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _writeVersionInfo();
+  }
+
+  // 写入版本信息
+  Future<void> _writeVersionInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('version', version);
+    await prefs.setInt('build', buildVersion);
+  }
 
   Widget _buildPage(int index) {
     switch (index) {
@@ -183,7 +192,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('FML')),
+      appBar: AppBar(title: const Text('Flutter MInecraft Launcher')),
       body: Row(
         children: [
           NavigationRail(

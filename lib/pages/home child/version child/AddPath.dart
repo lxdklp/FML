@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:system_info2/system_info2.dart';
 
 class AddPathPage extends StatefulWidget {
   const AddPathPage({super.key});
@@ -12,14 +13,34 @@ class AddPathPage extends StatefulWidget {
 
 class _AddPathPageState extends State<AddPathPage> {
   final TextEditingController _nameController = TextEditingController();
+  int _mem = 1;
   String _dirPath = '';
   bool _hasGameFile = false;
   final List<String> _versions = [];
 
   @override
+  void initState() {
+    super.initState();
+    _getMemory();
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     super.dispose();
+  }
+
+    // 获取系统内存
+  void _getMemory(){
+    int bytes = SysInfo.getTotalPhysicalMemory();
+    // 内存错误修正
+    if (bytes > (1024 * 1024 * 1024 * 1024) && bytes % 16384 == 0) {
+      bytes = bytes ~/ 16384;
+    }
+    final physicalMemory = bytes ~/ (1024 * 1024 * 1024);
+    setState(() {
+      _mem = physicalMemory;
+    });
   }
 
   // 文件选择器
@@ -101,11 +122,29 @@ class _AddPathPageState extends State<AddPathPage> {
         SnackBar(content: Text('已找到游戏文件: ${_versions.length} 个版本')));
       paths.add(name);
       await prefs.setStringList('PathList', paths);
-      await prefs.setStringList('Path_$name', games);
+      await prefs.setStringList('Game_$name', games);
+      await prefs.setString('Path_$name', path);
+      _createGameConfig(name, games);
       Navigator.pop(context);
     }
   }
 
+  // 游戏配置文件创建
+  Future<void> _createGameConfig(String name, List<String> games) async {
+    final prefs = await SharedPreferences.getInstance();
+    // 默认配置
+    List<String> defaultConfig = [
+      '${_mem ~/ 2}',
+      '854',
+      '80',
+      '',
+      ''
+    ];
+    for (final game in games) {
+      final key = 'Config_${name}_$game';
+      await prefs.setStringList(key, defaultConfig);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

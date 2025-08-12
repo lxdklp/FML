@@ -10,7 +10,6 @@ class AccountManagementPage extends StatefulWidget {
 }
 
 class _AccountManagementPageState extends State<AccountManagementPage> {
-  // 状态字段
   String _uuid = '';
   bool _online = false;
   bool _isCustomUUID = false;

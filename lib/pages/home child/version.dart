@@ -28,6 +28,12 @@ class _VersionPageState extends State<VersionPage> {
     });
   }
 
+  // 获取文件夹路径
+  Future<String?> _getPath(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('Path_$name');
+  }
+
   // 添加文件夹后刷新
   Future <void> _addPath() async {
     await Navigator.push(
@@ -60,6 +66,18 @@ class _VersionPageState extends State<VersionPage> {
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: ListTile(
                     title: Text(_pathList[index]),
+                    subtitle: FutureBuilder<String?>(
+                      future: _getPath(_pathList[index]),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Text('加载中...');
+                        } else if (snapshot.hasError) {
+                          return const Text('加载失败');
+                        } else {
+                          return Text(snapshot.data ?? '未知路径');
+                        }
+                      },
+                    ),
                     leading: const Icon(Icons.folder),
                     onTap: () {
                       _refreshPaths(_pathList[index]);
