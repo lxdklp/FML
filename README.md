@@ -1,8 +1,8 @@
 <p align="center"><img src="./assets/img/icon/icon.png"  width="20%" /><img src="./assets/img/logo/flutter.png"  width="25%" /></p>
 
-# Flutter MInecraft Launcher
+# Flutter Minecraft Launcher
 
-一个由flutter编写的使用GPL3.0协议开源跨平台Vanilla/Fabric/NeoForge Minecraft Java启动器,支持Windows、macOS、Linux
+一个由Flutter编写的Material Design 3风格的使用GPL3.0协议开源跨平台Vanilla/Fabric/NeoForge Minecraft Java启动器,支持Windows、macOS、Linux
 
 # shared_preferences
 软件配置

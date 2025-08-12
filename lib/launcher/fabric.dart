@@ -237,6 +237,7 @@ Future<void> fabricLauncher() async {
     '-Dfml.ignoreInvalidMinecraftCertificates=true',
     '-Dfml.ignorePatchDiscrepancies=true',
     '-Dminecraft.launcher.brand=FML',
+    "-Duser.home=null",
     if (Platform.isMacOS) '-XstartOnFirstThread',
     '-Djava.library.path=$nativesPath',
     '-Djna.tmpdir=$nativesPath',
