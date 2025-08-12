@@ -1,7 +1,4 @@
-<center>
-<img src="./assets/img/icon/icon.png"  width="20%" />
-<img src="./assets/img/logo/flutter.png"  width="25%" />
-</center>
+<p align="center"><img src="./assets/img/icon/icon.png"  width="20%" /><img src="./assets/img/logo/flutter.png"  width="25%" /></p>
 
 # Flutter MInecraft Launcher
 

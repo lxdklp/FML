@@ -25,6 +25,11 @@ Future<List<String>> loadLibraryArtifactPaths(String versionJsonPath, String gam
     if (artifact is! Map) continue;
     final path = artifact['path'];
     if (path is String && path.isNotEmpty) {
+      // 排除冲突的ASM组件
+      if (path.contains('org/ow2/asm/asm')) {
+        debugPrint('排除冲突的ASM组件: $path');
+        continue;
+      }
       final fullPath = '${gamePath}${Platform.pathSeparator}libraries${Platform.pathSeparator}${path}';
       result.add(fullPath);
     }
@@ -160,6 +165,19 @@ Future<void> fabricLauncher() async {
   final accountInfo = prefs.getStringList('Account_$account') ?? [];
   final assetIndex = await getAssetIndex(jsonPath) ?? '';
   final fabricInfo = await getFabricInfo(jsonPath);
+  final Map<String, String> fabricAsmVersions = {};
+  for (final lib in (fabricInfo['libraries'] as List<String>? ?? [])) {
+    if (lib.contains('org${Platform.pathSeparator}ow2${Platform.pathSeparator}asm')) {
+      // 解析ASM组件名称和版本
+      final parts = lib.split(Platform.pathSeparator);
+      if (parts.length >= 4) {
+        final artifactId = parts[parts.length - 2];
+        final version = parts[parts.length - 3];
+        fabricAsmVersions[artifactId] = version;
+        debugPrint('Fabric提供的ASM组件: $artifactId 版本: $version');
+      }
+    }
+  }
   // 基础路径
   final fabricLoader = '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}net${Platform.pathSeparator}fabricmc${Platform.pathSeparator}fabric-loader${Platform.pathSeparator}${fabricInfo['fabric'] ?? ''}${Platform.pathSeparator}fabric-loader-${fabricInfo['fabric'] ?? ''}.jar';
   final intermediary = '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}net${Platform.pathSeparator}fabricmc${Platform.pathSeparator}intermediary${Platform.pathSeparator}${fabricInfo['game'] ?? ''}${Platform.pathSeparator}intermediary-${fabricInfo['game'] ?? ''}.jar';
@@ -169,8 +187,42 @@ Future<void> fabricLauncher() async {
   for (final lib in (fabricInfo['libraries'] as List<String>? ?? [])) {
     fabricLibraryPaths.add('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$lib');
   }
+  
+  // 过滤原版库中与Fabric提供的ASM组件冲突的版本
+  final List<String> filteredLibraries = [];
+  for (final lib in libraries) {
+    bool shouldExclude = false;
+    
+    // 检查是否是ASM组件
+    if (lib.contains('${Platform.pathSeparator}org${Platform.pathSeparator}ow2${Platform.pathSeparator}asm${Platform.pathSeparator}')) {
+      for (final asmComponent in fabricAsmVersions.keys) {
+        // 如果路径中包含ASM组件名称
+        if (lib.contains('${Platform.pathSeparator}$asmComponent${Platform.pathSeparator}')) {
+          // 检查版本是否不同于Fabric提供的版本
+          final libParts = lib.split(Platform.pathSeparator);
+          for (int i = 0; i < libParts.length - 1; i++) {
+            if (libParts[i] == asmComponent && i > 0) {
+              final version = libParts[i-1];
+              if (version != fabricAsmVersions[asmComponent]) {
+                shouldExclude = true;
+                debugPrint('排除冲突的ASM组件: $lib (版本 $version 与Fabric提供的版本 ${fabricAsmVersions[asmComponent]} 冲突)');
+                break;
+              }
+            }
+          }
+          break;
+        }
+      }
+    }
+    
+    if (!shouldExclude) {
+      filteredLibraries.add(lib);
+    }
+  }
+  
   // 添加所有依赖库到类路径
-  var cp = '$classPath$separator$gameJar$separator$fabricLoader$separator$intermediary$separator$spongeMixin';
+  var cp = filteredLibraries.join(separator);
+  cp += '$separator$gameJar$separator$fabricLoader$separator$intermediary$separator$spongeMixin';
   for (final lib in fabricLibraryPaths) {
     cp += '$separator$lib';
   }
