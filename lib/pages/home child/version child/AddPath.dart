@@ -135,8 +135,9 @@ class _AddPathPageState extends State<AddPathPage> {
     // 默认配置
     List<String> defaultConfig = [
       '${_mem ~/ 2}',
+      '0',
       '854',
-      '80',
+      '480',
       '',
       ''
     ];

@@ -1,6 +1,11 @@
+<center>
+<img src="./assets/img/icon/icon.png"  width="20%" />
+<img src="./assets/img/logo/flutter.png"  width="25%" />
+</center>
+
 # Flutter MInecraft Launcher
 
-一个由flutter编写的使用GPL3.0协议开源跨平台Minecraft Java启动器,支持Windows、macOS、Linux
+一个由flutter编写的使用GPL3.0协议开源跨平台Vanilla/Fabric/NeoForge Minecraft Java启动器,支持Windows、macOS、Linux
 
 # shared_preferences
 软件配置
@@ -29,8 +34,12 @@
 版本配置 Config_${name}_$game list(string)
 | 序号 | 值 |
 | -- | -- |
-| 0 | xmx |
-| 1 | width |
-| 2 | height |
-| 3 | server |
-| 4 | port |
+| 0 | 游戏类型(Vanilla、Fabric、NeoForge) |
+| 1 | xmx |
+| 2 | 是否启用全屏(1启用,0禁用) |
+| 3 | 游戏宽度 |
+| 4 | 游戏高度 |
+| 5 | server |
+| 6 | port |
+
+###### flutter logo : [Sawaratsuki](https://github.com/SAWARATSUKI)

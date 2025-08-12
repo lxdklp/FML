@@ -57,6 +57,14 @@ class _NewAccountPageState extends State<NewAccountPage> {
               },
             ),
             ),
+            if (_online)
+              Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: const ListTile(
+                  leading: Icon(Icons.account_circle),
+                  title: Text('将在Mojang审批完成后推出'),
+                ),
+              ),
             if (!_online)
               Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

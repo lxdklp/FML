@@ -141,16 +141,15 @@ class _AccountManagementPageState extends State<AccountManagementPage> {
                 SwitchListTile(
                   title: const Text('使用自定义 UUID'),
                   value: _isCustomUUID,
-                  onChanged: (v) async {
+                  onChanged: (value) async {
                     setState(() {
-                      _isCustomUUID = v;
-                      if (!v) {
+                      _isCustomUUID = value;
+                      if (!value) {
                         _customUUIDController.clear();
                       } else {
                         _customUUIDController.text = _customUUID;
                       }
                     });
-                    await _saveAccountInfo();
                   },
                 ),
                 if (_isCustomUUID)
