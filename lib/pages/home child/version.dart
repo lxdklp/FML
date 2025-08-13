@@ -51,6 +51,14 @@ class _VersionPageState extends State<VersionPage> {
     await _loadPaths();
   }
 
+  // 选择文件夹
+  Future<void> _selectPath(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('SelectedPath', name);
+    if (!mounted) return;
+    _refreshPaths(name);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,7 +88,7 @@ class _VersionPageState extends State<VersionPage> {
                     ),
                     leading: const Icon(Icons.folder),
                     onTap: () {
-                      _refreshPaths(_pathList[index]);
+                      _selectPath(_pathList[index]);
                     },
                   ),
                 );

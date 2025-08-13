@@ -43,6 +43,8 @@ dependencies:
   system_info2: ^4.0.0
   file_picker: ^10.2.4
   flutter_launcher_icons: ^0.14.4
+  dio: ^5.9.0
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:

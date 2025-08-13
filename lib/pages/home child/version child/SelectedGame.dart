@@ -96,7 +96,7 @@ class _SelectedGamePageState extends State<SelectedGamePage> {
         title: Text('游戏选择'),
       ),
       body: _gameList.isEmpty
-          ? const Center(child: Text('游戏列表出错'))
+          ? const Center(child: Text('游戏列表为空'))
           : ListView.builder(
               itemCount: _gameList.length,
               itemBuilder: (context, index) {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:fml/launcher/vanilla.dart';
-import 'package:fml/launcher/fabric.dart';
+import 'package:fml/function/launcher/vanilla.dart';
+import 'package:fml/function/launcher/fabric.dart';
 
 class PlayPage extends StatefulWidget {
   const PlayPage({super.key});
@@ -13,7 +13,7 @@ class _PlayPageState extends State<PlayPage> {
   @override
   void initState() {
     super.initState();
-    fabricLauncher();
+    vanillaLauncher();
   }
 
   @override

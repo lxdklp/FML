@@ -187,12 +187,10 @@ Future<void> fabricLauncher() async {
   for (final lib in (fabricInfo['libraries'] as List<String>? ?? [])) {
     fabricLibraryPaths.add('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$lib');
   }
-  
   // 过滤原版库中与Fabric提供的ASM组件冲突的版本
   final List<String> filteredLibraries = [];
   for (final lib in libraries) {
     bool shouldExclude = false;
-    
     // 检查是否是ASM组件
     if (lib.contains('${Platform.pathSeparator}org${Platform.pathSeparator}ow2${Platform.pathSeparator}asm${Platform.pathSeparator}')) {
       for (final asmComponent in fabricAsmVersions.keys) {
@@ -214,12 +212,10 @@ Future<void> fabricLauncher() async {
         }
       }
     }
-    
     if (!shouldExclude) {
       filteredLibraries.add(lib);
     }
   }
-  
   // 添加所有依赖库到类路径
   var cp = filteredLibraries.join(separator);
   cp += '$separator$gameJar$separator$fabricLoader$separator$intermediary$separator$spongeMixin';
@@ -247,7 +243,7 @@ Future<void> fabricLauncher() async {
     'net.fabricmc.loader.impl.launch.knot.KnotClient',
     '--username', account,
     '--version', game,
-    '--gameDir', gamePath,
+    '--gameDir', '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
     '--assetsDir', '$gamePath${Platform.pathSeparator}assets',
     '--assetIndex', assetIndex,
     '--uuid', if (accountInfo[2] == '1') accountInfo[3] else accountInfo[0],
@@ -261,7 +257,7 @@ Future<void> fabricLauncher() async {
   ];
   debugPrint('fab=$fabricLoader, sponge=$spongeMixin ,intermediary=$intermediary');
   debugPrint(args.join("\n"));
-  final proc = await Process.start(java, args);
+  final proc = await Process.start(java, args, workingDirectory: '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game');
   proc.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((l) => debugPrint('[OUT] $l'));
   proc.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((l) => debugPrint('[ERR] $l'));
   final code = await proc.exitCode;
