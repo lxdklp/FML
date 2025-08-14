@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fml/pages/download%20child/DownloadGame.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({super.key});
@@ -65,6 +66,25 @@ class _DownloadPageState extends State<DownloadPage> {
     }
   }
 
+  // 添加打开URL
+  Future<void> _launchURL() async {
+    try {
+      final Uri uri = Uri.parse('https://bmclapidoc.bangbang93.com/');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('无法打开链接: https://bmclapidoc.bangbang93.com/')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('发生错误: $e')),
+      );
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,6 +126,15 @@ class _DownloadPageState extends State<DownloadPage> {
             )
           : ListView(
               children: [
+                Card(
+                  child: ListTile(
+                    title: const Text('下载由 BMCLAPI 提供'),
+                    subtitle: const Text('赞助 BMCLAPI 喵~ 赞助 BMCLAPI 谢谢喵~ '),
+                    leading: const Icon(Icons.info),
+                    trailing: const Icon(Icons.open_in_new),
+                    onTap: _launchURL,
+                  ),
+                ),
                 Card(
                   child: SwitchListTile(
                     title: const Text('显示快照版本'),

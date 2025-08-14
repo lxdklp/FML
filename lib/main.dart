@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:ui' show FontVariation;
 
 import 'package:fml/pages/home.dart';
 import 'package:fml/pages/download.dart';

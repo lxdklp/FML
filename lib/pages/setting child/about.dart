@@ -95,7 +95,7 @@ class _AboutPageState extends State<AboutPage> {
                       textAlign: TextAlign.center,
                     ),
                     Text(
-                      'Code by lxdklp',
+                      'Code by lxdklp\n',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,

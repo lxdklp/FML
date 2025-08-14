@@ -28,7 +28,7 @@
 | 2 | 是否启用自定义UUID(1启用,0禁用) |
 | 3 | 自定义UUID |
 
-版本配置 Config_${name}_$game list(string)
+版本配置 Config_${path}_$game list(string)
 | 序号 | 值 |
 | -- | -- |
 | 0 | 游戏类型(Vanilla、Fabric、NeoForge) |
@@ -36,7 +36,7 @@
 | 2 | 是否启用全屏(1启用,0禁用) |
 | 3 | 游戏宽度 |
 | 4 | 游戏高度 |
-| 5 | server |
+| 5 | 模组加载器 |
 | 6 | port |
 
 ###### flutter logo : [Sawaratsuki](https://github.com/SAWARATSUKI)

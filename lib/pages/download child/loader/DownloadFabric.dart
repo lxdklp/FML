@@ -6,29 +6,34 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:system_info2/system_info2.dart';
 
-class DownloadVanillaPage extends StatefulWidget {
-  const DownloadVanillaPage({super.key, required this.version, required this.url, required this.name});
+class DownloadFabricPage extends StatefulWidget {
+  const DownloadFabricPage({super.key, required this.version, required this.url, required this.name, required this.fabricVersion, required this.fabricLoader});
 
   final String version;
   final String url;
   final String name;
+  final String fabricVersion;
+  final Map<String, dynamic>? fabricLoader;
 
   @override
-  _DownloadVanillaPageState createState() => _DownloadVanillaPageState();
+  _DownloadFabricPageState createState() => _DownloadFabricPageState();
 }
 
-class _DownloadVanillaPageState extends State<DownloadVanillaPage> {
+class _DownloadFabricPageState extends State<DownloadFabricPage> {
   double _progress = 0.0;
   CancelToken? _cancelToken;
   bool _isDownloading = false;
   String? _error;
+  bool _SaveFabricJson = false;
   bool _DownloadJson = false;
   bool _ParseGameJson = false;
   bool _ParseAssetJson = false;
+  bool _ParseFabricJson = false;
   bool _DownloadAssetJson = false;
   bool _DownloadClient = false;
   bool _DownloadLibrary = false;
   bool _DownloadAsset = false;
+  bool _DownloadFabric = false;
   bool _WriteConfig = false;
   int _mem = 1;
   String _name = '';
@@ -41,6 +46,8 @@ class _DownloadVanillaPageState extends State<DownloadVanillaPage> {
   final List<String> _assetHash = [];
   List<Map<String, String>> _failedLibraries = [];
   List<Map<String, String>> _failedAssets = [];
+  List<Map<String, String>> _fabricDownloadTasks = [];
+  List<Map<String, String>> _failedFabricFiles = [];
   bool _isRetrying = false;
   final int _maxRetries = 3;  // 最大重试次数
   int _currentRetryCount = 0;
@@ -65,6 +72,34 @@ class _DownloadVanillaPageState extends State<DownloadVanillaPage> {
     if (!await directory.exists()) {
       await directory.create(recursive: true);
       debugPrint('创建目录: $GamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}');
+    }
+  }
+
+  // 添加保存Fabric JSON到本地
+  Future<void> saveLoaderToJson(String jsonPath) async {
+    try {
+      if (widget.fabricLoader == null) {
+        debugPrint('fabricLoader为空，无法保存');
+        return;
+      }
+      final String jsonString = jsonEncode(widget.fabricLoader);
+      final String dirPath = jsonPath;
+      final String filePath = '$dirPath/fabric.json';
+      final Directory directory = Directory(dirPath);
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+        debugPrint('已创建目录: $dirPath');
+      }
+      // 创建文件并写入JSON内容
+      final File file = File(filePath);
+      await file.writeAsString(jsonString);
+      debugPrint('已成功将fabricLoader保存到: $filePath');
+      debugPrint('fabricLoader内容: $jsonString');
+      setState(() {
+        _SaveFabricJson = true;
+      });
+    } catch (e) {
+      debugPrint('保存JSON时出错: $e');
     }
   }
 
@@ -155,6 +190,94 @@ class _DownloadVanillaPageState extends State<DownloadVanillaPage> {
       });
     }
   }
+
+  // 解析 Fabric JSON
+  Future<void> parseFabricLoaderJson() async {
+  try {
+    if (widget.fabricLoader == null) {
+      debugPrint('fabricLoader为空，无法解析');
+      return;
+    }
+    _fabricDownloadTasks.clear();
+    final Map<String, dynamic> loaderJson = widget.fabricLoader!;
+    // 1. 解析 Loader
+    if (loaderJson.containsKey('loader') && loaderJson['loader'] != null) {
+      final loaderInfo = loaderJson['loader'];
+      if (loaderInfo.containsKey('maven') && loaderInfo['maven'] != null) {
+        final String loaderMaven = loaderInfo['maven'];
+        final List<String> loaderParts = loaderMaven.split(':');
+        if (loaderParts.length >= 3) {
+          final String group = loaderParts[0].replaceAll('.', '/');
+          final String artifact = loaderParts[1];
+          final String version = loaderParts[2];
+          final String relativePath = '$group/$artifact/$version/$artifact-$version.jar';
+          final String url = 'https://bmclapi2.bangbang93.com/maven/$group/$artifact/$version/$artifact-$version.jar';
+          _fabricDownloadTasks.add({'url': replaceWithMirror(url), 'path': relativePath});
+          debugPrint('添加Fabric Loader: $relativePath');
+        }
+      }
+    }
+    // 2. 解析 Intermediary
+    if (loaderJson.containsKey('intermediary') && loaderJson['intermediary'] != null) {
+      final intermediaryInfo = loaderJson['intermediary'];
+      if (intermediaryInfo.containsKey('maven') && intermediaryInfo['maven'] != null) {
+        final String intermediaryMaven = intermediaryInfo['maven'];
+        final List<String> parts = intermediaryMaven.split(':');
+        if (parts.length >= 3) {
+          final String group = parts[0].replaceAll('.', '/');
+          final String artifact = parts[1];
+          final String version = parts[2];
+          final String relativePath = '$group/$artifact/$version/$artifact-$version.jar';
+          final String url = 'https://bmclapi2.bangbang93.com/maven/$group/$artifact/$version/$artifact-$version.jar';
+          _fabricDownloadTasks.add({'url': replaceWithMirror(url), 'path': relativePath});
+          debugPrint('添加Intermediary: $relativePath');
+        }
+      }
+    }
+    // 3. 解析库文件
+    if (loaderJson.containsKey('launcherMeta') &&
+        loaderJson['launcherMeta'] != null &&
+        loaderJson['launcherMeta'].containsKey('libraries')) {
+      final libraries = loaderJson['launcherMeta']['libraries'];
+      // 3.1 解析通用库
+      if (libraries.containsKey('common') && libraries['common'] is List) {
+        final List<dynamic> commonLibs = libraries['common'];
+        for (var lib in commonLibs) {
+          if (lib.containsKey('name')) {
+            final String name = lib['name'];
+            String baseUrl = lib.containsKey('url') ? lib['url'] : 'https://bmclapi2.bangbang93.com/maven/';
+            final List<String> parts = name.split(':');
+            if (parts.length >= 3) {
+              final String group = parts[0].replaceAll('.', '/');
+              final String artifact = parts[1];
+              String version = parts[2];
+              // 处理可能包含额外信息的版本号
+              if (version.contains('@')) {
+                version = version.split('@')[0];
+              }
+              final String relativePath = '$group/$artifact/$version/$artifact-$version.jar';
+              final String fullUrl = '$baseUrl$group/$artifact/$version/$artifact-$version.jar';
+              _fabricDownloadTasks.add({'url': replaceWithMirror(fullUrl), 'path': relativePath});
+            }
+          }
+        }
+      }
+      setState(() {
+        _ParseFabricJson = true;
+      });
+    }
+    debugPrint('找到 ${_fabricDownloadTasks.length} 个Fabric文件需要下载');
+    setState(() {
+      _ParseFabricJson = true;
+    });
+  } catch (e) {
+    debugPrint('解析Fabric Loader JSON失败: $e');
+    setState(() {
+      _error = '解析Fabric Loader JSON失败: $e';
+      _ParseFabricJson = false;
+    });
+  }
+}
 
   // 下载库
   Future<void> _DownloadLibraries({int concurrentDownloads = 20}) async {
@@ -357,7 +480,113 @@ class _DownloadVanillaPageState extends State<DownloadVanillaPage> {
       _DownloadAsset = true;
     });
   }
-  // 单线程
+
+  // 下载Fabric
+  Future<void> _DownloadFabricLibraries({int concurrentDownloads = 20}) async {
+    if (_fabricDownloadTasks.isEmpty) {
+      debugPrint('Fabric库文件列表为空');
+      setState(() {
+        _DownloadFabric = true;
+      });
+      return;
+    }
+    if (!_isRetrying) {
+      _failedFabricFiles.clear();
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final SelectedGamePath = prefs.getString('SelectedPath') ?? '';
+    final GamePath = prefs.getString('Path_$SelectedGamePath') ?? '';
+    List<Map<String, String>> downloadTasks = [];
+    if (_isRetrying && _failedFabricFiles.isNotEmpty) {
+      downloadTasks = _failedFabricFiles;
+    } else {
+      for (var task in _fabricDownloadTasks) {
+        final relativePath = task['path']!;
+        final url = task['url']!;
+        final fullPath = '$GamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
+        final directory = Directory(fullPath.substring(0, fullPath.lastIndexOf(Platform.pathSeparator)));
+        if (!directory.existsSync()) {
+          directory.createSync(recursive: true);
+        }
+        final file = File(fullPath);
+        if (!file.existsSync()) {
+          downloadTasks.add({'url': url, 'path': fullPath});
+        }
+      }
+    }
+    final totalTasks = downloadTasks.length;
+    if (totalTasks == 0) {
+      debugPrint('所有Fabric库文件已存在，无需下载');
+      setState(() {
+        _DownloadFabric = true;
+      });
+      return;
+    }
+    debugPrint('需要下载 $totalTasks 个Fabric文件，并发数: $concurrentDownloads');
+    int completedTasks = 0;
+    List<Map<String, String>> newFailedList = [];
+    void updateProgress() {
+      setState(() {
+        _progress = completedTasks / totalTasks;
+      });
+    }
+    for (int i = 0; i < downloadTasks.length; i += concurrentDownloads) {
+      int end = i + concurrentDownloads;
+      if (end > downloadTasks.length) end = downloadTasks.length;
+      List<Future<void>> batch = [];
+      for (int j = i; j < end; j++) {
+        final task = downloadTasks[j];
+        batch.add(() async {
+          try {
+            await DownloadUtils.downloadFile(
+              url: task['url']!,
+              savePath: task['path']!,
+              onProgress: (_) {},
+              onSuccess: () {
+                completedTasks++;
+                updateProgress();
+              },
+              onError: (error) {
+                completedTasks++;
+                newFailedList.add(task);
+                debugPrint('下载Fabric文件失败: $error, URL: ${task['url']}');
+              }
+            );
+          } catch (e) {
+            completedTasks++;
+            newFailedList.add(task);
+            debugPrint('下载Fabric文件异常: $e, URL: ${task['url']}');
+          }
+        }());
+      }
+      await Future.wait(batch);
+      updateProgress();
+      debugPrint('已完成: $completedTasks/$totalTasks, 失败: ${newFailedList.length}');
+    }
+    _failedFabricFiles = newFailedList;
+    if (newFailedList.isNotEmpty && _currentRetryCount < _maxRetries) {
+      _currentRetryCount++;
+      debugPrint('准备重试下载 ${newFailedList.length} 个失败的Fabric文件 (第 $_currentRetryCount 次重试)');
+      setState(() {
+        _isRetrying = true;
+      });
+      await _DownloadFabricLibraries(concurrentDownloads: concurrentDownloads);
+    } else if (newFailedList.isNotEmpty) {
+      debugPrint('已达最大并发重试次数，开始单线程无限重试 ${newFailedList.length} 个Fabric文件');
+      await _singleThreadRetryDownload(newFailedList, "Fabric文件", (progress) {
+        setState(() {
+          _progress = progress;
+        });
+      });
+    }
+    setState(() {
+      _isRetrying = false;
+      _currentRetryCount = 0;
+      _DownloadFabric = true;
+    });
+  }
+
+  // 单线程重新尝试
   Future<void> _singleThreadRetryDownload(List<Map<String, String>> failedList, String fileType,
       Function(double) updateProgressCallback) async {
     int total = failedList.length;
@@ -463,7 +692,7 @@ class _DownloadVanillaPageState extends State<DownloadVanillaPage> {
       '0',
       '854',
       '480',
-      'Vanilla',
+      'Fabric',
       ''
     ];
     final key = 'Config_${_name}_${widget.name}';
@@ -495,6 +724,8 @@ void _startDownload() async {
     setState(() {
       _DownloadJson = true;
     });
+    // 保存Fabric JSON到本地
+    await saveLoaderToJson(VersionPath);
     // 解析游戏Json
     await parseGameJson('$VersionPath${Platform.pathSeparator}${widget.name}.json');
     // 下载资产索引文件
@@ -508,6 +739,7 @@ void _startDownload() async {
       });
       // 解析资产索引
       await parseAssetIndex(assetIndexPath);
+      await parseFabricLoaderJson();
       // 下载客户端
       await DownloadFile('$VersionPath${Platform.pathSeparator}${widget.name}.jar', clientURL);
       setState(() {
@@ -519,10 +751,17 @@ void _startDownload() async {
         _DownloadLibrary = true;
         _progress = 0;
       });
+      // 下载资源文件
       await _DownloadAssets(concurrentDownloads: 30);
       setState(() {
         _DownloadAsset = true;
       });
+      // 下载 Fabric
+      await _DownloadFabricLibraries(concurrentDownloads: 30);
+      setState(() {
+        _DownloadFabric = true;
+      });
+      // 写入游戏配置
       await _writeGameConfig();
       setState(() {
         _WriteConfig = true;
@@ -539,7 +778,7 @@ void _startDownload() async {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('正在下载原版游戏'),
+        title: Text('正在下载 ${widget.version} + Fabric ${widget.fabricVersion}'),
         automaticallyImplyLeading: false,
       ),
       body: ListView(
@@ -557,14 +796,25 @@ void _startDownload() async {
           if (_DownloadJson) ...[
             Card(
               child: ListTile(
-                title: const Text('正在解析游戏Json'),
-                subtitle: Text(_ParseGameJson ? '解析完成' : '解析中...'),
-                trailing: _ParseGameJson
+                title: const Text('正在保存Fabric Json'),
+                subtitle: Text(_SaveFabricJson ? '保存完成' : '保存中...'),
+                trailing: _SaveFabricJson
                   ? const Icon(Icons.check)
                   : const CircularProgressIndicator(),
               ),
             ),
-            if (_ParseAssetJson) ...[
+            if (_SaveFabricJson) ...[
+              Card(
+                child: ListTile(
+                  title: const Text('正在解析游戏Json'),
+                  subtitle: Text(_ParseGameJson ? '解析完成' : '解析中...'),
+                  trailing: _ParseGameJson
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
+                ),
+              ),
+            ],
+            if (_ParseGameJson) ...[
               Card(
                 child: ListTile(
                   title: const Text('正在下载资源Json'),
@@ -588,6 +838,17 @@ void _startDownload() async {
             ),
           ],
           if (_ParseAssetJson) ...[
+            Card(
+              child: ListTile(
+                title: const Text('正在解析Fabric Json'),
+                subtitle: Text(_ParseFabricJson ? '解析完成' : '解析中...'),
+                trailing: _ParseFabricJson
+                  ? const Icon(Icons.check)
+                  : const CircularProgressIndicator(),
+              ),
+            ),
+          ],
+          if (_ParseFabricJson) ...[
             Card(
               child: ListTile(
                 title: const Text('正在下载客户端'),
@@ -639,6 +900,26 @@ void _startDownload() async {
             )
           ],
           if (_DownloadAsset) ...[
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    title: const Text('正在下载Fabric'),
+                    subtitle: Text(_DownloadFabric ? '下载完成' : '下载中... 已下载${(_progress * 100).toStringAsFixed(2)}%'),
+                    trailing: _DownloadFabric
+                      ? const Icon(Icons.check)
+                      : const CircularProgressIndicator(),
+                  ),
+                  if (!_DownloadFabric)
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: LinearProgressIndicator(value: _progress),
+                    ),
+                ],
+              ),
+            )
+          ],
+          if (_DownloadFabric) ...[
             Card(
               child: ListTile(
                 title: const Text('正在写入配置文件'),

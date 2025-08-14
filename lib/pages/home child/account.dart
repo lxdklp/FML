@@ -60,18 +60,18 @@ class _AccountPageState extends State<AccountPage> {
                 return FutureBuilder<Map<String, String>>(
                   future: _getAccountInfo(_accounts[index]),
                   builder: (context, snapshot) {
-                    String _uuid = snapshot.data?['uuid'] ?? '';
-                    String _online = snapshot.data?['online'] ?? '';
-                    String _isCustomUUID = snapshot.data?['isCustomUUID'] ?? '';
-                    String _customUUID = snapshot.data?['customUUID'] ?? '';
+                    String uuid = snapshot.data?['uuid'] ?? '';
+                    String online = snapshot.data?['online'] ?? '';
+                    String isCustomUUID = snapshot.data?['isCustomUUID'] ?? '';
+                    String customUUID = snapshot.data?['customUUID'] ?? '';
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: ListTile(
                         leading: const Icon(Icons.account_circle),
                         title: Text(_accounts[index]),
-                        subtitle: Text('生成UUID: $_uuid\n'
-                            '${_isCustomUUID == '1' ? '已启用自定义UUID: $_customUUID' : '未启用自定义UUID'}\n'
-                            '${_online == 'true' ? '正版账号' : '离线账号'}'),
+                        subtitle: Text('生成UUID: $uuid\n'
+                            '${isCustomUUID == '1' ? '已启用自定义UUID: $customUUID' : '未启用自定义UUID'}\n'
+                            '${online == 'true' ? '正版账号' : '离线账号'}'),
                         onTap: () async {
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.setString('SelectedAccount', _accounts[index]);

@@ -25,7 +25,7 @@ Future<List<String>> loadLibraryArtifactPaths(String versionJsonPath, String gam
     if (artifact is! Map) continue;
     final path = artifact['path'];
     if (path is String && path.isNotEmpty) {
-      final fullPath = '${gamePath}${Platform.pathSeparator}libraries${Platform.pathSeparator}${path}';
+      final fullPath = '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$path';
       result.add(fullPath);
     }
   }
