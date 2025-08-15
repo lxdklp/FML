@@ -4,6 +4,8 @@
 
 一个由Flutter编写的Material Design 3风格的使用GPL3.0协议开源跨平台Vanilla/Fabric/NeoForge Minecraft Java启动器,支持Windows、macOS、Linux
 
+***需要更多Windows ARM64、macOS x86、 Linux的反馈!***
+
 # shared_preferences
 软件配置
 | 键 | 值 | 类型 |
@@ -31,12 +33,11 @@
 版本配置 Config_${path}_$game list(string)
 | 序号 | 值 |
 | -- | -- |
-| 0 | 游戏类型(Vanilla、Fabric、NeoForge) |
-| 1 | xmx |
-| 2 | 是否启用全屏(1启用,0禁用) |
-| 3 | 游戏宽度 |
-| 4 | 游戏高度 |
-| 5 | 模组加载器 |
-| 6 | port |
+| 0 | xmx |
+| 1 | 是否启用全屏(1启用,0禁用) |
+| 2 | 游戏宽度 |
+| 3 | 游戏高度 |
+| 4 | 模组加载器 |
+| 5 | port |
 
 ###### flutter logo : [Sawaratsuki](https://github.com/SAWARATSUKI)

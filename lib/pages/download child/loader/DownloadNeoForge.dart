@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:fml/function/download.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:system_info2/system_info2.dart';
 import 'package:archive/archive.dart';
+
+import 'package:fml/function/download.dart';
+import 'package:fml/function/ExtractNatives.dart';
 
 class DownloadNeoForgePage extends StatefulWidget {
   const DownloadNeoForgePage({super.key, required this.version, required this.url, required this.name, required this.neoforgeVersion});
@@ -31,6 +33,8 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
   bool _DownloadClient = false;
   bool _DownloadLibrary = false;
   bool _DownloadAsset = false;
+  bool _ExtractedLwjglNativesPath = false;
+  bool _ExtractedLwjglNatives = false;
   bool _DownloadNeoForge = false;
   bool _ExtractNeoForgeInstaller = false;
   bool _ParseNeoForgeInstallerJson = false;
@@ -46,6 +50,8 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
   String? assetIndexId;
   List<String> librariesPath = [];
   List<String> librariesURL = [];
+  List<String> lwjglNativeNames = [];
+  List<String> lwjglNativePaths = [];
   List<String> neoForgeLibrariesPath = [];
   List<String> neoForgeLibrariesURL = [];
   final List<String> _assetHash = [];
@@ -369,6 +375,114 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
     });
   }
 
+  // 提取LWJGL本地库文件的名称和路径
+  Future<void> ExtractLwjglNativeLibrariesPath(String jsonFilePath, String gamePath) async {
+    final namesList = <String>[];
+    final pathsList = <String>[];
+    final file = File(jsonFilePath);
+    if (!await file.exists()) {
+      debugPrint('版本JSON文件不存在: $jsonFilePath');
+      setState(() {
+        lwjglNativeNames = namesList;
+        lwjglNativePaths = pathsList;
+        _ExtractedLwjglNativesPath = true;
+      });
+      return;
+    }
+    late final dynamic root;
+    try {
+      root = jsonDecode(await file.readAsString());
+    } catch (e) {
+      debugPrint('JSON 解析失败: $e');
+      setState(() {
+        lwjglNativeNames = namesList;
+        lwjglNativePaths = pathsList;
+        _ExtractedLwjglNativesPath = true;
+      });
+      return;
+    }
+    final libs = root is Map ? root['libraries'] : null;
+    if (libs is! List) {
+      debugPrint('JSON中没有libraries字段或格式错误');
+      setState(() {
+        lwjglNativeNames = namesList;
+        lwjglNativePaths = pathsList;
+        _ExtractedLwjglNativesPath = true;
+      });
+      return;
+    }
+    for (final item in libs) {
+      if (item is! Map) continue;
+      final downloads = item['downloads'];
+      if (downloads is! Map) continue;
+      final artifact = downloads['artifact'];
+      if (artifact is! Map) continue;
+      final path = artifact['path'];
+      if (path is! String || path.isEmpty) continue;
+      final fileName = path.split('/').last;
+      // 检查是否为所需的LWJGL库
+      if ((fileName.startsWith('lwjgl-') && fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-freetype-') && fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-glfw-') && fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-jemalloc-') && fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-openal-') && fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-stb-') && fileName.contains('-natives-')) ||
+          fileName.startsWith('lwjgl-tinyfd')) {
+        namesList.add(fileName);
+        final fullPath = ('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$path');
+        pathsList.add(fullPath);
+        debugPrint('找到LWJGL库: $fileName, 路径: $fullPath');
+      }
+    }
+    debugPrint('总共找到${namesList.length}个LWJGL本地库');
+    setState(() {
+      lwjglNativeNames = namesList;
+      lwjglNativePaths = pathsList;
+    });
+  }
+
+  // 提取LWJGL Natives
+  Future<void> ExtractLwjglNatives() async {
+    if (lwjglNativePaths.isEmpty || lwjglNativeNames.isEmpty) {
+      debugPrint('没有找到LWJGL本地库，跳过提取');
+      setState(() {
+        _ExtractedLwjglNativesPath = true;
+      });
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final SelectedGamePath = prefs.getString('SelectedPath') ?? '';
+    final GamePath = prefs.getString('Path_$SelectedGamePath') ?? '';
+    final nativesDir = '$GamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}natives';
+    final nativesDirObj = Directory(nativesDir);
+    if (!await nativesDirObj.exists()) {
+      await nativesDirObj.create(recursive: true);
+      debugPrint('创建natives目录: $nativesDir');
+    }
+    debugPrint('开始提取LWJGL本地库到: $nativesDir');
+    int successCount = 0;
+    List<String> extractedFiles = [];
+    for (int i = 0; i < lwjglNativePaths.length; i++) {
+      final fullPath = lwjglNativePaths[i];
+      final fileName = lwjglNativeNames[i];
+      try {
+        final jarDir = fullPath.substring(0, fullPath.lastIndexOf(Platform.pathSeparator));
+        debugPrint('提取: $fileName 从 $jarDir 到 $nativesDir');
+        // 调用ExtractNatives函数提取本地库
+        final extracted = await ExtractNatives(jarDir, fileName, nativesDir);
+        if (extracted.isNotEmpty) {
+          successCount++;
+          extractedFiles.addAll(extracted);
+          debugPrint('成功从 $fileName 提取了 ${extracted.length} 个文件');
+        }
+      } catch (e) {
+        debugPrint('提取 $fileName 时出错: $e');
+      }
+    }
+    debugPrint('完成LWJGL本地库提取, 共处理 ${lwjglNativePaths.length} 个文件, 成功: $successCount');
+    debugPrint('提取的文件: ${extractedFiles.join(', ')}');
+  }
+
   // 提取NeoForge
   Future<void> _extractNeoForgeInstaller() async {
     try {
@@ -566,6 +680,7 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
     final SelectedGamePath = prefs.getString('SelectedPath') ?? '';
     final GamePath = prefs.getString('Path_$SelectedGamePath') ?? '';
     final installerPath = '$GamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}neoforge-installer.jar';
+    final NeoForgeJson = '$GamePath${Platform.pathSeparator}versions${Platform.pathSeparator}neoforge-${widget.neoforgeVersion}${Platform.pathSeparator}neoforge-${widget.neoforgeVersion}.json';
     final proc = await Process.start('java', [
       '-jar', installerPath,
       '--installClient', GamePath
@@ -578,6 +693,27 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
         throw Exception('NeoForge安装器执行失败，退出码: $code');
       }
       debugPrint('NeoForge安装器执行成功');
+      await MoveFile(NeoForgeJson, '$GamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}NeoForge.json');
+  }
+
+  // 移动文件
+  Future<void> MoveFile(String sourcePath, String destinationPath) async {
+    try {
+      final sourceFile = File(sourcePath);
+      // 确保源文件存在
+      if (!await sourceFile.exists()) {
+        throw Exception('源文件不存在: $sourcePath');
+      }
+      final destinationDir = Directory(destinationPath.substring(0, destinationPath.lastIndexOf('/')));
+      if (!await destinationDir.exists()) {
+        await destinationDir.create(recursive: true);
+      }
+      // 移动文件
+      await sourceFile.rename(destinationPath);
+      print('文件已成功移动到: $destinationPath');
+    } catch (e) {
+      print('移动文件时发生错误: $e');
+    }
   }
 
   // 单线程重试下载
@@ -748,6 +884,16 @@ void _startDownload() async {
       setState(() {
         _DownloadAsset = true;
       });
+      // 提取LWJGL本地库路径
+      await ExtractLwjglNativeLibrariesPath('$VersionPath${Platform.pathSeparator}${widget.name}.json',GamePath);
+      setState(() {
+        _ExtractedLwjglNativesPath = true;
+      });
+      // 提取LWJGL Natives
+      await ExtractLwjglNatives();
+      setState(() {
+        _ExtractedLwjglNatives = true;
+      });
       // 下载NeoForge安装器
       debugPrint('开始下载: $VersionPath,$NeoForgeURL');
       await DownloadFile('$VersionPath${Platform.pathSeparator}neoforge-installer.jar',NeoForgeURL);
@@ -890,6 +1036,16 @@ void _startDownload() async {
             )
           ],
           if (_DownloadAsset) ...[
+            Card(
+              child: ListTile(
+                title: const Text('正在提取LWJGL路径'),
+                subtitle: Text(_ExtractedLwjglNativesPath ? '提取完成' : '提取中...'),
+                trailing: _ExtractedLwjglNativesPath
+                  ? const Icon(Icons.check)
+                  : const CircularProgressIndicator(),
+              ),
+            )
+          ],if (_ExtractedLwjglNativesPath) ...[
             Card(
               child: ListTile(
                 title: const Text('正在下载NeoForge'),
