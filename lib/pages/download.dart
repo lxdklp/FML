@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +20,7 @@ class _DownloadPageState extends State<DownloadPage> {
   String? _error;
   String _appVersion = "unknown";
   bool _showSnapshots = false;
+  bool _CheckPath = false;
 
   @override
   void initState() {
@@ -84,6 +87,20 @@ class _DownloadPageState extends State<DownloadPage> {
     }
   }
 
+  // 检查选择目录
+  Future<void> _CheckSelectedPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    final selectedDir = prefs.getString('SelectedPath');
+    if (selectedDir == null || selectedDir.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请先选择下载目录')),
+      );
+    } else {
+      setState(() {
+        _CheckPath = true;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -157,13 +174,16 @@ class _DownloadPageState extends State<DownloadPage> {
                         version['type'] == 'release' ? Icons.check_circle : Icons.science,
                       ),
                       onTap: () {
-                        debugPrint('选择了版本: ${version['id']} - URL: ${version['url']}');
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DownloadGamePage(type: version['type'], version: version['id'], url: version['url']),
-                          ),
-                        );
+                        _CheckSelectedPath();
+                        if (_CheckPath) {
+                          debugPrint('选择了版本: ${version['id']} - URL: ${version['url']}');
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DownloadGamePage(type: version['type'], version: version['id'], url: version['url']),
+                            ),
+                          );
+                        }
                       },
                     ),
                   ),

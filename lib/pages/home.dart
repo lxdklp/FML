@@ -16,6 +16,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String _selectedAccount = '未知账号';
   String _gameVersion = '未知版本';
+  String _selectedPath = '未知文件夹';
 
   @override
   void initState() {
@@ -25,11 +26,13 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadGameInfo() async {
     final prefs = await SharedPreferences.getInstance();
+    _gameVersion = prefs.getString('SelectedGame') ?? '未选择版本';
+    _selectedPath = prefs.getString('SelectedPath') ?? '未选择文件夹';
     setState(() {
       _selectedAccount = prefs.getString('SelectedAccount') ?? '未选择账号';
     });
     setState(() {
-      _gameVersion = prefs.getString('SelectedGame') ?? '未选择版本';
+      _gameVersion = '选择的文件夹:$_selectedPath\n选择的版本:$_gameVersion';
     });
   }
 

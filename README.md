@@ -19,7 +19,7 @@
 | SelectedGame | 选择的版本 | string |
 | AccountsList | 账号列表 | list(string) |
 | PathList | 游戏文件夹列表 | list(string) |
-| Path_$name | 版本路径 | lstring |
+| Path_$name | 版本路径 | list(string) |
 | Game_$name | 版本列表 | list(string) |
 
 账号配置 Account_$name list(string)

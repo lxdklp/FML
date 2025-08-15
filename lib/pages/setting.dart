@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:fml/pages/setting child/theme.dart';
 import 'package:fml/pages/setting child/about.dart';
-import 'package:fml/pages/setting child/dev.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
@@ -42,19 +41,6 @@ class _SettingPageState extends State<SettingPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => AboutPage()),
-                  );
-                },
-              ),
-            ),
-            Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: ListTile(
-                title: Text('\n 测试 \n'),
-                leading: Icon(Icons.info),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => devPage()),
                   );
                 },
               ),

@@ -55,6 +55,9 @@ class _VersionPageState extends State<VersionPage> {
   Future<void> _selectPath(String name) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('SelectedPath', name);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('已选择文件夹: $name')),
+    );
     if (!mounted) return;
     _refreshPaths(name);
   }

@@ -40,19 +40,32 @@ class _AddPathPageState extends State<AddPathPage> {
       });
   }
 
-  // 创建文件夹
+  // 创建文件夹和文件
   Future<void> _createDirectory() async {
-    _selectDirectory();
+    await _selectDirectory(); // 等待用户选择目录
+    if (_dirPath.isEmpty) {
+      debugPrint('未选择路径，取消创建');
+      return;
+    }
     final directory = Directory(_dirPath);
     if (await directory.exists()) {
-      _dirPath = '';
       debugPrint('文件夹已存在');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('文件夹已存在')));
     } else {
       try {
         await directory.create(recursive: true);
         debugPrint('文件夹创建成功');
+        final launcherProfilesFile = File('$_dirPath${Platform.pathSeparator}launcher_profiles.json');
+        const launcherProfilesContent = '{"profiles": {"(Default)": {"name": "(Default)"}}, "selectedProfileName": "(Default)"}';
+        await launcherProfilesFile.writeAsString(launcherProfilesContent);
+        debugPrint('launcher_profiles.json 已创建');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('文件夹和配置文件已创建')));
       } catch (e) {
         debugPrint('创建文件夹失败: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('创建文件夹失败: $e')));
       }
     }
   }
@@ -73,6 +86,7 @@ class _AddPathPageState extends State<AddPathPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('路径已添加成功')));
+    await prefs.setString('SelectedPath', name);
     Navigator.pop(context);
   }
 

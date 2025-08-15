@@ -110,7 +110,7 @@ Future<void> vanillaLauncher() async {
     if (cfg[1] == '1') '--fullscreen'
   ];
   debugPrint(args.join("\n"));
-  final proc = await Process.start(java, args);
+  final proc = await Process.start(java, args, workingDirectory: '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game');
   proc.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((l) => debugPrint('[OUT] $l'));
   proc.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((l) => debugPrint('[ERR] $l'));
   final code = await proc.exitCode;
