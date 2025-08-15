@@ -49,7 +49,7 @@ class _PlayPageState extends State<PlayPage> {
         title: const Text('正在启动游戏'),
       ),
       body: Center(
-        child: Text('类型$_GameType文件$_GameConfigD'),
+        child: Text('类型$_GameType'),
       ),
     );
   }

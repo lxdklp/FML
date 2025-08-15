@@ -145,6 +145,12 @@ class _AboutPageState extends State<AboutPage> {
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () => _launchURL('https://github.com/SAWARATSUKI/KawaiiLogos'),
                 ),
+                ListTile(
+                  title: const Text('Noto CJK fonts'),
+                  subtitle: const Text('软件字体\nhttps://github.com/notofonts/noto-cjk'),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => _launchURL('https://github.com/notofonts/noto-cjk'),
+                ),
                 const ListTile(
                   title: Text('本项目使用的开源库'),
                 ),
@@ -219,6 +225,16 @@ class _AboutPageState extends State<AboutPage> {
                   subtitle: const Text('https://github.com/flutter/packages/tree/main/packages/url_launcher/url_launcher'),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () => _launchURL('https://github.com/flutter/packages/tree/main/packages/url_launcher/url_launcher'),
+                ),ListTile(
+                  title: const Text('archive'),
+                  subtitle: const Text('https://github.com/brendan-duncan/archive'),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => _launchURL('https://github.com/flutter/packages/tree/main/packages/url_launcher/url_launcher'),
+                ),ListTile(
+                  title: const Text('flutter_colorpicker'),
+                  subtitle: const Text('https://github.com/mchome/flutter_colorpicker'),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => _launchURL('https://github.com/mchome/flutter_colorpicker'),
                 ),
                 const ListTile(
                   title: Text('Github的各位'),

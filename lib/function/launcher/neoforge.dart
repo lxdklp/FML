@@ -94,7 +94,7 @@ Future<void> vanillaLauncher() async {
     '-Djava.library.path=$nativesPath',
     '-Djna.tmpdir=$nativesPath',
     '-cp', cp,
-    'net.minecraft.client.main.Main',
+    'net.neoforged.fancymodloader.bootstraplauncher.BootstrapLauncher',
     '--username', account,
     '--version', game,
     '--gameDir', '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',

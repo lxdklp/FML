@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
+import 'dart:math';
 
 import 'package:fml/pages/download child/loader/DownloadVanilla.dart';
 import 'package:fml/pages/download child/loader/DownloadFabric.dart';
-import 'package:fml/pages/download child/loader/DownloadTest.dart';
+import 'package:fml/pages/download child/loader/DownloadNeoForge.dart';
 
 class DownloadGamePage extends StatefulWidget {
   DownloadGamePage({super.key, required this.type, required this.version, required this.url});
@@ -32,6 +33,25 @@ class _DownloadGamePageState extends State<DownloadGamePage> {
   bool _showUnstable = false;
   String _selectedFabricVersion = '';
   Map<String, dynamic>? _selectedFabricLoader;
+  List<String> _neoForgeStableVersions = [];
+  List<String> _neoforgeBetaVersions = [];
+  String _selectedNeoForgeVersion = '';
+  bool _showNeoForgeUnstable = false;
+
+  int _compareVersions(String versionA, String versionB) {
+  String cleanA = versionA.replaceAll('-beta', '');
+  String cleanB = versionB.replaceAll('-beta', '');
+  List<int> partsA = cleanA.split('.').map(int.parse).toList();
+  List<int> partsB = cleanB.split('.').map(int.parse).toList();
+  for (int i = 0; i < max(partsA.length, partsB.length); i++) {
+    int partA = i < partsA.length ? partsA[i] : 0;
+    int partB = i < partsB.length ? partsB[i] : 0;
+    if (partA != partB) {
+      return partA.compareTo(partB);
+    }
+  }
+    return 0;
+  }
 
   // 读取版本列表
   Future<void> _loadVersionList() async {
@@ -50,7 +70,6 @@ class _DownloadGamePageState extends State<DownloadGamePage> {
       _appVersion = version;
     });
   }
-
 
   // 读取Fabric版本列表
   Future<void> _loadFabricList() async {
@@ -96,6 +115,86 @@ class _DownloadGamePageState extends State<DownloadGamePage> {
     }
   }
 
+  // 加载NeoForge
+  Future<void> _loadNeoForgeList() async {
+    debugPrint('加载${widget.version}NeoForge版本列表');
+    await _loadAppVersion();
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final options = Options(
+        headers: {
+          'User-Agent': 'FML/$_appVersion',
+        },
+      );
+      final response = await dio.get(
+        'https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge/maven-metadata.xml',
+        options: options,
+      );
+      if (response.statusCode == 200) {
+        // 解析XML数据
+        final xmlString = response.data.toString();
+        List<String> stableVersions = [];
+        List<String> betaVersions = [];
+        RegExp versionRegExp = RegExp(r'<version>([^<]+)</version>');
+        final matches = versionRegExp.allMatches(xmlString);
+        for (var match in matches) {
+          String version = match.group(1) ?? '';
+          if (version.isNotEmpty) {
+            if (version.contains('-beta')) {
+              betaVersions.add(version);
+            } else {
+              stableVersions.add(version);
+            }
+          }
+        }
+        // 获取版本前缀
+        String mcVersionPrefix = '';
+        try {
+          if (widget.version.startsWith('1.')) {
+            String versionWithoutPrefix = widget.version.substring(2);
+            mcVersionPrefix = versionWithoutPrefix;
+          }
+        } catch (e) {
+          debugPrint('版本号解析错误: $e');
+        }
+        // 过滤版本
+        if (mcVersionPrefix.isNotEmpty) {
+          stableVersions = stableVersions
+              .where((v) => v.startsWith(mcVersionPrefix))
+              .toList();
+          betaVersions = betaVersions
+              .where((v) => v.startsWith(mcVersionPrefix))
+              .toList();
+        }
+        debugPrint('稳定版本: ${stableVersions.toString()}');
+        debugPrint('测试版本: ${betaVersions.toString()}');
+        // 按版本号排序
+        stableVersions.sort((a, b) => _compareVersions(b, a));
+        betaVersions.sort((a, b) => _compareVersions(b, a));
+        debugPrint('排序后稳定版本: ${stableVersions.toString()}');
+        debugPrint('排序后测试版本: ${betaVersions.toString()}');
+        setState(() {
+          _neoForgeStableVersions = stableVersions;
+          _neoforgeBetaVersions = betaVersions;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _error = '请求失败：状态码 ${response.statusCode}';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = '请求出错: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -104,6 +203,7 @@ class _DownloadGamePageState extends State<DownloadGamePage> {
     _gameName = widget.version;
     _loadVersionList();
     _loadFabricList();
+    _loadNeoForgeList();
   }
 
   @override
@@ -195,8 +295,8 @@ class _DownloadGamePageState extends State<DownloadGamePage> {
                         child: ListTile(
                           title: Text(version),
                           subtitle: _FabricStableList[_FabricVersionList.indexOf(version)]
-                              ? const Text('稳定版本')
-                              : const Text('不稳定版本'),
+                              ? const Text('稳定版')
+                              : const Text('测试版'),
                           onTap: () {
                             final index = _FabricVersionList.indexOf(version);
                             setState(() {
@@ -213,10 +313,52 @@ class _DownloadGamePageState extends State<DownloadGamePage> {
             ],
             if (_selectedLoader == 'NeoForge') ...[
               Card(
-                child: ListTile(
-                  title: Text('NeoForge特有设置'),
-                ),
+                child: SwitchListTile(
+                  title: const Text('显示测试版'),
+                  value: _showNeoForgeUnstable,
+                  onChanged: (value) {
+                    setState(() {
+                      _showNeoForgeUnstable = value;
+                    });
+                  }
+                )
               ),
+              ..._neoForgeStableVersions
+                  .map(
+                    (version) => Card(
+                      child: ListTile(
+                        title: Text(version),
+                        subtitle: Text('稳定版'),
+                        onTap: () {
+                          setState(() {
+                            _selectedNeoForgeVersion = version;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('已选择NeoForge版本: $version')),
+                          );
+                        },
+                      ),
+                    )
+                  ),
+              if (_showNeoForgeUnstable) ...[
+                ..._neoforgeBetaVersions
+                    .map(
+                      (version) => Card(
+                        child: ListTile(
+                          title: Text(version),
+                          subtitle: Text('测试版'),
+                          onTap: () {
+                            setState(() {
+                              _selectedNeoForgeVersion = version;
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('已选择NeoForge版本: $version')),
+                            );
+                          },
+                        )
+                      )
+                    )
+              ]
             ],
           ],
         ),
@@ -251,6 +393,18 @@ class _DownloadGamePageState extends State<DownloadGamePage> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => DownloadFabricPage(version: widget.version, url: widget.url, name: _gameName, fabricVersion: _selectedFabricVersion, fabricLoader: _selectedFabricLoader,)),
+            );
+          }
+          if (_selectedLoader == 'NeoForge') {
+            if (_selectedNeoForgeVersion.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('请先选择NeoForge版本')),
+              );
+              return;
+            }
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => DownloadNeoForgePage(version: widget.version, url: widget.url, name: _gameName, neoforgeVersion: _selectedNeoForgeVersion)),
             );
           }
         },
