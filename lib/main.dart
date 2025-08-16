@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:dio/dio.dart';
 
 import 'package:fml/pages/home.dart';
 import 'package:fml/pages/download.dart';
@@ -172,6 +173,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     _writeVersionInfo();
     _checkJavaInstalled();
+    _checkUpdate();
   }
 
   // 写入版本信息
@@ -221,7 +223,7 @@ class _MyHomePageState extends State<MyHomePage> {
           content: const Text('未检测到 Java 环境或者 Java 环境未正确配置，请先安装 Java 后再打开启动器'),
           actions: [
             TextButton(
-              onPressed: () => _launchJavaURL(),
+              onPressed: () => _launchURL('https://www.oracle.com/cn/java/technologies/downloads/'),
               child: const Text('打开Java下载页面'),
             ),
           ],
@@ -230,15 +232,15 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  // 打开Java
-  Future<void> _launchJavaURL() async {
+  // 打开URL
+  Future<void> _launchURL(String url) async {
     try {
-      final Uri uri = Uri.parse('https://www.oracle.com/cn/java/technologies/downloads/');
+      final Uri uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法打开')),
+          SnackBar(content: Text('无法打开链接: $url')),
         );
       }
     } catch (e) {
@@ -246,6 +248,49 @@ class _MyHomePageState extends State<MyHomePage> {
         SnackBar(content: Text('发生错误: $e')),
       );
     }
+  }
+
+  // 检查更新
+  Future<void> _checkUpdate() async {
+    try {
+      debugPrint('检查更新...,ua FML/$version');
+      final dio = Dio();
+      dio.options.headers['User-Agent'] = 'FML/$version';
+      final response = await dio.get('https://lapi.lxdklp.top/FML/version');
+      debugPrint('status: ${response.statusCode}');
+      debugPrint('data: ${response.data}');
+      if (response.statusCode == 200) {
+        final int latestVersion = int.tryParse(response.data.toString()) ?? buildVersion;
+        debugPrint('最新版本: $latestVersion');
+        if (latestVersion > buildVersion) {
+          _showUpdateDialog(latestVersion.toString());
+        }
+      }
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  void _showUpdateDialog(String latestVersion) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('发现新版本'),
+        content: Text('检测到新版本'),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              _launchURL('https://github.com/lxdklp/FML/releases/');
+            },
+            child: const Text('前往Gtihub下载'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
