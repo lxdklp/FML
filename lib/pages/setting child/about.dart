@@ -20,7 +20,7 @@ class _AboutPageState extends State<AboutPage> {
     });
   }
 
-  // 添加打开URL
+  // 打开URL
   Future<void> _launchURL(String url) async {
     try {
       final Uri uri = Uri.parse(url);

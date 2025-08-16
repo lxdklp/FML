@@ -21,7 +21,7 @@ class _PlayPageState extends State<PlayPage> {
     String? SelectedPath = prefs.getString('SelectedPath');
     String? SelectedGame = prefs.getString('SelectedGame');
     List<String>? GameConfig = prefs.getStringList('Config_${SelectedPath}_$SelectedGame');
-    String? type = GameConfig != null && GameConfig.length > 5 ? GameConfig[4] : null;
+    String? type = GameConfig != null ? GameConfig[4] : null;
     debugPrint(GameConfig.toString());
     debugPrint(type);
     setState(() {

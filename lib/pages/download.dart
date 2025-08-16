@@ -19,7 +19,6 @@ class _DownloadPageState extends State<DownloadPage> {
   String? _error;
   String _appVersion = "unknown";
   bool _showSnapshots = false;
-  bool _CheckPath = false;
 
   @override
   void initState() {
@@ -50,17 +49,26 @@ class _DownloadPageState extends State<DownloadPage> {
         options: options,
       );
       if (response.statusCode == 200) {
+      final data = response.data;
+      if (data is Map && data['versions'] is List) {
         setState(() {
-          _versionList = response.data['versions'];
+          _versionList = data['versions'];
           _isLoading = false;
         });
       } else {
         setState(() {
-          _error = '请求失败：状态码 ${response.statusCode}';
+          _error = '返回数据格式异常,请刷新重试';
           _isLoading = false;
         });
       }
+    } else {
+      setState(() {
+        _error = '请求失败：状态码 ${response.statusCode}';
+        _isLoading = false;
+      });
+    }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = '请求出错: $e';
         _isLoading = false;
@@ -87,7 +95,7 @@ class _DownloadPageState extends State<DownloadPage> {
   }
 
   // 检查选择目录
-  Future<void> _CheckSelectedPath() async {
+  Future<void> _CheckSelectedPath(id, url, type) async {
     final prefs = await SharedPreferences.getInstance();
     final selectedDir = prefs.getString('SelectedPath');
     if (selectedDir == null || selectedDir.isEmpty) {
@@ -95,9 +103,13 @@ class _DownloadPageState extends State<DownloadPage> {
         const SnackBar(content: Text('请先选择下载目录')),
       );
     } else {
-      setState(() {
-        _CheckPath = true;
-      });
+      debugPrint('选择了版本: $id - URL: $url');
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DownloadGamePage(type: type, version: id, url: url),
+        ),
+      );
     }
   }
 
@@ -173,16 +185,7 @@ class _DownloadPageState extends State<DownloadPage> {
                         version['type'] == 'release' ? Icons.check_circle : Icons.science,
                       ),
                       onTap: () {
-                        _CheckSelectedPath();
-                        if (_CheckPath) {
-                          debugPrint('选择了版本: ${version['id']} - URL: ${version['url']}');
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DownloadGamePage(type: version['type'], version: version['id'], url: version['url']),
-                            ),
-                          );
-                        }
+                        _CheckSelectedPath(version['id'], version['url'], version['type']);
                       },
                     ),
                   ),

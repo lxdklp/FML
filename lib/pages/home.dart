@@ -15,8 +15,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   String _selectedAccount = '未知账号';
-  String _gameVersion = '未知版本';
+  String _selectedGame = '未知版本';
   String _selectedPath = '未知文件夹';
+  String? _gameVersion;
 
   @override
   void initState() {
@@ -26,13 +27,11 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadGameInfo() async {
     final prefs = await SharedPreferences.getInstance();
-    _gameVersion = prefs.getString('SelectedGame') ?? '未选择版本';
-    _selectedPath = prefs.getString('SelectedPath') ?? '未选择文件夹';
     setState(() {
       _selectedAccount = prefs.getString('SelectedAccount') ?? '未选择账号';
-    });
-    setState(() {
-      _gameVersion = '选择的文件夹:$_selectedPath\n选择的版本:$_gameVersion';
+    _selectedGame = prefs.getString('SelectedGame') ?? '未选择版本';
+    _selectedPath = prefs.getString('SelectedPath') ?? '未选择文件夹';
+    _gameVersion = '选择的文件夹:$_selectedPath\n选择的版本:$_selectedGame ';
     });
   }
 
@@ -79,7 +78,7 @@ class _HomePageState extends State<HomePage> {
                 title: Text('\n 版本设置 \n'),
                 leading: const Icon(Icons.tune),
                 onTap: () {
-                  if (_gameVersion == '未选择版本') {
+                  if (_selectedGame == '未选择版本') {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('请先选择游戏版本')),
                     );
@@ -99,7 +98,13 @@ class _HomePageState extends State<HomePage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          if (_gameVersion == '未选择版本') {
+          if (_selectedAccount == '未选择账号') {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('请先选择账号')),
+            );
+            return;
+          }
+          if (_selectedGame == '未选择版本') {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('请先选择游戏版本')),
             );
