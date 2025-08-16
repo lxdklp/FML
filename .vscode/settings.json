@@ -17,6 +17,6 @@
             "priority": 4
         }
     ],
-    "idf.pythonInstallPath": "/usr/bin/python3",
+    "idf.pythonInstallPath": "C:\\Espressif\\tools\\idf-python\\3.11.2\\python.exe",
     "cmake.ignoreCMakeListsMissing": true
 }

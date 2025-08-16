@@ -8,7 +8,7 @@ import 'package:fml/pages/download child/loader/DownloadFabric.dart';
 import 'package:fml/pages/download child/loader/DownloadNeoForge.dart';
 
 class DownloadGamePage extends StatefulWidget {
-  DownloadGamePage({super.key, required this.type, required this.version, required this.url});
+  const DownloadGamePage({super.key, required this.type, required this.version, required this.url});
 
   final String type;
   final String version;
@@ -25,7 +25,7 @@ class _DownloadGamePageState extends State<DownloadGamePage> {
   String _gameName = '';
   List<String> _VersionList = [];
   List<String> _FabricVersionList = [];
-  List<bool> _FabricStableList = [];
+  final List<bool> _FabricStableList = [];
   List<dynamic> _FabricJson = [];
   String _appVersion = "unknown";
   bool _isLoading = true;
@@ -169,13 +169,9 @@ class _DownloadGamePageState extends State<DownloadGamePage> {
               .where((v) => v.startsWith(mcVersionPrefix))
               .toList();
         }
-        debugPrint('稳定版本: ${stableVersions.toString()}');
-        debugPrint('测试版本: ${betaVersions.toString()}');
         // 按版本号排序
         stableVersions.sort((a, b) => _compareVersions(b, a));
         betaVersions.sort((a, b) => _compareVersions(b, a));
-        debugPrint('排序后稳定版本: ${stableVersions.toString()}');
-        debugPrint('排序后测试版本: ${betaVersions.toString()}');
         setState(() {
           _neoForgeStableVersions = stableVersions;
           _neoforgeBetaVersions = betaVersions;

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 
 // library获取
 Future<Set<String>> loadLibraryArtifactPaths(String versionJsonPath, String gamePath) async {
@@ -32,11 +33,8 @@ Future<Set<String>> loadLibraryArtifactPaths(String versionJsonPath, String game
   return result;
 }
 
-// 规范化路径，确保路径分隔符一致
 String normalizePath(String path) {
-  // 替换路径分隔符为标准形式
-  final normalized = path.replaceAll('\\', '/');
-  return normalized;
+  return p.normalize(path);
 }
 
 // 直接从库名称构建路径 (用于install_profile中没有downloads.artifact.path的情况)
@@ -100,22 +98,19 @@ Future<String?> getAssetIndex(String versionJsonPath) async {
 
 // 从jar路径提取库标识 (group:artifact)
 String extractLibraryIdentifier(String jarPath) {
-  final fileName = jarPath.split(Platform.pathSeparator).last;
-  final parts = fileName.split('-');
-  if (parts.length < 2) return fileName; // 无法解析时返回文件名
-  // 尝试从路径构建完整标识
-  final pathParts = jarPath.split(Platform.pathSeparator);
+  final pathParts = p.split(jarPath);
   final libIndex = pathParts.indexOf('libraries');
-  if (libIndex >= 0 && libIndex + 3 < pathParts.length) {
-    // 获取group路径
-    final groupPath = pathParts.sublist(libIndex + 1, pathParts.length - 2).join('.');
-    // 获取artifact名
+  if (libIndex >= 0 && libIndex + 4 <= pathParts.length) {
+    // groupId
+    final groupPath = pathParts.sublist(libIndex + 1, pathParts.length - 3).join('.');
+    // artifactId
     final artifact = pathParts[pathParts.length - 3];
-    return '$groupPath:$artifact';
+    // version
+    final version = pathParts[pathParts.length - 2];
+    return '$groupPath:$artifact:$version';
   }
-  // 回退方案：从文件名提取artifact
-  final artifact = parts[0];
-  return artifact;
+  // fallback
+  return p.basename(jarPath);
 }
 
 // 加载NeoForge配置文件
@@ -157,11 +152,9 @@ Future<void> neoforgeLauncher() async {
   final cfg = prefs.getStringList('Config_${selectedPath}_$game') ?? [];
   final jsonPath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}$game.json';
   final profilePath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}install_profile.json';
-  
   // 加载NeoForge配置
   final neoForgeConfig = await loadNeoForgeConfig(gamePath, game);
   debugPrint('NeoForge配置加载${neoForgeConfig != null ? "成功" : "失败"}');
-  
   // 变量映射，用于替换配置中的占位符
   final variables = {
     'library_directory': '$gamePath${Platform.pathSeparator}libraries',
@@ -169,10 +162,8 @@ Future<void> neoforgeLauncher() async {
     'version_name': game,
     'natives_directory': nativesPath,
   };
-  
   // 使用Map存储库路径，按库标识去重，确保优先使用NeoForge版本
   final Map<String, String> librariesMap = {};
-  
   // 首先从NeoForge.json加载库
   if (neoForgeConfig != null && neoForgeConfig.containsKey('libraries')) {
     final libraries = neoForgeConfig['libraries'] as List;
@@ -192,40 +183,29 @@ Future<void> neoforgeLauncher() async {
     debugPrint(librariesMap.toString());
     debugPrint('从NeoForge.json加载了 ${librariesMap.length} 个库');
   }
-  // 最后加载原版Minecraft的库
   final versionLibs = await loadLibraryArtifactPaths(jsonPath, gamePath);
   for (final lib in versionLibs) {
     final identifier = extractLibraryIdentifier(lib);
-    // 只有当Map中不存在该库时才添加原版库
     librariesMap.putIfAbsent(identifier, () => lib);
   }
-  
-  // 最终的库集合
   final libraries = librariesMap.values.toSet();
-  
-  // 创建最终的classpath
   final separator = Platform.isWindows ? ';' : ':';
   final gameJar = normalizePath('$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}$game.jar');
-  
-  // 转换为List并排序，使类路径更稳定
   final sortedLibraries = libraries.toList()..sort();
   final classPath = sortedLibraries.join(separator);
   final cp = '$classPath$separator$gameJar';
-  
-  // 获取mainClass，优先从NeoForge配置获取
   String mainClass = neoForgeConfig?['mainClass'] as String? ?? 'net.neoforged.fancymodloader.bootstraplauncher.BootstrapLauncher';
-  
   debugPrint('使用mainClass: $mainClass');
   debugPrint('类路径库数量: ${libraries.length}');
-  
   final account = prefs.getString('SelectedAccount') ?? '';
   final accountInfo = prefs.getStringList('Account_$account') ?? [];
   final assetIndex = await getAssetIndex(jsonPath) ?? '';
-  
   // 基础JVM参数
   final jvmArgs = <String>[
     '-Xmx${cfg[0]}G',
     '-XX:+UseG1GC',
+    '-Dstderr.encoding=UTF-8',
+    '-Dstdout.encoding=UTF-8',
     '-XX:-OmitStackTraceInFastThrow',
     '-Dfml.ignoreInvalidMinecraftCertificates=true',
     '-Dfml.ignorePatchDiscrepancies=true',
@@ -234,7 +214,6 @@ Future<void> neoforgeLauncher() async {
     '-Djava.library.path=$nativesPath',
     '-Djna.tmpdir=$nativesPath',
   ];
-  
   // 添加NeoForge.json中定义的JVM参数
   if (neoForgeConfig != null &&
       neoForgeConfig.containsKey('arguments') &&
@@ -249,11 +228,8 @@ Future<void> neoforgeLauncher() async {
     }
     debugPrint('添加了 ${jvmArgsList.length} 个来自NeoForge.json的JVM参数');
   }
-  // 添加类路径参数
   jvmArgs.addAll(['-cp', cp]);
-  // 基础游戏参数 - 注意主类不应该包含在这里
   final gameArgs = <String>[
-    // 移除主类，它将作为Java命令的主要参数
     '--username', account,
     '--version', game,
     '--gameDir', '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
@@ -266,10 +242,9 @@ Future<void> neoforgeLauncher() async {
     '--height', cfg[3],
     if (cfg[1] == '1') '--fullscreen'
   ];
-  
   // 添加NeoForge.json中定义的游戏参数
-  if (neoForgeConfig != null && 
-      neoForgeConfig.containsKey('arguments') && 
+  if (neoForgeConfig != null &&
+      neoForgeConfig.containsKey('arguments') &&
       neoForgeConfig['arguments'] is Map &&
       neoForgeConfig['arguments'].containsKey('game')) {
     final gameArgsList = neoForgeConfig['arguments']['game'] as List;
@@ -281,13 +256,9 @@ Future<void> neoforgeLauncher() async {
     }
     debugPrint('添加了 ${gameArgsList.length} 个来自NeoForge.json的游戏参数');
   }
-  
-  // 构建最终的命令行参数：JVM参数 + 主类 + 游戏参数
   final args = [...jvmArgs, mainClass, ...gameArgs];
-  
   debugPrint('启动命令: ${args.join(" ")}');
   debugPrint('主类: $mainClass');
-  
   final proc = await Process.start(java, args, workingDirectory: '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game');
   proc.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((l) => debugPrint('[OUT] $l'));
   proc.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((l) => debugPrint('[ERR] $l'));

@@ -429,7 +429,8 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
           (fileName.startsWith('lwjgl-stb-') && fileName.contains('-natives-')) ||
           fileName.startsWith('lwjgl-tinyfd')) {
         namesList.add(fileName);
-        final fullPath = ('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$path');
+        String nativePath = path.replaceAll('/', Platform.pathSeparator);
+        final fullPath = ('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$nativePath');
         pathsList.add(fullPath);
         debugPrint('找到LWJGL库: $fileName, 路径: $fullPath');
       }
@@ -693,6 +694,7 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
         throw Exception('NeoForge安装器执行失败，退出码: $code');
       }
       debugPrint('NeoForge安装器执行成功');
+      debugPrint('移动$NeoForgeJson配置文件到: $GamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}NeoForge.json');
       await MoveFile(NeoForgeJson, '$GamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}NeoForge.json');
   }
 
@@ -704,7 +706,7 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
       if (!await sourceFile.exists()) {
         throw Exception('源文件不存在: $sourcePath');
       }
-      final destinationDir = Directory(destinationPath.substring(0, destinationPath.lastIndexOf('/')));
+      final destinationDir = Directory(destinationPath.substring(0, destinationPath.lastIndexOf(Platform.pathSeparator)));
       if (!await destinationDir.exists()) {
         await destinationDir.create(recursive: true);
       }
@@ -1046,6 +1048,15 @@ void _startDownload() async {
               ),
             )
           ],if (_ExtractedLwjglNativesPath) ...[
+            Card(
+              child: ListTile(
+                title: const Text('正在提取LWJGL'),
+                subtitle: Text(_ExtractedLwjglNatives ? '提取完成' : '提取中...'),
+                trailing: _ExtractedLwjglNatives
+                  ? const Icon(Icons.check)
+                  : const CircularProgressIndicator(),
+              ),
+            )],if (_ExtractedLwjglNatives) ...[
             Card(
               child: ListTile(
                 title: const Text('正在下载NeoForge'),

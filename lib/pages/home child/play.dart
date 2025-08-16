@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,22 +18,22 @@ class _PlayPageState extends State<PlayPage> {
   // 启动类型
   Future<void> _launch() async{
     final prefs = await SharedPreferences.getInstance();
-    String? _SelectedPath = prefs.getString('SelectedPath');
-    String? _SelectedGame = prefs.getString('SelectedGame');
-    List<String>? _GameConfig = prefs.getStringList('Config_${_SelectedPath}_$_SelectedGame');
-    String? _type = _GameConfig != null && _GameConfig.length > 5 ? _GameConfig[4] : null;
-    debugPrint(_GameConfig.toString());
-    debugPrint(_type);
+    String? SelectedPath = prefs.getString('SelectedPath');
+    String? SelectedGame = prefs.getString('SelectedGame');
+    List<String>? GameConfig = prefs.getStringList('Config_${SelectedPath}_$SelectedGame');
+    String? type = GameConfig != null && GameConfig.length > 5 ? GameConfig[4] : null;
+    debugPrint(GameConfig.toString());
+    debugPrint(type);
     setState(() {
-      _GameType = _type ?? '';
+      _GameType = type ?? '';
     });
-    if (_type == 'Vanilla'){
+    if (type == 'Vanilla'){
       vanillaLauncher();
     }
-    if (_type == 'Fabric'){
+    if (type == 'Fabric'){
       fabricLauncher();
     }
-    if (_type == 'NeoForge'){
+    if (type == 'NeoForge'){
       neoforgeLauncher();
     }
   }
