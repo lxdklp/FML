@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:fml/pages/home.dart';
 import 'package:fml/pages/download.dart';
@@ -41,6 +43,7 @@ class _MyAppState extends State<MyApp> {
     _loadThemePrefs();
   }
 
+  // 加载主题
   Future<void> _loadThemePrefs() async {
     final prefs = await SharedPreferences.getInstance();
     final modeStr = prefs.getString('themeMode');
@@ -162,11 +165,13 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
+  bool? _javaInstalled;
 
   @override
   void initState() {
     super.initState();
     _writeVersionInfo();
+    _checkJavaInstalled();
   }
 
   // 写入版本信息
@@ -185,6 +190,61 @@ class _MyHomePageState extends State<MyHomePage> {
       case 0:
       default:
         return const HomePage();
+    }
+  }
+
+  // 检查是否安装Java
+  Future<void> _checkJavaInstalled() async {
+    try {
+      final result = await Process.run('java', ['-version']);
+      setState(() {
+        _javaInstalled = result.exitCode == 0;
+      });
+      if (_javaInstalled == false) {
+        _showJavaNotFoundDialog();
+      }
+    } catch (e) {
+      setState(() {
+        _javaInstalled = false;
+      });
+      _showJavaNotFoundDialog();
+    }
+  }
+
+  void _showJavaNotFoundDialog() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('未检测到 Java'),
+          content: const Text('未检测到 Java 环境或者 Java 环境未正确配置，请先安装 Java 后再打开启动器'),
+          actions: [
+            TextButton(
+              onPressed: () => _launchJavaURL(),
+              child: const Text('打开Java下载页面'),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  // 打开Java
+  Future<void> _launchJavaURL() async {
+    try {
+      final Uri uri = Uri.parse('https://www.oracle.com/cn/java/technologies/downloads/');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('无法打开')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('发生错误: $e')),
+      );
     }
   }
 
