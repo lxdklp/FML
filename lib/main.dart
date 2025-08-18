@@ -4,15 +4,35 @@ import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dio/dio.dart';
 
+import 'package:fml/function/log.dart';
 import 'package:fml/pages/home.dart';
 import 'package:fml/pages/download.dart';
 import 'package:fml/pages/setting.dart';
 
 // 软件版本
-const String version = '1.0.0';
-const int buildVersion= 1;
+const String version = '1.0.1';
+const int buildVersion= 2;
 
-void main() {
+// 日志
+Future<void> initLogPath() async {
+  final prefs = await SharedPreferences.getInstance();
+  final selectedGamePath = prefs.getString('SelectedPath') ?? '';
+  if (selectedGamePath.isEmpty) {
+    await LogUtil.setLogPath('');
+    return;
+  }
+  final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
+  final logPath = '$gamePath/fml.log';
+  final logFile = File(logPath);
+  if (await logFile.exists()) {
+    await logFile.delete();
+  }
+  await LogUtil.setLogPath(logPath);
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initLogPath();
   runApp(const MyApp());
 }
 
@@ -171,9 +191,18 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    _startLog();
     _writeVersionInfo();
     _checkJavaInstalled();
     _checkUpdate();
+  }
+
+  // 启动信息
+  Future<void> _startLog() async {
+    final prefs = await SharedPreferences.getInstance();
+    final version = prefs.getString('version') ?? '未知';
+    final build = prefs.getInt('build') ?? 0;
+    await LogUtil.info('启动信息: 版本 $version, 构建 $build');
   }
 
   // 写入版本信息

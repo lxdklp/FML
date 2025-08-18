@@ -235,6 +235,16 @@ class _AboutPageState extends State<AboutPage> {
                   subtitle: const Text('https://github.com/mchome/flutter_colorpicker'),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () => _launchURL('https://github.com/mchome/flutter_colorpicker'),
+                ),ListTile(
+                  title: const Text('flutter_local_notifications'),
+                  subtitle: const Text('https://github.com/MaikuB/flutter_local_notifications/tree/master/flutter_local_notifications'),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => _launchURL('https://github.com/MaikuB/flutter_local_notifications/tree/master/flutter_local_notifications'),
+                ),ListTile(
+                  title: const Text('synchronized'),
+                  subtitle: const Text('https://github.com/tekartik/synchronized.dart/tree/master/synchronized'),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => _launchURL('https://github.com/tekartik/synchronized.dart/tree/master/synchronized'),
                 ),
                 const ListTile(
                   title: Text('Github的各位'),
