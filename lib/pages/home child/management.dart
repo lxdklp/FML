@@ -71,8 +71,13 @@ class _ManagementPageState extends State<ManagementPage> {
       _width = width;
       _heightController.text = height;
       _height = height;
+      if (Platform.isWindows) {
+        _gamePath = fullPath.substring(0,2)+fullPath.substring(3);
+      }
+    else {
       _gamePath = fullPath;
-    });
+    }
+  });
   }
 
   // 保存游戏配置
@@ -109,7 +114,7 @@ class _ManagementPageState extends State<ManagementPage> {
     if (savesExists) {
       setState(() {
         _saves = true;
-        _savesPath = '$path${Platform.pathSeparator}saves';
+        _savesPath = '$_gamePath${Platform.pathSeparator}saves';
       });
     }
     // 检查资源包文件夹
@@ -117,7 +122,7 @@ class _ManagementPageState extends State<ManagementPage> {
     if (resourcepacksExists) {
       setState(() {
         _resourcepacks = true;
-        _resourcepacksPath = '$path${Platform.pathSeparator}resourcepacks';
+        _resourcepacksPath = '$_gamePath${Platform.pathSeparator}resourcepacks';
       });
     }
     // 检查模组文件夹
@@ -125,27 +130,39 @@ class _ManagementPageState extends State<ManagementPage> {
     if (modsExists) {
       setState(() {
         _mods = true;
-        _modsPath = '$path${Platform.pathSeparator}mods';
+        _modsPath = '$_gamePath${Platform.pathSeparator}mods';
       });
     }final shaderpacksExists = await checkDirectoryFuture('$path${Platform.pathSeparator}shaderpacks');
     if (shaderpacksExists) {
       setState(() {
         _shaderpacks = true;
-        _shaderpacksPath = '$path${Platform.pathSeparator}shaderpacks';
+        _shaderpacksPath = '$_gamePath${Platform.pathSeparator}shaderpacks';
       });
     }
     final schematicsExists = await checkDirectoryFuture('$path${Platform.pathSeparator}schematics');
     if (schematicsExists) {
       setState(() {
         _schematics = true;
-        _schematicsPath = '$path${Platform.pathSeparator}schematics';
+        _schematicsPath = '$_gamePath${Platform.pathSeparator}schematics';
       });
     }
   }
 
     // 打开文件夹
-  Future<void> _launchURL(String url) async {
+  Future<void> _launchURL(String path) async {
     try {
+      String url;
+      if (Platform.isWindows) {
+        // Windows 路径格式 file:///C:/xxx
+        String fixed = path.replaceAll('\\', '/');
+        if (RegExp(r'^[a-zA-Z]:').hasMatch(fixed)) {
+          url = 'file:///$fixed';
+        } else {
+          url = 'file:///$fixed';
+        }
+      } else {
+        url = 'file://$path';
+      }
       final Uri uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -158,6 +175,7 @@ class _ManagementPageState extends State<ManagementPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('发生错误: $e')),
       );
+      debugPrint(e.toString());
     }
   }
 
@@ -233,7 +251,7 @@ class _ManagementPageState extends State<ManagementPage> {
                         title: const Text('打开游戏文件夹'),
                         subtitle: Text(_gamePath),
                         trailing: const Icon(Icons.open_in_new),
-                        onTap: () => _launchURL('file://$_gamePath'),
+                        onTap: () => _launchURL(_gamePath),
                       ),
                     ),
                   if (_resourcepacks)
@@ -243,7 +261,7 @@ class _ManagementPageState extends State<ManagementPage> {
                         title: const Text('打开存档文件夹'),
                         subtitle: Text(_savesPath),
                         trailing: const Icon(Icons.open_in_new),
-                        onTap: () => _launchURL('file://$_savesPath'),
+                        onTap: () => _launchURL(_savesPath),
                       ),
                     ),if (_resourcepacks)
                     Card(
@@ -252,7 +270,7 @@ class _ManagementPageState extends State<ManagementPage> {
                         title: const Text('打开资源包文件夹'),
                         subtitle: Text(_resourcepacksPath),
                         trailing: const Icon(Icons.open_in_new),
-                        onTap: () => _launchURL('file://$_resourcepacksPath'),
+                        onTap: () => _launchURL(_resourcepacksPath),
                       ),
                     ),if (_mods)
                     Card(
@@ -261,7 +279,7 @@ class _ManagementPageState extends State<ManagementPage> {
                         title: const Text('打开模组文件夹'),
                         subtitle: Text(_modsPath),
                         trailing: const Icon(Icons.open_in_new),
-                        onTap: () => _launchURL('file://$_modsPath'),
+                        onTap: () => _launchURL(_modsPath),
                       ),
                     ),if (_shaderpacks)
                     Card(
@@ -270,7 +288,7 @@ class _ManagementPageState extends State<ManagementPage> {
                         title: const Text('打开光影文件夹'),
                         subtitle: Text(_shaderpacksPath),
                         trailing: const Icon(Icons.open_in_new),
-                        onTap: () => _launchURL('file://$_shaderpacksPath'),
+                        onTap: () => _launchURL(_shaderpacksPath),
                       ),
                     ),if (_schematics)
                     Card(
@@ -279,7 +297,7 @@ class _ManagementPageState extends State<ManagementPage> {
                         title: const Text('打开原理图文件夹'),
                         subtitle: Text(_schematicsPath),
                         trailing: const Icon(Icons.open_in_new),
-                        onTap: () => _launchURL('file://$_schematicsPath'),
+                        onTap: () => _launchURL(_schematicsPath),
                       ),
                     ),
                 ],
