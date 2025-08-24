@@ -7,10 +7,10 @@ class AddPathPage extends StatefulWidget {
   const AddPathPage({super.key});
 
   @override
-  _AddPathPageState createState() => _AddPathPageState();
+  AddPathPageState createState() => AddPathPageState();
 }
 
-class _AddPathPageState extends State<AddPathPage> {
+class AddPathPageState extends State<AddPathPage> {
   final TextEditingController _nameController = TextEditingController();
   String _dirPath = '';
 

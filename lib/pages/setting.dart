@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
-import 'package:fml/pages/setting child/theme.dart';
-import 'package:fml/pages/setting child/about.dart';
-import 'package:fml/pages/setting child/java.dart';
+import 'package:fml/pages/setting/theme.dart';
+import 'package:fml/pages/setting/about.dart';
+import 'package:fml/pages/setting/java.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
 
   @override
-  _SettingPageState createState() => _SettingPageState();
+  SettingPageState createState() => SettingPageState();
 }
 
-class _SettingPageState extends State<SettingPage> {
+class SettingPageState extends State<SettingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

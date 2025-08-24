@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:dio/dio.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:system_info2/system_info2.dart';
@@ -18,15 +17,12 @@ class DownloadVanillaPage extends StatefulWidget {
   final String name;
 
   @override
-  _DownloadVanillaPageState createState() => _DownloadVanillaPageState();
+  DownloadVanillaPageState createState() => DownloadVanillaPageState();
 }
 
-class _DownloadVanillaPageState extends State<DownloadVanillaPage> {
+class DownloadVanillaPageState extends State<DownloadVanillaPage> {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   double _progress = 0.0;
-  CancelToken? _cancelToken;
-  bool _isDownloading = false;
-  String? _error;
   bool _DownloadJson = false;
   bool _ParseGameJson = false;
   bool _ParseAssetJson = false;
@@ -171,7 +167,6 @@ class _DownloadVanillaPageState extends State<DownloadVanillaPage> {
           SnackBar(content: Text('解析JSON失败: $e')),
         );
         setState(() {
-          _error = '解析JSON失败: $e';
           _ParseGameJson = false;
       });
     }
@@ -205,7 +200,6 @@ class _DownloadVanillaPageState extends State<DownloadVanillaPage> {
       await _showNotification('解析资产索引失败', e.toString());
       await LogUtil.error('解析资产索引失败: $e');
       setState(() {
-        _error = '解析资产索引失败: $e';
         _ParseAssetJson = false;
       });
     }
@@ -610,35 +604,13 @@ class _DownloadVanillaPageState extends State<DownloadVanillaPage> {
 
   // 文件下载
   Future<void> DownloadFile(path, url) async {
-    setState(() {
-      _isDownloading = true;
-      _error = null;
-    });
     bool success = false;
-    _cancelToken = await DownloadUtils.downloadFile(
+    await DownloadUtils.downloadFile(
       url: url,
       savePath: path,
       onProgress: (progress) {
         setState(() {
           _progress = progress;
-        });
-      },
-      onSuccess: () {
-        setState(() {
-          _isDownloading = false;
-        });
-        success = true;
-      },
-      onError: (error) {
-        setState(() {
-          _isDownloading = false;
-          _error = error;
-        });
-        success = false;
-      },
-      onCancel: () {
-        setState(() {
-          _isDownloading = false;
         });
       },
     );
@@ -770,7 +742,6 @@ void _startDownload() async {
     }
   } catch (e) {
     setState(() {
-      _error = e.toString();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('发生错误: $e')),
       );

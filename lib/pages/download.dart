@@ -2,17 +2,17 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fml/pages/download%20child/DownloadGame.dart';
+import 'package:fml/pages/download/download_game.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({super.key});
 
   @override
-  _DownloadPageState createState() => _DownloadPageState();
+  DownloadPageState createState() => DownloadPageState();
 }
 
-class _DownloadPageState extends State<DownloadPage> {
+class DownloadPageState extends State<DownloadPage> {
   final Dio dio = Dio();
   List<dynamic> _versionList = [];
   bool _isLoading = true;

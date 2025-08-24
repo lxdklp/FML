@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:archive/archive.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as p;
 import 'package:system_info2/system_info2.dart';
 
@@ -34,7 +34,7 @@ Future<List<String>> ExtractNatives(String jarDir, String jarName, String outDir
   if (matches) {
     debugPrint('"$jarName" 平台符合 (os=$os, arch=$kernelArch)');
   } else {
-    debugPrint('"$jarName" 平台不符合 (os=$os, arch=$kernelArch)');
+    debugPrint('$jarName" 平台不符合 (os=$os, arch=$kernelArch)');
     return <String>[];
   }
   final jarPath = p.join(jarDir, jarName);

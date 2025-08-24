@@ -8,10 +8,10 @@ class NewAccountPage extends StatefulWidget {
   const NewAccountPage({super.key});
 
   @override
-  _NewAccountPageState createState() => _NewAccountPageState();
+  NewAccountPageState createState() => NewAccountPageState();
 }
 
-class _NewAccountPageState extends State<NewAccountPage> {
+class NewAccountPageState extends State<NewAccountPage> {
   bool _online = false;
   String _name = '';
   String _uuid = '';

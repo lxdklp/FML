@@ -151,7 +151,6 @@ Future<void> neoforgeLauncher() async {
   final version = prefs.getString('version') ?? '';
   final cfg = prefs.getStringList('Config_${selectedPath}_$game') ?? [];
   final jsonPath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}$game.json';
-  final profilePath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}install_profile.json';
   // 加载NeoForge配置
   final neoForgeConfig = await loadNeoForgeConfig(gamePath, game);
   debugPrint('NeoForge配置加载${neoForgeConfig != null ? "成功" : "失败"}');

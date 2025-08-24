@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:fml/pages/home child/account.dart';
-import 'package:fml/pages/home child/version.dart';
-import 'package:fml/pages/home child/management.dart';
-import 'package:fml/pages/home child/play.dart';
+import 'package:fml/pages/home/account.dart';
+import 'package:fml/pages/home/version.dart';
+import 'package:fml/pages/home/management.dart';
+import 'package:fml/pages/home/play.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  _HomePageState createState() => _HomePageState();
+  HomePageState createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> {
   String _selectedAccount = '未知账号';
   String _selectedGame = '未知版本';
   String _selectedPath = '未知文件夹';

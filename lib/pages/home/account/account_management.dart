@@ -6,10 +6,10 @@ class AccountManagementPage extends StatefulWidget {
   const AccountManagementPage({super.key, required this.accountName});
 
   @override
-  _AccountManagementPageState createState() => _AccountManagementPageState();
+  AccountManagementPageState createState() => AccountManagementPageState();
 }
 
-class _AccountManagementPageState extends State<AccountManagementPage> {
+class AccountManagementPageState extends State<AccountManagementPage> {
   String _uuid = '';
   bool _online = false;
   bool _isCustomUUID = false;

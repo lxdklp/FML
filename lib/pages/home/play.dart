@@ -9,10 +9,10 @@ class PlayPage extends StatefulWidget {
   const PlayPage({super.key});
 
   @override
-  _PlayPageState createState() => _PlayPageState();
+  PlayPageState createState() => PlayPageState();
 }
 
-class _PlayPageState extends State<PlayPage> {
+class PlayPageState extends State<PlayPage> {
   String _GameType = '';
 
   // 启动类型

@@ -23,10 +23,10 @@ class DownloadGamePageState extends State<DownloadGamePage> {
   String _selectedLoader = 'Vanilla';
   late final TextEditingController _gameNameController;
   String _gameName = '';
-  List<String> _VersionList = [];
-  List<String> _FabricVersionList = [];
-  final List<bool> _FabricStableList = [];
-  List<dynamic> _FabricJson = [];
+  List<String> _versionList = [];
+  List<String> _fabricVersionList = [];
+  final List<bool> _fabricStableList = [];
+  List<dynamic> _fabricJson = [];
   String _appVersion = "unknown";
   bool _showUnstable = false;
   String _selectedFabricVersion = '';
@@ -54,10 +54,10 @@ class DownloadGamePageState extends State<DownloadGamePage> {
   // 读取版本列表
   Future<void> _loadVersionList() async {
     final prefs = await SharedPreferences.getInstance();
-    final SelectedPath = prefs.getString('SelectedPath') ?? '';
-    final GameList = prefs.getStringList('Game_$SelectedPath') ?? [];
+    final selectedPath = prefs.getString('SelectedPath') ?? '';
+    final gameList = prefs.getStringList('Game_$selectedPath') ?? [];
     setState(() {
-      _VersionList = GameList;
+      _versionList = gameList;
     });
   }
 
@@ -91,22 +91,16 @@ class DownloadGamePageState extends State<DownloadGamePage> {
           if (loader['loader'] != null && loader['loader']['version'] != null) {
             versions.add(loader['loader']['version']);
             bool isStable = loader['loader']['stable'] ?? false;
-            _FabricStableList.add(isStable);
+            _fabricStableList.add(isStable);
           }
         }
         setState(() {
-          _FabricVersionList = versions;
-          _FabricJson = loaderData;
-        });
-      } else {
-        setState(() {
-          debugPrint('请求失败：状态码 ${response.statusCode}');
+          _fabricVersionList = versions;
+          _fabricJson = loaderData;
         });
       }
     } catch (e) {
-      setState(() {
-        debugPrint('请求出错: $e');
-      });
+      debugPrint('请求出错: $e');
     }
   }
 
@@ -167,13 +161,9 @@ class DownloadGamePageState extends State<DownloadGamePage> {
           _neoForgeStableVersions = stableVersions;
           _neoforgeBetaVersions = betaVersions;
         });
-      } else {
-        debugPrint('请求失败：状态码 ${response.statusCode}');
       }
     } catch (e) {
-      setState(() {
-        debugPrint('请求出错: $e');
-      });
+      debugPrint('请求出错: $e');
     }
   }
 
@@ -270,20 +260,20 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                     },
                   ),
                 ),
-                ..._FabricVersionList
-                    .where((version) => _showUnstable || _FabricStableList[_FabricVersionList.indexOf(version)])
+                ..._fabricVersionList
+                    .where((version) => _showUnstable || _fabricStableList[_fabricVersionList.indexOf(version)])
                     .map(
                       (version) => Card(
                         child: ListTile(
                           title: Text(version),
-                          subtitle: _FabricStableList[_FabricVersionList.indexOf(version)]
+                          subtitle: _fabricStableList[_fabricVersionList.indexOf(version)]
                               ? const Text('稳定版')
                               : const Text('测试版'),
                           onTap: () {
-                            final index = _FabricVersionList.indexOf(version);
+                            final index = _fabricVersionList.indexOf(version);
                             setState(() {
                               _selectedFabricVersion = version;
-                              _selectedFabricLoader = _FabricJson[index]; // 保存对应的完整JSON对象
+                              _selectedFabricLoader = _fabricJson[index]; // 保存对应的完整JSON对象
                             });
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('已选择Fabric版本: $version')),
@@ -353,7 +343,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
             );
             return;
           }
-          if (_VersionList.contains(_gameName)) {
+          if (_versionList.contains(_gameName)) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('该游戏名称已存在，请换一个名称')),
             );

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:dio/dio.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:system_info2/system_info2.dart';
@@ -20,30 +19,27 @@ class DownloadNeoForgePage extends StatefulWidget {
   final String neoforgeVersion;
 
   @override
-  _DownloadNeoForgePageState createState() => _DownloadNeoForgePageState();
+  DownloadNeoForgePageState createState() => DownloadNeoForgePageState();
 }
 
-class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
+class DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   double _progress = 0.0;
-  CancelToken? _cancelToken;
-  bool _isDownloading = false;
-  String? _error;
-  bool _DownloadJson = false;
-  bool _ParseGameJson = false;
-  bool _ParseAssetJson = false;
-  bool _DownloadAssetJson = false;
-  final bool _DownloadClient = false;
-  bool _DownloadLibrary = false;
-  bool _DownloadAsset = false;
-  bool _ExtractedLwjglNativesPath = false;
-  final bool _ExtractedLwjglNatives = false;
+  bool _downloadJson = false;
+  bool _parseGameJson = false;
+  bool _parseAssetJson = false;
+  bool _downloadAssetJson = false;
+  bool _downloadClient = false;
+  bool _downloadLibrary = false;
+  bool _downloadAsset = false;
+  bool _extractedLwjglNativesPath = false;
+  bool _extractedLwjglNatives = false;
   bool _DownloadNeoForge = false;
   bool _ExtractNeoForgeInstaller = false;
   bool _ParseNeoForgeInstallerJson = false;
-  final bool _DownloadNeoForgeLibrary = false;
-  final bool _NeoForgeInstalled = false;
-  bool _WriteConfig = false;
+  bool _DownloadNeoForgeLibrary = false;
+  bool _neoForgeInstalled = false;
+  bool _writeConfig = false;
 
   int _mem = 1;
   String _name = '';
@@ -173,15 +169,14 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
         await LogUtil.info('找到 ${librariesURL.length} 个库文件URL');
       }
       setState(() {
-        _ParseGameJson = true;
+        _parseGameJson = true;
       });
     } catch (e) {
       debugPrint('解析JSON失败: $e');
       await _showNotification('解析JSON失败', e.toString());
       await LogUtil.error('解析JSON失败: $e');
       setState(() {
-        _error = '解析JSON失败: $e';
-        _ParseGameJson = false;
+        _parseGameJson = false;
       });
     }
   }
@@ -208,14 +203,13 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
       debugPrint('已解析 ${_assetHash.length} 个资产哈希值');
       await LogUtil.info('已解析 ${_assetHash.length} 个资产哈希值');
       setState(() {
-        _ParseAssetJson = true;
+        _parseAssetJson = true;
       });
     } catch (e) {
       debugPrint('解析资产索引失败: $e');
       await LogUtil.error('解析资产索引失败: $e');
       setState(() {
-        _error = '解析资产索引失败: $e';
-        _ParseAssetJson = false;
+        _parseAssetJson = false;
       });
     }
   }
@@ -255,7 +249,7 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
       debugPrint('所有库文件已存在，无需下载');
       await LogUtil.info('所有库文件已存在，无需下载');
       setState(() {
-        _DownloadLibrary = true;
+        _downloadLibrary = true;
       });
       return;
     }
@@ -325,12 +319,12 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
     setState(() {
       _isRetrying = false;
       _currentRetryCount = 0;
-      _DownloadLibrary = true;
+      _downloadLibrary = true;
     });
   }
 
   // 下载资源
-  Future<void> _DownloadAssets({int concurrentDownloads = 30}) async {
+  Future<void> _downloadAssets({int concurrentDownloads = 30}) async {
     final prefs = await SharedPreferences.getInstance();
     final SelectedGamePath = prefs.getString('SelectedPath') ?? '';
     final GamePath = prefs.getString('Path_$SelectedGamePath') ?? '';
@@ -362,7 +356,7 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
       debugPrint('所有资源文件已存在，无需下载');
       await LogUtil.info('所有资源文件已存在，无需下载');
       setState(() {
-        _DownloadAsset = true;
+        _downloadAsset = true;
       });
       return;
     }
@@ -421,7 +415,7 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
       setState(() {
         _isRetrying = true;
       });
-      await _DownloadAssets(concurrentDownloads: concurrentDownloads);
+      await _downloadAssets(concurrentDownloads: concurrentDownloads);
     } else if (newFailedList.isNotEmpty) {
       debugPrint('已达最大并发重试次数，开始单线程重试 ${newFailedList.length} 个资源文件');
       await LogUtil.warning('已达最大并发重试次数，开始单线程重试 ${newFailedList.length} 个资源文件');
@@ -434,7 +428,7 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
     setState(() {
       _isRetrying = false;
       _currentRetryCount = 0;
-      _DownloadAsset = true;
+      _downloadAsset = true;
     });
   }
 
@@ -473,7 +467,7 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
       setState(() {
         lwjglNativeNames = namesList;
         lwjglNativePaths = pathsList;
-        _ExtractedLwjglNativesPath = true;
+        _extractedLwjglNativesPath = true;
       });
       return;
     }
@@ -507,7 +501,7 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
     setState(() {
       lwjglNativeNames = namesList;
       lwjglNativePaths = pathsList;
-      _ExtractedLwjglNativesPath = true;
+      _extractedLwjglNativesPath = true;
     });
   }
 
@@ -517,7 +511,7 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
       debugPrint('没有找到LWJGL本地库，跳过提取');
       await LogUtil.warning('没有找到LWJGL本地库，跳过提取');
       setState(() {
-        _ExtractedLwjglNativesPath = true;
+        _extractedLwjglNativesPath = true;
       });
       return;
     }
@@ -871,33 +865,12 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
 
   // 文件下载
   Future<void> DownloadFile(path,url) async {
-    setState(() {
-      _isDownloading = true;
-      _error = null;
-    });
-    _cancelToken = await DownloadUtils.downloadFile(
+    await DownloadUtils.downloadFile(
       url: url,
       savePath: path,
       onProgress: (progress) {
         setState(() {
           _progress = progress;
-        });
-      },
-      onSuccess: () {
-        setState(() {
-          _isDownloading = false;
-        }
-        );
-      },
-      onError: (error) {
-        setState(() {
-          _isDownloading = false;
-          _error = error;
-        });
-      },
-      onCancel: () {
-        setState(() {
-          _isDownloading = false;
         });
       },
     );
@@ -937,7 +910,7 @@ class _DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
     debugPrint('已将 ${widget.name} 添加到游戏列表，当前列表: $gameList');
     await LogUtil.info('已将 ${widget.name} 添加到游戏列表，当前列表: $gameList');
     setState(() {
-      _WriteConfig = true;
+      _writeConfig = true;
     });
   }
 
@@ -967,7 +940,7 @@ void _startDownload() async {
     try {
       await DownloadFile('$VersionPath${Platform.pathSeparator}${widget.name}.json', GameJsonURL);
       setState(() {
-        _DownloadJson = true;
+        _downloadJson = true;
       });
     } catch (e) {
       await _showNotification('下载失败', '版本Json下载失败\n$e');
@@ -987,7 +960,7 @@ void _startDownload() async {
       try {
         await DownloadFile('$GamePath${Platform.pathSeparator}assets${Platform.pathSeparator}indexes${Platform.pathSeparator}$assetIndexId.json', assetIndexURL!);
         setState(() {
-          _DownloadAssetJson = true;
+          _downloadAssetJson = true;
         });
       } catch (e) {
         setState(() {
@@ -1004,7 +977,7 @@ void _startDownload() async {
       // 下载库文件
       await _DownloadLibraries(concurrentDownloads: 30);
       // 下载资源
-      await _DownloadAssets(concurrentDownloads: 30);
+      await _downloadAssets(concurrentDownloads: 30);
       // 提取LWJGL本地库路径
       await ExtractLwjglNativeLibrariesPath('$VersionPath${Platform.pathSeparator}${widget.name}.json',GamePath);
       // 提取LWJGL Natives
@@ -1027,7 +1000,6 @@ void _startDownload() async {
     }
   } catch (e) {
     setState(() {
-      _error = e.toString();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('发生错误: $e')),
       );
@@ -1048,68 +1020,68 @@ void _startDownload() async {
           Card(
             child: ListTile(
               title: const Text('正在下载游戏Json'),
-              subtitle: Text(_DownloadJson ? '下载完成' : '下载中...'),
-              trailing: _DownloadJson
+              subtitle: Text(_downloadJson ? '下载完成' : '下载中...'),
+              trailing: _downloadJson
                 ? const Icon(Icons.check)
                 : const CircularProgressIndicator(),
             ),
           ),
-          if (_DownloadJson) ...[
+          if (_downloadJson) ...[
             Card(
               child: ListTile(
                 title: const Text('正在解析游戏Json'),
-                subtitle: Text(_ParseGameJson ? '解析完成' : '解析中...'),
-                trailing: _ParseGameJson
+                subtitle: Text(_parseGameJson ? '解析完成' : '解析中...'),
+                trailing: _parseGameJson
                   ? const Icon(Icons.check)
                   : const CircularProgressIndicator(),
               ),
             ),
-            if (_ParseAssetJson) ...[
+            if (_parseAssetJson) ...[
               Card(
                 child: ListTile(
                   title: const Text('正在下载资源Json'),
-                  subtitle: Text(_DownloadAssetJson ? '下载完成' : '下载中...'),
-                  trailing: _DownloadAssetJson
+                  subtitle: Text(_downloadAssetJson ? '下载完成' : '下载中...'),
+                  trailing: _downloadAssetJson
                     ? const Icon(Icons.check)
                     : const CircularProgressIndicator(),
                 ),
               ),
             ]
           ],
-          if (_DownloadAssetJson) ...[
+          if (_downloadAssetJson) ...[
             Card(
               child: ListTile(
                 title: const Text('正在解析资源Json'),
-                subtitle: Text(_ParseAssetJson ? '解析完成' : '解析中...'),
-                trailing: _ParseAssetJson
+                subtitle: Text(_parseAssetJson ? '解析完成' : '解析中...'),
+                trailing: _parseAssetJson
                   ? const Icon(Icons.check)
                   : const CircularProgressIndicator(),
               ),
             ),
           ],
-          if (_ParseAssetJson) ...[
+          if (_parseAssetJson) ...[
             Card(
               child: ListTile(
                 title: const Text('正在下载客户端'),
-                subtitle: Text(_DownloadClient ? '下载完成' : '下载中...'),
-                trailing: _DownloadClient
+                subtitle: Text(_downloadClient ? '下载完成' : '下载中...'),
+                trailing: _downloadClient
                   ? const Icon(Icons.check)
                   : const CircularProgressIndicator(),
               ),
             ),
           ],
-          if (_DownloadClient) ...[
+          if (_downloadClient) ...[
             Card(
               child: Column(
                 children: [
                   ListTile(
                     title: const Text('正在下载游戏库'),
-                    subtitle: Text(_DownloadLibrary ? '下载完成' : '下载中... 已下载${(_progress * 100).toStringAsFixed(2)}%'),
-                    trailing: _DownloadLibrary
+                    subtitle: Text(_downloadLibrary ? '下载完成' : '下载中... 已下载${(_progress * 100).toStringAsFixed(2)}%'),
+                    trailing: _downloadLibrary
                       ? const Icon(Icons.check)
                   : const CircularProgressIndicator(),
               ),
-              if (!_DownloadLibrary)
+              if (!_downloadLibrary)
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: LinearProgressIndicator(value: _progress),
@@ -1118,18 +1090,18 @@ void _startDownload() async {
             ),
             )
           ],
-          if (_DownloadLibrary) ...[
+          if (_downloadLibrary) ...[
             Card(
               child: Column(
                 children: [
                   ListTile(
                     title: const Text('正在下载游戏资源'),
-                    subtitle: Text(_DownloadAsset ? '下载完成' : '下载中... 已下载${(_progress * 100).toStringAsFixed(2)}%'),
-                    trailing: _DownloadAsset
+                    subtitle: Text(_downloadAsset ? '下载完成' : '下载中... 已下载${(_progress * 100).toStringAsFixed(2)}%'),
+                    trailing: _downloadAsset
                       ? const Icon(Icons.check)
                       : const CircularProgressIndicator(),
                   ),
-                  if (!_DownloadAsset)
+                  if (!_downloadAsset)
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: LinearProgressIndicator(value: _progress),
@@ -1138,26 +1110,26 @@ void _startDownload() async {
               ),
             )
           ],
-          if (_DownloadAsset) ...[
+          if (_downloadAsset) ...[
             Card(
               child: ListTile(
                 title: const Text('正在提取LWJGL路径'),
-                subtitle: Text(_ExtractedLwjglNativesPath ? '提取完成' : '提取中...'),
-                trailing: _ExtractedLwjglNativesPath
+                subtitle: Text(_extractedLwjglNativesPath ? '提取完成' : '提取中...'),
+                trailing: _extractedLwjglNativesPath
                   ? const Icon(Icons.check)
                   : const CircularProgressIndicator(),
               ),
             )
-          ],if (_ExtractedLwjglNativesPath) ...[
+          ],if (_extractedLwjglNativesPath) ...[
             Card(
               child: ListTile(
                 title: const Text('正在提取LWJGL'),
-                subtitle: Text(_ExtractedLwjglNatives ? '提取完成' : '提取中...'),
-                trailing: _ExtractedLwjglNatives
+                subtitle: Text(_extractedLwjglNatives ? '提取完成' : '提取中...'),
+                trailing: _extractedLwjglNatives
                   ? const Icon(Icons.check)
                   : const CircularProgressIndicator(),
               ),
-            )],if (_ExtractedLwjglNatives) ...[
+            )],if (_extractedLwjglNatives) ...[
             Card(
               child: ListTile(
                 title: const Text('正在下载NeoForge'),
@@ -1210,18 +1182,18 @@ void _startDownload() async {
             Card(
               child: ListTile(
                 title: const Text('正在安装NeoForge'),
-                subtitle: Text(_NeoForgeInstalled ? '安装完成' : '安装中...'),
-                trailing: _NeoForgeInstalled
+                subtitle: Text(_neoForgeInstalled ? '安装完成' : '安装中...'),
+                trailing: _neoForgeInstalled
                   ? const Icon(Icons.check)
                   : const CircularProgressIndicator(),
               ),
             )
-          ],if (_NeoForgeInstalled) ...[
+          ],if (_neoForgeInstalled) ...[
             Card(
               child: ListTile(
                 title: const Text('正在写入配置文件'),
-                subtitle: Text(_NeoForgeInstalled ? '写入完成' : '写入中...'),
-                trailing: _NeoForgeInstalled
+                subtitle: Text(_neoForgeInstalled ? '写入完成' : '写入中...'),
+                trailing: _neoForgeInstalled
                   ? const Icon(Icons.check)
                   : const CircularProgressIndicator(),
               ),
@@ -1229,7 +1201,7 @@ void _startDownload() async {
           ],
         ],
       ),
-      floatingActionButton: _WriteConfig
+      floatingActionButton: _writeConfig
         ? FloatingActionButton(
             onPressed: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
