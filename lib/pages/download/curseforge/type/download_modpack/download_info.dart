@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fml/function/log.dart';
@@ -16,10 +17,12 @@ class CurseforgeDownloadInfoPage extends StatefulWidget {
   final String apiKey;
 
   @override
-  CurseforgeDownloadInfoPageState createState() => CurseforgeDownloadInfoPageState();
+  CurseforgeDownloadInfoPageState createState() =>
+      CurseforgeDownloadInfoPageState();
 }
 
-class CurseforgeDownloadInfoPageState extends State<CurseforgeDownloadInfoPage> {
+class CurseforgeDownloadInfoPageState
+    extends State<CurseforgeDownloadInfoPage> {
   String? _downloadUrl;
   String? _fileName;
   String? _gameName;
@@ -70,23 +73,24 @@ class CurseforgeDownloadInfoPageState extends State<CurseforgeDownloadInfoPage> 
   List<String> _getGameVersions() {
     final gameVersions = widget.file['gameVersions'] as List?;
     if (gameVersions == null) return [];
-    return gameVersions.where((v) {
-      final vStr = v.toString();
-      return vStr.contains('.') &&
-            !vStr.toLowerCase().contains('forge') &&
-            !vStr.toLowerCase().contains('fabric') &&
-            !vStr.toLowerCase().contains('neoforge') &&
-            !vStr.toLowerCase().contains('quilt');
-    }).map((v) => v.toString()).toList();
+    return gameVersions
+        .where((v) {
+          final vStr = v.toString();
+          return vStr.contains('.') &&
+              !vStr.toLowerCase().contains('forge') &&
+              !vStr.toLowerCase().contains('fabric') &&
+              !vStr.toLowerCase().contains('neoforge') &&
+              !vStr.toLowerCase().contains('quilt');
+        })
+        .map((v) => v.toString())
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final gameVersions = _getGameVersions();
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('整合包下载'),
-      ),
+      appBar: AppBar(title: const Text('整合包下载')),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
@@ -145,15 +149,15 @@ class CurseforgeDownloadInfoPageState extends State<CurseforgeDownloadInfoPage> 
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           if (_gameName == null || _gameName!.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('请输入游戏名称')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('请输入游戏名称')));
             return;
           }
           if (_versionList.contains(_gameName)) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('该游戏名称已存在，请换一个名称')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('该游戏名称已存在，请换一个名称')));
             return;
           }
           if (_downloadUrl == null || _downloadUrl!.isEmpty) {
@@ -177,8 +181,8 @@ class CurseforgeDownloadInfoPageState extends State<CurseforgeDownloadInfoPage> 
           LogUtil.log('开始下载整合包: $_fileName 类型: $selectedLoader', level: 'INFO');
           if (selectedLoader == 'fabric') {
             Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => CurseforgeFabricModpackPage(
+              SlidePageRoute(
+                page: CurseforgeFabricModpackPage(
                   name: _gameName!,
                   url: _downloadUrl!,
                   apiKey: widget.apiKey,
@@ -187,8 +191,8 @@ class CurseforgeDownloadInfoPageState extends State<CurseforgeDownloadInfoPage> 
             );
           } else if (selectedLoader == 'neoforge') {
             Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => CurseforgeNeoForgeModpackPage(
+              SlidePageRoute(
+                page: CurseforgeNeoForgeModpackPage(
                   name: _gameName!,
                   url: _downloadUrl!,
                   apiKey: widget.apiKey,

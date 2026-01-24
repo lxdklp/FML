@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fml/pages/home/version/add_path.dart';
@@ -35,19 +36,14 @@ class VersionPageState extends State<VersionPage> {
   }
 
   // 添加文件夹后刷新
-  Future <void> _addPath() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const AddPathPage()),
-    );
+  Future<void> _addPath() async {
+    await Navigator.push(context, SlidePageRoute(page: const AddPathPage()));
     _loadPaths();
   }
 
   // 刷新文件夹列表
   Future<void> _refreshPaths(path) async {
-    Navigator.push(context,
-    MaterialPageRoute(builder: (context) => SelectedGamePage(path: path))
-    );
+    Navigator.push(context, SlidePageRoute(page: SelectedGamePage(path: path)));
     await _loadPaths();
   }
 
@@ -60,22 +56,24 @@ class VersionPageState extends State<VersionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('版本文件夹管理'),
-      ),
+      appBar: AppBar(title: const Text('版本文件夹管理')),
       body: _pathList.isEmpty
           ? const Center(child: Text('暂无版本文件夹'))
           : ListView.builder(
               itemCount: _pathList.length,
               itemBuilder: (context, index) {
                 return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: ListTile(
                     title: Text(_pathList[index]),
                     subtitle: FutureBuilder<String?>(
                       future: _getPath(_pathList[index]),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const Text('加载中...');
                         } else if (snapshot.hasError) {
                           return const Text('加载失败');
@@ -90,8 +88,8 @@ class VersionPageState extends State<VersionPage> {
                     },
                   ),
                 );
-                },
-              ),
+              },
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addPath,
         child: const Icon(Icons.library_add),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/home/account/new_account.dart';
@@ -22,7 +23,7 @@ class AccountPageState extends State<AccountPage> {
     _loadAccounts();
   }
 
-// 读取本地账号列表
+  // 读取本地账号列表
   Future<void> _loadAccounts() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -32,7 +33,7 @@ class AccountPageState extends State<AccountPage> {
     });
   }
 
-// 账号信息
+  // 账号信息
   Future<Map<String, dynamic>> _getAccountInfo(String name, String type) async {
     final prefs = await SharedPreferences.getInstance();
     List<String>? accountData;
@@ -52,10 +53,7 @@ class AccountPageState extends State<AccountPage> {
     }
 
     // 基本信息
-    Map<String, dynamic> info = {
-      'loginMode': type,
-      'uuid': accountData[1],
-    };
+    Map<String, dynamic> info = {'loginMode': type, 'uuid': accountData[1]};
     switch (type) {
       case '0':
         info['isCustomUUID'] = accountData[2];
@@ -76,12 +74,9 @@ class AccountPageState extends State<AccountPage> {
     return info;
   }
 
-// 添加账号
+  // 添加账号
   Future<void> _addAccount() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const NewAccountPage()),
-    );
+    await Navigator.push(context, SlidePageRoute(page: const NewAccountPage()));
     if (mounted) {
       _loadAccounts();
     }
@@ -90,10 +85,14 @@ class AccountPageState extends State<AccountPage> {
   // 登录模式
   String _getLoginModeText(String loginMode) {
     switch (loginMode) {
-      case '0': return '离线登录';
-      case '1': return '正版登录';
-      case '2': return '外置登录';
-      default: return '未知类型';
+      case '0':
+        return '离线登录';
+      case '1':
+        return '正版登录';
+      case '2':
+        return '外置登录';
+      default:
+        return '未知类型';
     }
   }
 
@@ -128,13 +127,13 @@ class AccountPageState extends State<AccountPage> {
     _loadAccounts();
     if (!mounted) return;
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已删除账号: $name')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('已删除账号: $name')));
   }
 
   // 删除账号提示框
-  Future<void> _showDeleteDialog(String name, String type) async{
+  Future<void> _showDeleteDialog(String name, String type) async {
     String typeInfo;
     if (type == '0') {
       typeInfo = '离线登录';
@@ -151,8 +150,11 @@ class AccountPageState extends State<AccountPage> {
         title: const Text('删除账号'),
         content: Text('确定删除 $typeInfo 账号 $name ?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-            TextButton(
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
             onPressed: () async {
               _deleteAccount(name, type);
             },
@@ -175,28 +177,76 @@ class AccountPageState extends State<AccountPage> {
           padding: const EdgeInsets.all(16.0),
           child: Text(title, style: Theme.of(context).textTheme.titleMedium),
         ),
-        ...accounts.map((name) => FutureBuilder<Map<String, dynamic>>(
-          future: _getAccountInfo(name, type),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData || snapshot.data?.containsKey('error') == true) {
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  leading: const Icon(Icons.error),
-                  title: Text(name),
-                  subtitle: Text(snapshot.data?['error'] ?? '加载账号信息失败'),
-                ),
-              );
-            }
-            final data = snapshot.data!;
-            final uuid = data['uuid'] ?? '';
-            String subtitle = '';
-            if (type == '0') {
+        ...accounts.map(
+          (name) => FutureBuilder<Map<String, dynamic>>(
+            future: _getAccountInfo(name, type),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData ||
+                  snapshot.data?.containsKey('error') == true) {
+                return Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: ListTile(
+                    leading: const Icon(Icons.error),
+                    title: Text(name),
+                    subtitle: Text(snapshot.data?['error'] ?? '加载账号信息失败'),
+                  ),
+                );
+              }
+              final data = snapshot.data!;
+              final uuid = data['uuid'] ?? '';
+              String subtitle = '';
+              if (type == '0') {
+                subtitle += _getLoginModeText(type);
+                if (data['isCustomUUID'] == '1') {
+                  subtitle += '\n已启用自定义UUID: ${data['customUUID']}\n';
+                } else {
+                  subtitle += '\nUUID: $uuid';
+                }
+                return Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: ListTile(
+                    title: Text(name),
+                    subtitle: Text(subtitle),
+                    onTap: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('SelectedAccountName', name);
+                      await prefs.setString('SelectedAccountType', type);
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('已切换账号: $name')));
+                      Navigator.pop(context);
+                    },
+                    trailing: IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () async {
+                        await Navigator.push(
+                          context,
+                          SlidePageRoute(
+                            page: OfflineAccountManagementPage(
+                              accountName: name,
+                            ),
+                          ),
+                        );
+                        if (mounted) {
+                          _loadAccounts();
+                        }
+                      },
+                    ),
+                  ),
+                );
+              }
               subtitle += _getLoginModeText(type);
-              if (data['isCustomUUID'] == '1') {
-                subtitle += '\n已启用自定义UUID: ${data['customUUID']}\n';
-              } else {
-                subtitle += '\nUUID: $uuid';
+              subtitle += '\nUUID: $uuid';
+              if (type == '2') {
+                subtitle += '\n用户名: ${data['username'] ?? '错误'}';
+                subtitle += '\n服务器URL: ${data['serverUrl'] ?? '错误'}';
               }
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -208,59 +258,22 @@ class AccountPageState extends State<AccountPage> {
                     await prefs.setString('SelectedAccountName', name);
                     await prefs.setString('SelectedAccountType', type);
                     if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('已切换账号: $name')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('已切换账号: $name')));
                     Navigator.pop(context);
                   },
                   trailing: IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: () async{
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => OfflineAccountManagementPage(accountName: name),
-                        ),
-                      );
-                      if (mounted) {
-                        _loadAccounts();
-                      }
+                    icon: const Icon(Icons.delete),
+                    onPressed: () async {
+                      _showDeleteDialog(name, type);
                     },
                   ),
                 ),
               );
-            }
-            subtitle += _getLoginModeText(type);
-            subtitle += '\nUUID: $uuid';
-            if (type == '2') {
-              subtitle += '\n用户名: ${data['username'] ?? '错误'}';
-              subtitle += '\n服务器URL: ${data['serverUrl'] ?? '错误'}';
-            }
-            return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: ListTile(
-                title: Text(name),
-                subtitle: Text(subtitle),
-                onTap: () async {
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString('SelectedAccountName', name);
-                  await prefs.setString('SelectedAccountType', type);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('已切换账号: $name')),
-                  );
-                  Navigator.pop(context);
-                },
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () async {
-                    _showDeleteDialog(name, type);
-                  },
-                )
-              ),
-            );
-          },
-        )),
+            },
+          ),
+        ),
       ],
     );
   }
@@ -268,10 +281,11 @@ class AccountPageState extends State<AccountPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('账号管理'),
-      ),
-      body: (_offlineAccounts.isEmpty && _onlineAccounts.isEmpty && _externalAccounts.isEmpty)
+      appBar: AppBar(title: const Text('账号管理')),
+      body:
+          (_offlineAccounts.isEmpty &&
+              _onlineAccounts.isEmpty &&
+              _externalAccounts.isEmpty)
           ? const Center(child: Text('暂无账号'))
           : SingleChildScrollView(
               child: Column(

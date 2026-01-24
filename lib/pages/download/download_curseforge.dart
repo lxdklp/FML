@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fml/function/log.dart';
@@ -108,10 +109,7 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
       LogUtil.log('开始请求CurseForge热门项目', level: 'INFO');
       final response = await dio.post(
         'https://api.curseforge.com/v1/mods/featured',
-        data: {
-          'gameId': minecraftGameId,
-          'excludedModIds': [],
-        },
+        data: {'gameId': minecraftGameId, 'excludedModIds': []},
         options: _getRequestOptions(),
       );
       if (response.statusCode == 200) {
@@ -180,7 +178,10 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
       if (_selectedClassId != null) {
         queryParams['classId'] = _selectedClassId;
       }
-      LogUtil.log('搜索CurseForge项目: $query, 类型: $_selectedClassId', level: 'INFO');
+      LogUtil.log(
+        '搜索CurseForge项目: $query, 类型: $_selectedClassId',
+        level: 'INFO',
+      );
       final response = await dio.get(
         'https://api.curseforge.com/v1/mods/search',
         queryParameters: queryParams,
@@ -241,14 +242,11 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
     );
   }
 
-
   // 搜索框
   Widget _buildSearchBar() {
     return Card(
       margin: const EdgeInsets.all(8.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -260,34 +258,35 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
                 hintText: '在CurseForge搜索',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: _clearSearch,
-                    )
-                  : null,
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: _clearSearch,
+                      )
+                    : null,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 12.0,
+                  horizontal: 16.0,
+                ),
               ),
               onSubmitted: (value) => _searchProjects(value),
               textInputAction: TextInputAction.search,
             ),
             const SizedBox(height: 12.0),
-            const Text('项目类型', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            const Text(
+              '项目类型',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
             const SizedBox(height: 4.0),
             DropdownButton<int>(
               isExpanded: true,
               hint: const Text('选择项目类型'),
               value: _selectedClassId,
-              underline: Container(
-                height: 1,
-              ),
+              underline: Container(height: 1),
               items: [
-                const DropdownMenuItem<int>(
-                  value: null,
-                  child: Text('全部类型'),
-                ),
+                const DropdownMenuItem<int>(value: null, child: Text('全部类型')),
                 ...classIdNames.entries.map(
                   (entry) => DropdownMenuItem<int>(
                     value: entry.key,
@@ -317,14 +316,14 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
       margin: const EdgeInsets.all(8.0),
       child: ListTile(
         leading: logoUrl != null
-          ? Image.network(
-              logoUrl,
-              width: 50,
-              height: 50,
-              errorBuilder: (context, error, stackTrace) =>
-                const Icon(Icons.extension, size: 50),
-            )
-          : const Icon(Icons.extension, size: 50),
+            ? Image.network(
+                logoUrl,
+                width: 50,
+                height: 50,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.extension, size: 50),
+              )
+            : const Icon(Icons.extension, size: 50),
         title: Row(
           children: [
             if (project['classId'] != null)
@@ -353,15 +352,18 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
             if (categories.isNotEmpty)
               Wrap(
                 spacing: 4,
-                children: categories.take(3).map<Widget>((category) =>
-                  Chip(
-                    label: Text(category['name'] ?? ''),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    labelStyle: const TextStyle(fontSize: 10),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                  )
-                ).toList(),
+                children: categories
+                    .take(3)
+                    .map<Widget>(
+                      (category) => Chip(
+                        label: Text(category['name'] ?? ''),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        labelStyle: const TextStyle(fontSize: 10),
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    )
+                    .toList(),
               ),
             const SizedBox(height: 4),
             Row(
@@ -379,8 +381,8 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
         isThreeLine: true,
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => CurseforgeInfoPage(
+          SlidePageRoute(
+            page: CurseforgeInfoPage(
               modId: project['id'],
               projectInfo: project,
               apiKey: _apiKey,
@@ -405,7 +407,8 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
 
   @override
   Widget build(BuildContext context) {
-    Widget body; if (_isLoading) {
+    Widget body;
+    if (_isLoading) {
       body = const Center(child: CircularProgressIndicator());
     } else if (_error != null) {
       body = Center(
@@ -416,8 +419,8 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () => _isSearching
-                ? _searchProjects(_searchController.text)
-                : _fetchFeaturedProjects(),
+                  ? _searchProjects(_searchController.text)
+                  : _fetchFeaturedProjects(),
               child: const Text('重试'),
             ),
             const SizedBox(height: 10),
@@ -439,18 +442,15 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
           children: [
             const Text('未找到相关项目'),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _clearSearch,
-              child: const Text('清除搜索'),
-            ),
+            ElevatedButton(onPressed: _clearSearch, child: const Text('清除搜索')),
           ],
         ),
       );
     } else {
       body = RefreshIndicator(
         onRefresh: () => _isSearching
-          ? _searchProjects(_searchController.text)
-          : _fetchFeaturedProjects(),
+            ? _searchProjects(_searchController.text)
+            : _fetchFeaturedProjects(),
         child: ListView.builder(
           controller: _scrollController,
           itemCount: _projectsList.length + 1,
@@ -466,25 +466,27 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
     }
     return Scaffold(
       body: body,
-      floatingActionButton: _apiKeyConfigured ? Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (_showScrollToTop)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10.0),
-              child: FloatingActionButton(
-                heroTag: 'cfScrollToTopButton',
-                onPressed: _scrollToTop,
-                child: const Icon(Icons.arrow_upward),
-              ),
-            ),
-          FloatingActionButton(
-            heroTag: 'cfRefreshButton',
-            onPressed: _clearSearch,
-            child: const Icon(Icons.refresh),
-          ),
-        ],
-      ) : null,
+      floatingActionButton: _apiKeyConfigured
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_showScrollToTop)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10.0),
+                    child: FloatingActionButton(
+                      heroTag: 'cfScrollToTopButton',
+                      onPressed: _scrollToTop,
+                      child: const Icon(Icons.arrow_upward),
+                    ),
+                  ),
+                FloatingActionButton(
+                  heroTag: 'cfRefreshButton',
+                  onPressed: _clearSearch,
+                  child: const Icon(Icons.refresh),
+                ),
+              ],
+            )
+          : null,
     );
   }
 }

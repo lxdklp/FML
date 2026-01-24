@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fml/pages/download/download_version/download_game.dart';
@@ -47,9 +48,7 @@ class DownloadVersionState extends State<DownloadVersion> {
         _error = null;
       });
       final options = Options(
-        headers: {
-          'User-Agent': 'FML/$_appVersion',
-        },
+        headers: {'User-Agent': 'FML/$_appVersion'},
         responseType: ResponseType.plain,
       );
       LogUtil.log('开始请求版本清单', level: 'INFO');
@@ -84,7 +83,10 @@ class DownloadVersionState extends State<DownloadVersion> {
           }
           final versions = parsedData['versions'];
           if (versions is! List) {
-            LogUtil.log('versions不是列表类型: ${versions.runtimeType}', level: 'ERROR');
+            LogUtil.log(
+              'versions不是列表类型: ${versions.runtimeType}',
+              level: 'ERROR',
+            );
             throw Exception('versions字段格式错误');
           }
           LogUtil.log('成功解析版本数据，共${versions.length}个版本', level: 'INFO');
@@ -129,15 +131,15 @@ class DownloadVersionState extends State<DownloadVersion> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法打开链接: $url')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('发生错误: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
     }
   }
 
@@ -147,15 +149,15 @@ class DownloadVersionState extends State<DownloadVersion> {
     final selectedDir = prefs.getString('SelectedPath');
     if (!mounted) return;
     if (selectedDir == null || selectedDir.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择下载目录')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先选择下载目录')));
     } else {
       LogUtil.log('选择了版本: $id - URL: $url', level: 'INFO');
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => DownloadGamePage(type: type, version: id, url: url),
+        SlidePageRoute(
+          page: DownloadGamePage(type: type, version: id, url: url),
         ),
       );
     }
@@ -165,8 +167,8 @@ class DownloadVersionState extends State<DownloadVersion> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _error != null
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -207,7 +209,8 @@ class DownloadVersionState extends State<DownloadVersion> {
                       });
                     },
                   ),
-                ),Card(
+                ),
+                Card(
                   child: SwitchListTile(
                     title: const Text('显示远古版本'),
                     value: _showOld,
@@ -219,27 +222,41 @@ class DownloadVersionState extends State<DownloadVersion> {
                   ),
                 ),
                 ..._versionList
-                    .where((dynamic version) =>
-                    _showSnapshots || version['type'] != 'snapshot' &&
-                    (_showOld || (version['type'] != 'old_alpha' && version['type'] != 'old_beta')))
+                    .where(
+                      (dynamic version) =>
+                          _showSnapshots ||
+                          version['type'] != 'snapshot' &&
+                              (_showOld ||
+                                  (version['type'] != 'old_alpha' &&
+                                      version['type'] != 'old_beta')),
+                    )
                     .map(
                       (dynamic version) => Card(
                         child: ListTile(
                           title: Text(version['id']),
-                          subtitle: Text('类型: ${version['type']} - 发布时间: ${_formatDate(version['releaseTime'])}'),
+                          subtitle: Text(
+                            '类型: ${version['type']} - 发布时间: ${_formatDate(version['releaseTime'])}',
+                          ),
                           leading: Icon(
-                        version['type'] == 'release' ? Icons.check_circle : Icons.science,
+                            version['type'] == 'release'
+                                ? Icons.check_circle
+                                : Icons.science,
+                          ),
+                          onTap: () {
+                            _checkSelectedPath(
+                              version['id'],
+                              version['url'],
+                              version['type'],
+                            );
+                          },
+                        ),
                       ),
-                      onTap: () {
-                        _checkSelectedPath(version['id'], version['url'], version['type']);
-                      },
                     ),
-                  ),
-                )
               ],
             ),
     );
   }
+
   String _formatDate(String isoDate) {
     try {
       final date = DateTime.parse(isoDate);

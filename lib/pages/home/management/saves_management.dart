@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fml/function/log.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fml/pages/home/management/saves_management/save.dart';
@@ -162,8 +163,8 @@ class SavesManagementTabState extends State<SavesManagementTab> {
                       tooltip: '查看存档信息',
                       onPressed: () => Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => SavePage(
+                        SlidePageRoute(
+                          page: SavePage(
                             savePath: save.folderPath,
                             saveName: save.folderName,
                           ),

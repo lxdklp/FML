@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:archive/archive.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -37,15 +38,15 @@ class OnlinePageState extends State<OnlinePage> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法打开链接: $url')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('发生错误: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
     }
   }
 
@@ -55,15 +56,19 @@ class OnlinePageState extends State<OnlinePage> {
     final name = prefs.getString('SelectedPath') ?? '';
     final path = prefs.getString('Path_$name') ?? '';
     if (Platform.isWindows) {
-      final File core = File('$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-core.exe');
+      final File core = File(
+        '$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-core.exe',
+      );
       setState(() {
-      _coreExists = core.existsSync();
-    });
+        _coreExists = core.existsSync();
+      });
     } else {
-    final File core = File('$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-core');
-    setState(() {
-      _coreExists = core.existsSync();
-    });
+      final File core = File(
+        '$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-core',
+      );
+      setState(() {
+        _coreExists = core.existsSync();
+      });
     }
   }
 
@@ -72,13 +77,15 @@ class OnlinePageState extends State<OnlinePage> {
     final prefs = await SharedPreferences.getInstance();
     final name = prefs.getString('SelectedPath') ?? '';
     final path = prefs.getString('Path_$name') ?? '';
-    final String core = ('$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-core');
+    final String core =
+        ('$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-core');
     try {
       final ProcessResult proc = await Process.run(core, ['--version']);
-      final String output = 'v${proc.stdout.toString().trim().substring(14, proc.stdout.toString().trim().length - 9)}';
+      final String output =
+          'v${proc.stdout.toString().trim().substring(14, proc.stdout.toString().trim().length - 9)}';
       setState(() {
-      _coreVersion = output;
-    });
+        _coreVersion = output;
+      });
     } catch (e) {
       setState(() {
         if (Platform.isMacOS) {
@@ -95,9 +102,7 @@ class OnlinePageState extends State<OnlinePage> {
     try {
       Dio dio = Dio();
       Options options = Options(
-        headers: {
-          'User-Agent': 'FML-App/$_appVersion',
-        },
+        headers: {'User-Agent': 'FML-App/$_appVersion'},
       );
       final response = await dio.get(
         'https://api.github.com/repos/EasyTier/EasyTier/releases',
@@ -149,7 +154,9 @@ class OnlinePageState extends State<OnlinePage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('不支持的系统'),
-          content: Text('平台: ${Platform.operatingSystem} 架构: ${SysInfo.kernelArchitecture.name}'),
+          content: Text(
+            '平台: ${Platform.operatingSystem} 架构: ${SysInfo.kernelArchitecture.name}',
+          ),
           actions: <Widget>[
             TextButton(
               child: Text('确定'),
@@ -203,9 +210,14 @@ class OnlinePageState extends State<OnlinePage> {
     String arch = SysInfo.kernelArchitecture.name;
     if (arch == 'UNKNOWN') {
       if (Platform.isWindows) {
-        final processorArchitecture = Platform.environment['PROCESSOR_ARCHITECTURE'];
-        LogUtil.log('PROCESSOR_ARCHITECTURE: $processorArchitecture', level: 'INFO');
-        if (processorArchitecture == 'AMD64' || processorArchitecture == 'x64') {
+        final processorArchitecture =
+            Platform.environment['PROCESSOR_ARCHITECTURE'];
+        LogUtil.log(
+          'PROCESSOR_ARCHITECTURE: $processorArchitecture',
+          level: 'INFO',
+        );
+        if (processorArchitecture == 'AMD64' ||
+            processorArchitecture == 'x64') {
           return 'X86_64';
         } else if (processorArchitecture == 'ARM64') {
           return 'ARM64';
@@ -221,11 +233,7 @@ class OnlinePageState extends State<OnlinePage> {
   Future<void> _installCore() async {
     String downloadUrl = '';
     Dio dio = Dio();
-    Options options = Options(
-      headers: {
-        'User-Agent': 'FML-App/$_appVersion',
-      },
-    );
+    Options options = Options(headers: {'User-Agent': 'FML-App/$_appVersion'});
     try {
       final response = await dio.get(
         'https://api.github.com/repos/EasyTier/EasyTier/releases',
@@ -239,7 +247,10 @@ class OnlinePageState extends State<OnlinePage> {
             LogUtil.log('为 macOS x86_64 下载', level: 'INFO');
             for (var asset in loaderData['assets']) {
               if (asset['name'].startsWith('easytier-macos-x86_64')) {
-                LogUtil.log('Found asset: ${asset['name']} url: ${asset['browser_download_url']}', level: 'INFO');
+                LogUtil.log(
+                  'Found asset: ${asset['name']} url: ${asset['browser_download_url']}',
+                  level: 'INFO',
+                );
                 downloadUrl = asset['browser_download_url'];
               }
             }
@@ -247,7 +258,10 @@ class OnlinePageState extends State<OnlinePage> {
             LogUtil.log('为 macOS arm64 下载', level: 'INFO');
             for (var asset in loaderData['assets']) {
               if (asset['name'].startsWith('easytier-macos-aarch64')) {
-                LogUtil.log('Found asset: ${asset['name']} url: ${asset['browser_download_url']}', level: 'INFO');
+                LogUtil.log(
+                  'Found asset: ${asset['name']} url: ${asset['browser_download_url']}',
+                  level: 'INFO',
+                );
                 downloadUrl = asset['browser_download_url'];
               }
             }
@@ -260,7 +274,10 @@ class OnlinePageState extends State<OnlinePage> {
             LogUtil.log('为 Windows x86_64 下载', level: 'INFO');
             for (var asset in loaderData['assets']) {
               if (asset['name'].startsWith('easytier-windows-x86_64')) {
-                LogUtil.log('Found asset: ${asset['name']} url: ${asset['browser_download_url']}', level: 'INFO');
+                LogUtil.log(
+                  'Found asset: ${asset['name']} url: ${asset['browser_download_url']}',
+                  level: 'INFO',
+                );
                 downloadUrl = asset['browser_download_url'];
               }
             }
@@ -268,7 +285,10 @@ class OnlinePageState extends State<OnlinePage> {
             LogUtil.log('为 Windows arm64 下载', level: 'INFO');
             for (var asset in loaderData['assets']) {
               if (asset['name'].startsWith('easytier-windows-arm64')) {
-                LogUtil.log('Found asset: ${asset['name']} url: ${asset['browser_download_url']}', level: 'INFO');
+                LogUtil.log(
+                  'Found asset: ${asset['name']} url: ${asset['browser_download_url']}',
+                  level: 'INFO',
+                );
                 downloadUrl = asset['browser_download_url'];
               }
             }
@@ -281,7 +301,10 @@ class OnlinePageState extends State<OnlinePage> {
             LogUtil.log('为 Linux x86_64 下载', level: 'INFO');
             for (var asset in loaderData['assets']) {
               if (asset['name'].startsWith('easytier-linux-x86_64')) {
-                LogUtil.log('Found asset: ${asset['name']} url: ${asset['browser_download_url']}', level: 'INFO');
+                LogUtil.log(
+                  'Found asset: ${asset['name']} url: ${asset['browser_download_url']}',
+                  level: 'INFO',
+                );
                 downloadUrl = asset['browser_download_url'];
               }
             }
@@ -289,7 +312,10 @@ class OnlinePageState extends State<OnlinePage> {
             LogUtil.log('为 Linux arm64 下载', level: 'INFO');
             for (var asset in loaderData['assets']) {
               if (asset['name'].startsWith('easytier-linux-aarch64')) {
-                LogUtil.log('Found asset: ${asset['name']} url: ${asset['browser_download_url']}', level: 'INFO');
+                LogUtil.log(
+                  'Found asset: ${asset['name']} url: ${asset['browser_download_url']}',
+                  level: 'INFO',
+                );
                 downloadUrl = asset['browser_download_url'];
               }
             }
@@ -304,9 +330,9 @@ class OnlinePageState extends State<OnlinePage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('获取Github API失败: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('获取Github API失败: $e')));
       return;
     }
     downloadUrl = 'https://edgeone.gh-proxy.org/$downloadUrl';
@@ -314,15 +340,20 @@ class OnlinePageState extends State<OnlinePage> {
     final prefs = await SharedPreferences.getInstance();
     final name = prefs.getString('SelectedPath') ?? '';
     final path = prefs.getString('Path_$name') ?? '';
-    final Directory easytierDir = Directory('$path${Platform.pathSeparator}easytier');
+    final Directory easytierDir = Directory(
+      '$path${Platform.pathSeparator}easytier',
+    );
     if (!await easytierDir.exists()) {
       await easytierDir.create(recursive: true);
     }
     setState(() {
       _coredownloading = true;
     });
-    final String zipPath = '${easytierDir.path}${Platform.pathSeparator}easytier.zip';
-    DownloadUtils.downloadFile(url: downloadUrl, savePath: zipPath,
+    final String zipPath =
+        '${easytierDir.path}${Platform.pathSeparator}easytier.zip';
+    DownloadUtils.downloadFile(
+      url: downloadUrl,
+      savePath: zipPath,
       onProgress: (progress) {
         setState(() {
           _downloadProgress = progress;
@@ -335,31 +366,33 @@ class OnlinePageState extends State<OnlinePage> {
           _coreExtracting = true;
           _coredownloading = false;
         });
-        _extractCore(easytierDir.path).then((_) {
-          setState(() {
-            _coreExtracting = false;
-          });
-          _checkCoreExists();
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('EasyTier核心安装完成')),
-          );
-        }).catchError((e) {
-          setState(() {
-            _coreExtracting = false;
-          });
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('解压失败: $e')),
-          );
-        });
+        _extractCore(easytierDir.path)
+            .then((_) {
+              setState(() {
+                _coreExtracting = false;
+              });
+              _checkCoreExists();
+              if (!mounted) return;
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('EasyTier核心安装完成')));
+            })
+            .catchError((e) {
+              setState(() {
+                _coreExtracting = false;
+              });
+              if (!mounted) return;
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('解压失败: $e')));
+            });
       },
       onError: (error) {
         LogUtil.log('下载失败: $error', level: 'ERROR');
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('下载失败: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('下载失败: $error')));
       },
     );
   }
@@ -402,7 +435,11 @@ class OnlinePageState extends State<OnlinePage> {
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ListTile(
                   title: const Text('EasyTier 已安装'),
-                  subtitle: _macosError ? Text('请在 设置-隐私与安全-安全性 中授权 EasyTier') : Text('当前版本: $_coreVersion ${_coreUpdate ? "有新版本可用" : "已为最新版本"}'),
+                  subtitle: _macosError
+                      ? Text('请在 设置-隐私与安全-安全性 中授权 EasyTier')
+                      : Text(
+                          '当前版本: $_coreVersion ${_coreUpdate ? "有新版本可用" : "已为最新版本"}',
+                        ),
                   leading: const Icon(Icons.check_circle),
                   trailing: _coreUpdate && !_macosError
                       ? IconButton(
@@ -432,7 +469,7 @@ class OnlinePageState extends State<OnlinePage> {
                       ),
                     ],
                   ),
-                )
+                ),
               ),
               Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -447,7 +484,8 @@ class OnlinePageState extends State<OnlinePage> {
                       );
                       return;
                     }
-                    if (_serverController.text.isEmpty && !OwnerPage.persistIsServerRunning) {
+                    if (_serverController.text.isEmpty &&
+                        !OwnerPage.persistIsServerRunning) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('请先输入打洞/中转服务器地址')),
                       );
@@ -455,7 +493,12 @@ class OnlinePageState extends State<OnlinePage> {
                     }
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => OwnerPage(port: -1, etServer: _serverController.text)),
+                      SlidePageRoute(
+                        page: OwnerPage(
+                          port: -1,
+                          etServer: _serverController.text,
+                        ),
+                      ),
                     );
                   },
                 ),
@@ -481,15 +524,20 @@ class OnlinePageState extends State<OnlinePage> {
                     }
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => MemberPage(etServer: _serverController.text)),
+                      SlidePageRoute(
+                        page: MemberPage(etServer: _serverController.text),
+                      ),
                     );
                   },
                 ),
-              )
+              ),
             ] else ...[
               if (_coredownloading) ...[
                 Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -497,15 +545,15 @@ class OnlinePageState extends State<OnlinePage> {
                       children: [
                         ListTile(
                           title: const Text('EasyTier正在下载中...'),
-                          subtitle: const Text('请稍候，下载完成后即可使用联机功能\nGitHub 加速由 gh-proxy.com 提供'),
+                          subtitle: const Text(
+                            '请稍候，下载完成后即可使用联机功能\nGitHub 加速由 gh-proxy.com 提供',
+                          ),
                           leading: _coreExtracting
                               ? const CircularProgressIndicator()
                               : CircularProgressIndicator(),
                         ),
                         if (!_coreExtracting) ...[
-                          LinearProgressIndicator(
-                            value: _downloadProgress,
-                          ),
+                          LinearProgressIndicator(value: _downloadProgress),
                         ],
                       ],
                     ),
@@ -513,7 +561,10 @@ class OnlinePageState extends State<OnlinePage> {
                 ),
                 if (_coreExtracting) ...[
                   Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: ListTile(
                       title: const Text('EasyTier正在解压中...'),
                       subtitle: const Text('请稍候，解压完成后即可使用联机功能'),
@@ -523,12 +574,16 @@ class OnlinePageState extends State<OnlinePage> {
                 ],
               ] else ...[
                 Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: ListTile(
                     title: const Text('EasyTier核心未安装'),
                     subtitle: const Text(
                       '请点击以通过GitHub自动安装EasyTier核心,请准备好相应的网络环境\n'
-                      '仅支持macOS x86_64、macOS arm64、Windows x86_64、Windows arm64、Linux x86_64、Linux aarch64平台自动下载'),
+                      '仅支持macOS x86_64、macOS arm64、Windows x86_64、Windows arm64、Linux x86_64、Linux aarch64平台自动下载',
+                    ),
                     leading: const Icon(Icons.error),
                     trailing: const Icon(Icons.download),
                     onTap: () => _installCore(),

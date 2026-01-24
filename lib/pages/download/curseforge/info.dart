@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:html/parser.dart' as html_parser;
@@ -51,7 +52,8 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
 
   // 获取格式化的标题
   String _getFormattedTitle() {
-    final title = projectDetails['name'] ?? widget.projectInfo['name'] ?? '未知项目';
+    final title =
+        projectDetails['name'] ?? widget.projectInfo['name'] ?? '未知项目';
     final classId = projectDetails['classId'] ?? widget.projectInfo['classId'];
     if (classId != null && classIdNames.containsKey(classId)) {
       return '[${classIdNames[classId]}] $title';
@@ -146,9 +148,9 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('无法打开链接: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('无法打开链接: $e')));
     }
   }
 
@@ -158,15 +160,12 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
     final Uri uri = Uri.parse(url);
     try {
       SharePlus.instance.share(
-        ShareParams(
-          uri: uri,
-          title: '分享 CurseForge 项目',
-        )
+        ShareParams(uri: uri, title: '分享 CurseForge 项目'),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('无法分享项目: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('无法分享项目: $e')));
     }
   }
 
@@ -184,7 +183,10 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   children: [
-                    const Text('下载量', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      '下载量',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     Text(_formatDownloadCount(downloads)),
                   ],
                 ),
@@ -197,7 +199,10 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   children: [
-                    const Text('点赞数', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      '点赞数',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     Text(thumbsUp.toString()),
                   ],
                 ),
@@ -223,7 +228,8 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
 
   // 支持的游戏版本
   Widget _buildGameVersions() {
-    final latestFilesIndexes = projectDetails['latestFilesIndexes'] as List<dynamic>? ?? [];
+    final latestFilesIndexes =
+        projectDetails['latestFilesIndexes'] as List<dynamic>? ?? [];
     final gameVersions = latestFilesIndexes
         .map((file) => file['gameVersion'] as String?)
         .where((v) => v != null)
@@ -236,19 +242,25 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('支持的游戏版本', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              '支持的游戏版本',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 4,
               runSpacing: 4,
-              children: gameVersions.take(20).map<Widget>((version) =>
-                Chip(
-                  label: Text(version ?? ''),
-                  labelStyle: const TextStyle(fontSize: 12),
-                  padding: EdgeInsets.zero,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                )
-              ).toList(),
+              children: gameVersions
+                  .take(20)
+                  .map<Widget>(
+                    (version) => Chip(
+                      label: Text(version ?? ''),
+                      labelStyle: const TextStyle(fontSize: 12),
+                      padding: EdgeInsets.zero,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  )
+                  .toList(),
             ),
           ],
         ),
@@ -270,12 +282,14 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
             Wrap(
               spacing: 4,
               runSpacing: 4,
-              children: categories.map<Widget>((category) =>
-                Chip(
-                  label: Text(category['name'] ?? ''),
-                  labelStyle: const TextStyle(fontSize: 12),
-                )
-              ).toList(),
+              children: categories
+                  .map<Widget>(
+                    (category) => Chip(
+                      label: Text(category['name'] ?? ''),
+                      labelStyle: const TextStyle(fontSize: 12),
+                    ),
+                  )
+                  .toList(),
             ),
           ],
         ),
@@ -298,12 +312,14 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
             Wrap(
               spacing: 8,
               runSpacing: 4,
-              children: authors.map<Widget>((author) =>
-                ActionChip(
-                  label: Text(author['name'] ?? ''),
-                  onPressed: () => _launchURL(author['url']),
-                )
-              ).toList(),
+              children: authors
+                  .map<Widget>(
+                    (author) => ActionChip(
+                      label: Text(author['name'] ?? ''),
+                      onPressed: () => _launchURL(author['url']),
+                    ),
+                  )
+                  .toList(),
             ),
           ],
         ),
@@ -322,25 +338,29 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
           children: [
             const Text('链接', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            if (links['websiteUrl'] != null && links['websiteUrl'].toString().isNotEmpty)
+            if (links['websiteUrl'] != null &&
+                links['websiteUrl'].toString().isNotEmpty)
               ListTile(
                 leading: const Icon(Icons.language),
                 title: const Text('项目主页'),
                 onTap: () => _launchURL(links['websiteUrl']),
               ),
-            if (links['sourceUrl'] != null && links['sourceUrl'].toString().isNotEmpty)
+            if (links['sourceUrl'] != null &&
+                links['sourceUrl'].toString().isNotEmpty)
               ListTile(
                 leading: const Icon(Icons.code),
                 title: const Text('源代码'),
                 onTap: () => _launchURL(links['sourceUrl']),
               ),
-            if (links['issuesUrl'] != null && links['issuesUrl'].toString().isNotEmpty)
+            if (links['issuesUrl'] != null &&
+                links['issuesUrl'].toString().isNotEmpty)
               ListTile(
                 leading: const Icon(Icons.bug_report),
                 title: const Text('问题反馈'),
                 onTap: () => _launchURL(links['issuesUrl']),
               ),
-            if (links['wikiUrl'] != null && links['wikiUrl'].toString().isNotEmpty)
+            if (links['wikiUrl'] != null &&
+                links['wikiUrl'].toString().isNotEmpty)
               ListTile(
                 leading: const Icon(Icons.menu_book),
                 title: const Text('维基'),
@@ -359,8 +379,8 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
     return Scaffold(
       appBar: AppBar(),
       body: isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : error != null
+          ? const Center(child: CircularProgressIndicator())
+          : error != null
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -391,7 +411,7 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
                               width: 80,
                               height: 80,
                               errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.extension, size: 80),
+                                  const Icon(Icons.extension, size: 80),
                             ),
                           ),
                         const SizedBox(width: 16),
@@ -401,11 +421,15 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
                             children: [
                               Text(
                                 _getFormattedTitle(),
-                                style: Theme.of(context).textTheme.headlineSmall,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineSmall,
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                projectDetails['summary'] ?? widget.projectInfo['summary'] ?? '暂无描述',
+                                projectDetails['summary'] ??
+                                    widget.projectInfo['summary'] ??
+                                    '暂无描述',
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ],
@@ -435,7 +459,10 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('详细介绍', style: TextStyle(fontWeight: FontWeight.bold)),
+                              const Text(
+                                '详细介绍',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
                               const SizedBox(height: 8),
                               Text(
                                 _description,
@@ -444,88 +471,100 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
                             ],
                           ),
                         ),
-                      )
+                      ),
                   ],
                 ),
               ),
             ),
-      floatingActionButton:
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FloatingActionButton(
-              heroTag: 'share',
-              onPressed: () {
-                final projectUrl = projectDetails['links'] != null
-                    ? projectDetails['links']['websiteUrl']
-                    : null;
-                _shareProject(projectUrl);
-              },
-              child: const Icon(Icons.share),
-            ),
-            const SizedBox(height: 16),
-            FloatingActionButton(
-              heroTag: 'download',
-              onPressed: () {
-                final classId = projectDetails['classId'] ?? widget.projectInfo['classId'];
-                if (classId == 6) {
-                  // 模组
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CurseforgeModPage(
-                        modId: widget.modId,
-                        modName: projectDetails['name'] ?? widget.projectInfo['name'] ?? '',
-                        apiKey: widget.apiKey,
-                      ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'share',
+            onPressed: () {
+              final projectUrl = projectDetails['links'] != null
+                  ? projectDetails['links']['websiteUrl']
+                  : null;
+              _shareProject(projectUrl);
+            },
+            child: const Icon(Icons.share),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            heroTag: 'download',
+            onPressed: () {
+              final classId =
+                  projectDetails['classId'] ?? widget.projectInfo['classId'];
+              if (classId == 6) {
+                // 模组
+                Navigator.push(
+                  context,
+                  SlidePageRoute(
+                    page: CurseforgeModPage(
+                      modId: widget.modId,
+                      modName:
+                          projectDetails['name'] ??
+                          widget.projectInfo['name'] ??
+                          '',
+                      apiKey: widget.apiKey,
                     ),
-                  );
-                } else if (classId == 4471) {
-                  // 整合包
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CurseforgeModpackPage(
-                        modId: widget.modId,
-                        modName: projectDetails['name'] ?? widget.projectInfo['name'] ?? '',
-                        apiKey: widget.apiKey,
-                      ),
+                  ),
+                );
+              } else if (classId == 4471) {
+                // 整合包
+                Navigator.push(
+                  context,
+                  SlidePageRoute(
+                    page: CurseforgeModpackPage(
+                      modId: widget.modId,
+                      modName:
+                          projectDetails['name'] ??
+                          widget.projectInfo['name'] ??
+                          '',
+                      apiKey: widget.apiKey,
                     ),
-                  );
-                } else if (classId == 12) {
-                  // 资源包
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CurseforgeResourcepackPage(
-                        modId: widget.modId,
-                        modName: projectDetails['name'] ?? widget.projectInfo['name'] ?? '',
-                        apiKey: widget.apiKey,
-                      ),
+                  ),
+                );
+              } else if (classId == 12) {
+                // 资源包
+                Navigator.push(
+                  context,
+                  SlidePageRoute(
+                    page: CurseforgeResourcepackPage(
+                      modId: widget.modId,
+                      modName:
+                          projectDetails['name'] ??
+                          widget.projectInfo['name'] ??
+                          '',
+                      apiKey: widget.apiKey,
                     ),
-                  );
-                } else if (classId == 6552) {
-                  // 光影
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CurseforgeShaderPage(
-                        modId: widget.modId,
-                        modName: projectDetails['name'] ?? widget.projectInfo['name'] ?? '',
-                        apiKey: widget.apiKey,
-                      ),
+                  ),
+                );
+              } else if (classId == 6552) {
+                // 光影
+                Navigator.push(
+                  context,
+                  SlidePageRoute(
+                    page: CurseforgeShaderPage(
+                      modId: widget.modId,
+                      modName:
+                          projectDetails['name'] ??
+                          widget.projectInfo['name'] ??
+                          '',
+                      apiKey: widget.apiKey,
                     ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('未知的项目类型，无法下载')),
-                  );
-                }
-              },
-              child: const Icon(Icons.download),
-            ),
-          ],
-        ),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('未知的项目类型，无法下载')));
+              }
+            },
+            child: const Icon(Icons.download),
+          ),
+        ],
+      ),
     );
   }
 }

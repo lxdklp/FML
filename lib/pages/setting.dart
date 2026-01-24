@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/pages/setting/theme.dart';
 import 'package:fml/pages/setting/log_viewer.dart';
 import 'package:fml/pages/setting/about.dart';
@@ -15,8 +16,7 @@ class SettingPageState extends State<SettingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-      ),
+      appBar: AppBar(),
       body: Center(
         child: ListView(
           children: [
@@ -26,10 +26,7 @@ class SettingPageState extends State<SettingPage> {
                 title: Text('\n 主题设置 \n'),
                 leading: Icon(Icons.imagesearch_roller),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ThemePage()),
-                  );
+                  Navigator.push(context, SlidePageRoute(page: ThemePage()));
                 },
               ),
             ),
@@ -39,10 +36,7 @@ class SettingPageState extends State<SettingPage> {
                 title: Text('\n Java 管理 \n'),
                 leading: Icon(Icons.code),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => JavaPage()),
-                  );
+                  Navigator.push(context, SlidePageRoute(page: JavaPage()));
                 },
               ),
             ),
@@ -54,7 +48,7 @@ class SettingPageState extends State<SettingPage> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => LogViewerPage()),
+                    SlidePageRoute(page: LogViewerPage()),
                   );
                 },
               ),
@@ -65,10 +59,7 @@ class SettingPageState extends State<SettingPage> {
                 title: Text('\n 关于 \n'),
                 leading: Icon(Icons.info),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => AboutPage()),
-                  );
+                  Navigator.push(context, SlidePageRoute(page: AboutPage()));
                 },
               ),
             ),

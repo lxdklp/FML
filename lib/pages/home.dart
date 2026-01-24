@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fml/pages/home/account.dart';
@@ -41,12 +42,18 @@ class HomePageState extends State<HomePage> {
   // 登录模式
   String _getLoginModeText(String loginMode) {
     switch (loginMode) {
-      case '0': return '离线登录';
-      case '1': return '正版登录';
-      case '2': return '外置登录';
-      case '3': return '未知类型';
-      case '4': return '未选择账号';
-      default: return '未知类型';
+      case '0':
+        return '离线登录';
+      case '1':
+        return '正版登录';
+      case '2':
+        return '外置登录';
+      case '3':
+        return '未知类型';
+      case '4':
+        return '未选择账号';
+      default:
+        return '未知类型';
     }
   }
 
@@ -54,25 +61,23 @@ class HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     _loadGameInfo();
     return Scaffold(
-      appBar: AppBar(
-      ),
+      appBar: AppBar(),
       body: Center(
         child: ListView(
           children: [
             Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ListTile(
-              title: Text('\n当前账号'),
-              subtitle: Text('[${_getLoginModeText(_selectedAccountType)}]$_selectedAccountName\n'),
-              leading: const Icon(Icons.account_circle),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AccountPage()),
-                );
-              },
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: ListTile(
+                title: Text('\n当前账号'),
+                subtitle: Text(
+                  '[${_getLoginModeText(_selectedAccountType)}]$_selectedAccountName\n',
+                ),
+                leading: const Icon(Icons.account_circle),
+                onTap: () {
+                  Navigator.push(context, SlidePageRoute(page: AccountPage()));
+                },
+              ),
             ),
-          ),
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: ListTile(
@@ -80,11 +85,11 @@ class HomePageState extends State<HomePage> {
                 subtitle: Text('$_gameVersion\n'),
                 leading: const Icon(Icons.view_list),
                 onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const VersionPage()),
-                );
-              },
+                  Navigator.push(
+                    context,
+                    SlidePageRoute(page: const VersionPage()),
+                  );
+                },
               ),
             ),
             Card(
@@ -94,15 +99,14 @@ class HomePageState extends State<HomePage> {
                 leading: const Icon(Icons.tune),
                 onTap: () {
                   if (_selectedGame == '未选择版本') {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('请先选择游戏版本')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('请先选择游戏版本')));
                     return;
-                  }
-                  else {
+                  } else {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const ManagementPage()),
+                      SlidePageRoute(page: const ManagementPage()),
                     );
                   }
                 },
@@ -114,22 +118,18 @@ class HomePageState extends State<HomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           if (_selectedAccountName == '未选择账号') {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('请先选择账号')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('请先选择账号')));
             return;
           }
           if (_selectedGame == '未选择版本') {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('请先选择游戏版本')),
-            );
-            return;
-          }
-          else {
-            Navigator.push(
+            ScaffoldMessenger.of(
               context,
-              MaterialPageRoute(builder: (context) => const PlayPage()),
-            );
+            ).showSnackBar(const SnackBar(content: Text('请先选择游戏版本')));
+            return;
+          } else {
+            Navigator.push(context, SlidePageRoute(page: const PlayPage()));
           }
         },
         child: const Icon(Icons.play_arrow),

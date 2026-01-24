@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fml/function/log.dart';
@@ -78,9 +79,7 @@ class DownloadModrinthState extends State<DownloadModrinth> {
         _error = null;
       });
       final options = Options(
-        headers: {
-          'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-        },
+        headers: {'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)'},
       );
       LogUtil.log('开始请求Modrinth随机项目', level: 'INFO');
       final response = await dio.get(
@@ -123,18 +122,17 @@ class DownloadModrinthState extends State<DownloadModrinth> {
         _error = null;
         _isSearching = true;
       });
-      final Map<String, dynamic> queryParams = {
-        'query': query,
-      };
+      final Map<String, dynamic> queryParams = {'query': query};
       if (_selectedProjectType != null) {
         queryParams['facets'] = '[["project_type:$_selectedProjectType"]]';
       }
       final options = Options(
-        headers: {
-          'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-        },
+        headers: {'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)'},
       );
-      LogUtil.log('搜索Modrinth项目: $query, 类型: $_selectedProjectType', level: 'INFO');
+      LogUtil.log(
+        '搜索Modrinth项目: $query, 类型: $_selectedProjectType',
+        level: 'INFO',
+      );
       final response = await dio.get(
         'https://api.modrinth.com/v2/search',
         queryParameters: queryParams,
@@ -192,9 +190,7 @@ class DownloadModrinthState extends State<DownloadModrinth> {
   Widget _buildSearchBar() {
     return Card(
       margin: const EdgeInsets.all(8.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -206,29 +202,33 @@ class DownloadModrinthState extends State<DownloadModrinth> {
                 hintText: '在Modrinth搜索',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: _clearSearch,
-                    )
-                  : null,
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: _clearSearch,
+                      )
+                    : null,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 12.0,
+                  horizontal: 16.0,
+                ),
               ),
               onSubmitted: (value) => _searchProjects(value),
               textInputAction: TextInputAction.search,
             ),
             const SizedBox(height: 12.0),
-            const Text('项目类型', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            const Text(
+              '项目类型',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
             const SizedBox(height: 4.0),
             DropdownButton<String>(
               isExpanded: true,
               hint: const Text('选择项目类型'),
               value: _selectedProjectType,
-              underline: Container(
-                height: 1,
-              ),
+              underline: Container(height: 1),
               items: [
                 const DropdownMenuItem<String>(
                   value: null,
@@ -260,14 +260,14 @@ class DownloadModrinthState extends State<DownloadModrinth> {
       margin: const EdgeInsets.all(8.0),
       child: ListTile(
         leading: project['icon_url'] != null
-          ? Image.network(
-              project['icon_url'],
-              width: 50,
-              height: 50,
-              errorBuilder: (context, error, stackTrace) =>
-                const Icon(Icons.extension, size: 50),
-            )
-          : const Icon(Icons.extension, size: 50),
+            ? Image.network(
+                project['icon_url'],
+                width: 50,
+                height: 50,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.extension, size: 50),
+              )
+            : const Icon(Icons.extension, size: 50),
         title: Row(
           children: [
             if (project['project_type'] != null)
@@ -296,14 +296,14 @@ class DownloadModrinthState extends State<DownloadModrinth> {
             Wrap(
               spacing: 4,
               children: [
-                ...?project['categories']?.map<Widget>((category) =>
-                  Chip(
+                ...?project['categories']?.map<Widget>(
+                  (category) => Chip(
                     label: Text(category),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     labelStyle: const TextStyle(fontSize: 10),
                     padding: EdgeInsets.zero,
                     visualDensity: VisualDensity.compact,
-                  )
+                  ),
                 ),
               ],
             ),
@@ -312,11 +312,8 @@ class DownloadModrinthState extends State<DownloadModrinth> {
         isThreeLine: true,
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => InfoPage(
-              slug: project['slug'] ?? '',
-              projectInfo: project,
-            ),
+          SlidePageRoute(
+            page: InfoPage(slug: project['slug'] ?? '', projectInfo: project),
           ),
         ),
       ),
@@ -337,8 +334,8 @@ class DownloadModrinthState extends State<DownloadModrinth> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () => _isSearching
-                ? _searchProjects(_searchController.text)
-                : _fetchProjects(),
+                  ? _searchProjects(_searchController.text)
+                  : _fetchProjects(),
               child: const Text('重试'),
             ),
           ],
@@ -351,18 +348,15 @@ class DownloadModrinthState extends State<DownloadModrinth> {
           children: [
             const Text('未找到相关项目'),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _clearSearch,
-              child: const Text('清除搜索'),
-            ),
+            ElevatedButton(onPressed: _clearSearch, child: const Text('清除搜索')),
           ],
         ),
       );
     } else {
       body = RefreshIndicator(
         onRefresh: () => _isSearching
-          ? _searchProjects(_searchController.text)
-          : _fetchProjects(),
+            ? _searchProjects(_searchController.text)
+            : _fetchProjects(),
         child: ListView.builder(
           controller: _scrollController,
           itemCount: _projectsList.length + 1,

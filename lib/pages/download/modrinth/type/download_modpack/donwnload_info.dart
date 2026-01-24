@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fml/function/log.dart';
@@ -6,10 +7,7 @@ import 'package:fml/pages/download/modrinth/type/download_modpack/loader/modrint
 import 'package:fml/pages/download/modrinth/type/download_modpack/loader/modrinth_neoforge_modpack.dart';
 
 class DownloadInfo extends StatefulWidget {
-  const DownloadInfo(
-      this.version, {
-        super.key
-      });
+  const DownloadInfo(this.version, {super.key});
 
   final Map<String, dynamic> version;
 
@@ -32,7 +30,10 @@ class DownloadInfoState extends State<DownloadInfo> {
     _gameNameController = TextEditingController();
     _gameNameController.text = _fileName ?? '';
     _gameName = _gameNameController.text;
-    LogUtil.log('开始下载模组包版本: ${widget.version['version_number']}', level: 'INFO');
+    LogUtil.log(
+      '开始下载模组包版本: ${widget.version['version_number']}',
+      level: 'INFO',
+    );
   }
 
   // 获取信息
@@ -41,7 +42,7 @@ class DownloadInfoState extends State<DownloadInfo> {
     if (files != null && files.isNotEmpty) {
       final primaryFile = files.firstWhere(
         (file) => file['primary'] == true,
-        orElse: () => files.first
+        orElse: () => files.first,
       );
       setState(() {
         _downloadUrl = primaryFile['url'];
@@ -64,9 +65,7 @@ class DownloadInfoState extends State<DownloadInfo> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('模组包下载'),
-      ),
+      appBar: AppBar(title: const Text('模组包下载')),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
@@ -85,80 +84,89 @@ class DownloadInfoState extends State<DownloadInfo> {
                   const SizedBox(height: 8),
                   Text('发布日期: ${widget.version['date_published'] ?? '未知日期'}'),
                   const SizedBox(height: 8),
-                  Text('模组加载器: ${widget.version['loaders']?.join(", ") ?? '未知加载器'}'),
+                  Text(
+                    '模组加载器: ${widget.version['loaders']?.join(", ") ?? '未知加载器'}',
+                  ),
                   if (widget.version['changelog'] != null &&
                       widget.version['changelog'].toString().isNotEmpty)
                     const SizedBox(height: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '更新日志:',
-                          style: Theme.of(context).textTheme.titleMedium,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '更新日志:',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.all(8.0),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4.0),
                         ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.all(8.0),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4.0),
-                          ),
-                          child: Text(widget.version['changelog'].toString()),
-                        ),
-                      ],
-                    ),
+                        child: Text(widget.version['changelog'].toString()),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
           ),
           Card(
-              child: TextField(
-                controller: _gameNameController,
-                decoration: InputDecoration(
-                  labelText: '游戏名称',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (value) => setState(() {
-                  _gameName = value;
-                }),
+            child: TextField(
+              controller: _gameNameController,
+              decoration: InputDecoration(
+                labelText: '游戏名称',
+                border: OutlineInputBorder(),
               ),
+              onChanged: (value) => setState(() {
+                _gameName = value;
+              }),
             ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           if (_gameName == null || _gameName!.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('请输入游戏名称')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('请输入游戏名称')));
             return;
           }
           if (_versionList.contains(_gameName)) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('该游戏名称已存在，请换一个名称')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('该游戏名称已存在，请换一个名称')));
             return;
           }
           if (_downloadUrl == null || _downloadUrl!.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('下载地址获取失败')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('下载地址获取失败')));
             return;
           }
           if (widget.version['loaders']?.join(", ") == 'fabric') {
-            LogUtil.log('开始下载模组包: $_fileName 类型: ${widget.version['loaders']}', level: 'INFO');
+            LogUtil.log(
+              '开始下载模组包: $_fileName 类型: ${widget.version['loaders']}',
+              level: 'INFO',
+            );
             Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => FabricModpackPage(
+              SlidePageRoute(
+                page: FabricModpackPage(
                   name: _gameName!,
                   url: _downloadUrl ?? '',
                 ),
               ),
             );
-          }if (widget.version['loaders']?.join(", ") == 'neoforge') {
-            LogUtil.log('开始下载模组包: $_fileName 类型: ${widget.version['loaders']}', level: 'INFO');
+          }
+          if (widget.version['loaders']?.join(", ") == 'neoforge') {
+            LogUtil.log(
+              '开始下载模组包: $_fileName 类型: ${widget.version['loaders']}',
+              level: 'INFO',
+            );
             Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => NeoForgeModpackPage(
+              SlidePageRoute(
+                page: NeoForgeModpackPage(
                   name: _gameName!,
                   url: _downloadUrl ?? '',
                 ),

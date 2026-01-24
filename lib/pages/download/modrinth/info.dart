@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,11 +15,7 @@ class InfoPage extends StatefulWidget {
   final String slug;
   final Map<String, dynamic> projectInfo;
 
-  const InfoPage({
-    super.key,
-    required this.slug,
-    required this.projectInfo,
-  });
+  const InfoPage({super.key, required this.slug, required this.projectInfo});
 
   @override
   InfoPageState createState() => InfoPageState();
@@ -47,7 +44,8 @@ class InfoPageState extends State<InfoPage> {
 
   // 获取格式化的标题
   String _getFormattedTitle() {
-    final title = projectDetails['title'] ?? widget.projectInfo['title'] ?? '未知项目';
+    final title =
+        projectDetails['title'] ?? widget.projectInfo['title'] ?? '未知项目';
     final projectType = projectDetails['project_type'];
     if (projectType != null && projectTypeNames.containsKey(projectType)) {
       return '[${projectTypeNames[projectType]}] $title';
@@ -76,9 +74,7 @@ class InfoPageState extends State<InfoPage> {
     }
     try {
       final options = Options(
-        headers: {
-          'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-        },
+        headers: {'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)'},
       );
       LogUtil.log('正在获取模组详情: ${widget.slug}', level: 'INFO');
       final response = await dio.get(
@@ -114,9 +110,9 @@ class InfoPageState extends State<InfoPage> {
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('无法打开链接: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('无法打开链接: $e')));
     }
   }
 
@@ -140,7 +136,10 @@ class InfoPageState extends State<InfoPage> {
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   children: [
-                    const Text('客户端', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      '客户端',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     Text(statusText[clientSide] ?? clientSide),
                   ],
                 ),
@@ -153,7 +152,10 @@ class InfoPageState extends State<InfoPage> {
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   children: [
-                    const Text('服务端', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      '服务端',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     Text(statusText[serverSide] ?? serverSide),
                   ],
                 ),
@@ -167,26 +169,32 @@ class InfoPageState extends State<InfoPage> {
 
   // 支持的游戏版本
   Widget _buildGameVersions() {
-    final gameVersions = projectDetails['game_versions'] as List<dynamic>? ?? [];
+    final gameVersions =
+        projectDetails['game_versions'] as List<dynamic>? ?? [];
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('支持的游戏版本', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              '支持的游戏版本',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 4,
               runSpacing: 4,
-              children: gameVersions.map<Widget>((version) =>
-                Chip(
-                  label: Text(version.toString()),
-                  labelStyle: const TextStyle(fontSize: 12),
-                  padding: EdgeInsets.zero,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                )
-              ).toList(),
+              children: gameVersions
+                  .map<Widget>(
+                    (version) => Chip(
+                      label: Text(version.toString()),
+                      labelStyle: const TextStyle(fontSize: 12),
+                      padding: EdgeInsets.zero,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  )
+                  .toList(),
             ),
           ],
         ),
@@ -209,12 +217,14 @@ class InfoPageState extends State<InfoPage> {
             Wrap(
               spacing: 4,
               runSpacing: 4,
-              children: categories.map<Widget>((category) =>
-                Chip(
-                  label: Text(category.toString()),
-                  labelStyle: const TextStyle(fontSize: 12),
-                )
-              ).toList(),
+              children: categories
+                  .map<Widget>(
+                    (category) => Chip(
+                      label: Text(category.toString()),
+                      labelStyle: const TextStyle(fontSize: 12),
+                    ),
+                  )
+                  .toList(),
             ),
             const SizedBox(height: 16),
             const Text('加载器', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -222,12 +232,14 @@ class InfoPageState extends State<InfoPage> {
             Wrap(
               spacing: 4,
               runSpacing: 4,
-              children: loaders.map<Widget>((loader) =>
-                Chip(
-                  label: Text(loader.toString()),
-                  labelStyle: const TextStyle(fontSize: 12),
-                )
-              ).toList(),
+              children: loaders
+                  .map<Widget>(
+                    (loader) => Chip(
+                      label: Text(loader.toString()),
+                      labelStyle: const TextStyle(fontSize: 12),
+                    ),
+                  )
+                  .toList(),
             ),
           ],
         ),
@@ -249,7 +261,10 @@ class InfoPageState extends State<InfoPage> {
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   children: [
-                    const Text('下载量', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      '下载量',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     Text(downloads.toString()),
                   ],
                 ),
@@ -262,7 +277,10 @@ class InfoPageState extends State<InfoPage> {
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   children: [
-                    const Text('收藏数', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      '收藏数',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     Text(followers.toString()),
                   ],
                 ),
@@ -317,11 +335,10 @@ class InfoPageState extends State<InfoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-      ),
+      appBar: AppBar(),
       body: isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : error != null
+          ? const Center(child: CircularProgressIndicator())
+          : error != null
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -352,7 +369,7 @@ class InfoPageState extends State<InfoPage> {
                               width: 80,
                               height: 80,
                               errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.extension, size: 80),
+                                  const Icon(Icons.extension, size: 80),
                             ),
                           ),
                         const SizedBox(width: 16),
@@ -362,7 +379,9 @@ class InfoPageState extends State<InfoPage> {
                             children: [
                               Text(
                                 _getFormattedTitle(),
-                                style: Theme.of(context).textTheme.headlineSmall,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineSmall,
                               ),
                               const SizedBox(height: 4),
                               Text(
@@ -388,14 +407,18 @@ class InfoPageState extends State<InfoPage> {
                     // 相关链接
                     _buildLinks(),
                     const SizedBox(height: 16),
-                    if (projectDetails['body'] != null && projectDetails['body'].toString().isNotEmpty)
+                    if (projectDetails['body'] != null &&
+                        projectDetails['body'].toString().isNotEmpty)
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('详细介绍', style: TextStyle(fontWeight: FontWeight.bold)),
+                              const Text(
+                                '详细介绍',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
                               const SizedBox(height: 8),
                               Markdown(
                                 data: projectDetails['body'],
@@ -409,7 +432,7 @@ class InfoPageState extends State<InfoPage> {
                             ],
                           ),
                         ),
-                      )
+                      ),
                   ],
                 ),
               ),
@@ -419,8 +442,8 @@ class InfoPageState extends State<InfoPage> {
           if (projectDetails['project_type'] == 'mod') {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => ModPage(
+              SlidePageRoute(
+                page: ModPage(
                   projectId: projectDetails['id'] ?? '',
                   projectName: projectDetails['title'] ?? '',
                 ),
@@ -429,8 +452,8 @@ class InfoPageState extends State<InfoPage> {
           } else if (projectDetails['project_type'] == 'modpack') {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => ModpackPage(
+              SlidePageRoute(
+                page: ModpackPage(
                   projectId: projectDetails['id'] ?? '',
                   projectName: projectDetails['title'] ?? '',
                 ),
@@ -439,8 +462,8 @@ class InfoPageState extends State<InfoPage> {
           } else if (projectDetails['project_type'] == 'resourcepack') {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => ResourcepackPage(
+              SlidePageRoute(
+                page: ResourcepackPage(
                   projectId: projectDetails['id'] ?? '',
                   projectName: projectDetails['title'] ?? '',
                 ),
@@ -449,17 +472,17 @@ class InfoPageState extends State<InfoPage> {
           } else if (projectDetails['project_type'] == 'shader') {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => ShaderPage(
+              SlidePageRoute(
+                page: ShaderPage(
                   projectId: projectDetails['id'] ?? '',
                   projectName: projectDetails['title'] ?? '',
                 ),
               ),
             );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('未知的项目类型，无法下载')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('未知的项目类型，无法下载')));
           }
         },
         child: const Icon(Icons.download),

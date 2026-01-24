@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'dart:math';
@@ -9,7 +10,12 @@ import 'package:fml/pages/download/download_version/loader/download_fabric.dart'
 import 'package:fml/pages/download/download_version/loader/download_neoforge.dart';
 
 class DownloadGamePage extends StatefulWidget {
-  const DownloadGamePage({super.key, required this.type, required this.version, required this.url});
+  const DownloadGamePage({
+    super.key,
+    required this.type,
+    required this.version,
+    required this.url,
+  });
 
   final String type;
   final String version;
@@ -38,17 +44,17 @@ class DownloadGamePageState extends State<DownloadGamePage> {
   bool _showNeoForgeUnstable = false;
 
   int _compareVersions(String versionA, String versionB) {
-  String cleanA = versionA.replaceAll('-beta', '');
-  String cleanB = versionB.replaceAll('-beta', '');
-  List<int> partsA = cleanA.split('.').map(int.parse).toList();
-  List<int> partsB = cleanB.split('.').map(int.parse).toList();
-  for (int i = 0; i < max(partsA.length, partsB.length); i++) {
-    int partA = i < partsA.length ? partsA[i] : 0;
-    int partB = i < partsB.length ? partsB[i] : 0;
-    if (partA != partB) {
-      return partA.compareTo(partB);
+    String cleanA = versionA.replaceAll('-beta', '');
+    String cleanB = versionB.replaceAll('-beta', '');
+    List<int> partsA = cleanA.split('.').map(int.parse).toList();
+    List<int> partsB = cleanB.split('.').map(int.parse).toList();
+    for (int i = 0; i < max(partsA.length, partsB.length); i++) {
+      int partA = i < partsA.length ? partsA[i] : 0;
+      int partB = i < partsB.length ? partsB[i] : 0;
+      if (partA != partB) {
+        return partA.compareTo(partB);
+      }
     }
-  }
     return 0;
   }
 
@@ -76,11 +82,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
     LogUtil.log('加载${widget.version}Fabric版本列表', level: 'INFO');
     await _loadAppVersion();
     try {
-      final options = Options(
-        headers: {
-          'User-Agent': 'FML/$_appVersion',
-        },
-      );
+      final options = Options(headers: {'User-Agent': 'FML/$_appVersion'});
       // FML UA请求BMCLAPI Fabric
       final response = await dio.get(
         'https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader/${widget.version}',
@@ -111,11 +113,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
     LogUtil.log('加载${widget.version}NeoForge版本列表', level: 'INFO');
     await _loadAppVersion();
     try {
-      final options = Options(
-        headers: {
-          'User-Agent': 'FML/$_appVersion',
-        },
-      );
+      final options = Options(headers: {'User-Agent': 'FML/$_appVersion'});
       final response = await dio.get(
         'https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge/maven-metadata.xml',
         options: options,
@@ -189,9 +187,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('下载${widget.version}'),
-      ),
+      appBar: AppBar(title: Text('下载${widget.version}')),
       body: Center(
         child: ListView(
           children: [
@@ -252,38 +248,46 @@ class DownloadGamePageState extends State<DownloadGamePage> {
             ),
             if (_selectedLoader == 'Fabric') ...[
               Card(
-                  child: SwitchListTile(
-                    title: const Text('显示不稳定版本'),
-                    value: _showUnstable,
-                    onChanged: (value) {
-                      setState(() {
-                        _showUnstable = value;
-                      });
-                    },
-                  ),
+                child: SwitchListTile(
+                  title: const Text('显示不稳定版本'),
+                  value: _showUnstable,
+                  onChanged: (value) {
+                    setState(() {
+                      _showUnstable = value;
+                    });
+                  },
                 ),
-                ..._fabricVersionList
-                    .where((version) => _showUnstable || _fabricStableList[_fabricVersionList.indexOf(version)])
-                    .map(
-                      (version) => Card(
-                        child: ListTile(
-                          title: Text(version),
-                          subtitle: _fabricStableList[_fabricVersionList.indexOf(version)]
-                              ? const Text('稳定版')
-                              : const Text('测试版'),
-                          onTap: () {
-                            final index = _fabricVersionList.indexOf(version);
-                            setState(() {
-                              _selectedFabricVersion = version;
-                              _selectedFabricLoader = _fabricJson[index]; // 保存对应的完整JSON对象
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('已选择Fabric版本: $version')),
-                            );
-                          },
-                        ),
+              ),
+              ..._fabricVersionList
+                  .where(
+                    (version) =>
+                        _showUnstable ||
+                        _fabricStableList[_fabricVersionList.indexOf(version)],
+                  )
+                  .map(
+                    (version) => Card(
+                      child: ListTile(
+                        title: Text(version),
+                        subtitle:
+                            _fabricStableList[_fabricVersionList.indexOf(
+                              version,
+                            )]
+                            ? const Text('稳定版')
+                            : const Text('测试版'),
+                        onTap: () {
+                          final index = _fabricVersionList.indexOf(version);
+                          setState(() {
+                            _selectedFabricVersion = version;
+                            _selectedFabricLoader =
+                                _fabricJson[index]; // 保存对应的完整JSON对象
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('已选择Fabric版本: $version')),
+                          );
+                        },
                       ),
-                    )
+                    ),
+                  ),
             ],
             if (_selectedLoader == 'NeoForge') ...[
               Card(
@@ -294,45 +298,43 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                     setState(() {
                       _showNeoForgeUnstable = value;
                     });
-                  }
-                )
+                  },
+                ),
               ),
-              ..._neoForgeStableVersions
-                  .map(
-                    (version) => Card(
-                      child: ListTile(
-                        title: Text(version),
-                        subtitle: Text('稳定版'),
-                        onTap: () {
-                          setState(() {
-                            _selectedNeoForgeVersion = version;
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('已选择NeoForge版本: $version')),
-                          );
-                        },
-                      ),
-                    )
+              ..._neoForgeStableVersions.map(
+                (version) => Card(
+                  child: ListTile(
+                    title: Text(version),
+                    subtitle: Text('稳定版'),
+                    onTap: () {
+                      setState(() {
+                        _selectedNeoForgeVersion = version;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('已选择NeoForge版本: $version')),
+                      );
+                    },
                   ),
+                ),
+              ),
               if (_showNeoForgeUnstable) ...[
-                ..._neoforgeBetaVersions
-                    .map(
-                      (version) => Card(
-                        child: ListTile(
-                          title: Text(version),
-                          subtitle: Text('测试版'),
-                          onTap: () {
-                            setState(() {
-                              _selectedNeoForgeVersion = version;
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('已选择NeoForge版本: $version')),
-                            );
-                          },
-                        )
-                      )
-                    )
-              ]
+                ..._neoforgeBetaVersions.map(
+                  (version) => Card(
+                    child: ListTile(
+                      title: Text(version),
+                      subtitle: Text('测试版'),
+                      onTap: () {
+                        setState(() {
+                          _selectedNeoForgeVersion = version;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('已选择NeoForge版本: $version')),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ],
           ],
         ),
@@ -340,45 +342,66 @@ class DownloadGamePageState extends State<DownloadGamePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           if (_gameName.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('游戏名称不能为空')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('游戏名称不能为空')));
             return;
           }
           if (_versionList.contains(_gameName)) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('该游戏名称已存在，请换一个名称')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('该游戏名称已存在，请换一个名称')));
             return;
           }
           if (_selectedLoader == 'Vanilla') {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => DownloadVanillaPage(version: widget.version, url: widget.url, name: _gameName)),
+              SlidePageRoute(
+                page: DownloadVanillaPage(
+                  version: widget.version,
+                  url: widget.url,
+                  name: _gameName,
+                ),
+              ),
             );
           }
           if (_selectedLoader == 'Fabric') {
             if (_selectedFabricVersion.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('请先选择Fabric版本')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('请先选择Fabric版本')));
               return;
             }
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => DownloadFabricPage(version: widget.version, url: widget.url, name: _gameName, fabricVersion: _selectedFabricVersion, fabricLoader: _selectedFabricLoader,)),
+              SlidePageRoute(
+                page: DownloadFabricPage(
+                  version: widget.version,
+                  url: widget.url,
+                  name: _gameName,
+                  fabricVersion: _selectedFabricVersion,
+                  fabricLoader: _selectedFabricLoader,
+                ),
+              ),
             );
           }
           if (_selectedLoader == 'NeoForge') {
             if (_selectedNeoForgeVersion.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('请先选择NeoForge版本')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('请先选择NeoForge版本')));
               return;
             }
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => DownloadNeoForgePage(version: widget.version, url: widget.url, name: _gameName, neoforgeVersion: _selectedNeoForgeVersion)),
+              SlidePageRoute(
+                page: DownloadNeoForgePage(
+                  version: widget.version,
+                  url: widget.url,
+                  name: _gameName,
+                  neoforgeVersion: _selectedNeoForgeVersion,
+                ),
+              ),
             );
           }
         },

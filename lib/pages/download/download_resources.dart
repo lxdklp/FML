@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fml/function/log.dart';
@@ -24,7 +25,8 @@ class DownloadResourcesState extends State<DownloadResources> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   String _dataSource = 'modrinth';
-  static const String _curseforgeApiKey = r'$2a$10$2nu.vP1qQjDgInxe1xsyzuxR73iqaJ23TzFshO4Z0yRfS93d1gDTm';
+  static const String _curseforgeApiKey =
+      r'$2a$10$2nu.vP1qQjDgInxe1xsyzuxR73iqaJ23TzFshO4Z0yRfS93d1gDTm';
   static const int minecraftGameId = 432;
   String? _modrinthProjectType;
   final Map<String, String> modrinthProjectTypes = {
@@ -80,7 +82,7 @@ class DownloadResourcesState extends State<DownloadResources> {
     _fetchProjects();
   }
 
-   // CurseForge 请求头
+  // CurseForge 请求头
   Options _getCurseforgeOptions() {
     return Options(
       headers: {
@@ -93,9 +95,7 @@ class DownloadResourcesState extends State<DownloadResources> {
   // Modrinth 请求头
   Options _getModrinthOptions() {
     return Options(
-      headers: {
-        'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-      },
+      headers: {'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)'},
     );
   }
 
@@ -188,7 +188,9 @@ class DownloadResourcesState extends State<DownloadResources> {
 
   // 搜索
   Future<void> _searchProjects(String query) async {
-    if (query.isEmpty && _modrinthProjectType == null && _curseforgeClassId == null) {
+    if (query.isEmpty &&
+        _modrinthProjectType == null &&
+        _curseforgeClassId == null) {
       _fetchProjects();
       return;
     }
@@ -207,13 +209,14 @@ class DownloadResourcesState extends State<DownloadResources> {
         _error = null;
         _isSearching = true;
       });
-      final Map<String, dynamic> queryParams = {
-        'query': query,
-      };
+      final Map<String, dynamic> queryParams = {'query': query};
       if (_modrinthProjectType != null) {
         queryParams['facets'] = '[["project_type:$_modrinthProjectType"]]';
       }
-      LogUtil.log('搜索Modrinth项目: $query, 类型: $_modrinthProjectType', level: 'INFO');
+      LogUtil.log(
+        '搜索Modrinth项目: $query, 类型: $_modrinthProjectType',
+        level: 'INFO',
+      );
       final response = await dio.get(
         'https://api.modrinth.com/v2/search',
         queryParameters: queryParams,
@@ -261,7 +264,10 @@ class DownloadResourcesState extends State<DownloadResources> {
       if (_curseforgeClassId != null) {
         queryParams['classId'] = _curseforgeClassId;
       }
-      LogUtil.log('搜索CurseForge项目: $query, classId: $_curseforgeClassId', level: 'INFO');
+      LogUtil.log(
+        '搜索CurseForge项目: $query, classId: $_curseforgeClassId',
+        level: 'INFO',
+      );
       final response = await dio.get(
         'https://api.curseforge.com/v1/mods/search',
         queryParameters: queryParams,
@@ -353,9 +359,7 @@ class DownloadResourcesState extends State<DownloadResources> {
   Widget _buildSearchBar() {
     return Card(
       margin: const EdgeInsets.all(8.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -364,7 +368,10 @@ class DownloadResourcesState extends State<DownloadResources> {
             // 数据源选择
             Row(
               children: [
-                const Text('数据源', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                const Text(
+                  '数据源',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButton<String>(
@@ -372,8 +379,14 @@ class DownloadResourcesState extends State<DownloadResources> {
                     value: _dataSource,
                     underline: Container(height: 1),
                     items: const [
-                      DropdownMenuItem(value: 'modrinth', child: Text('Modrinth')),
-                      DropdownMenuItem(value: 'curseforge', child: Text('CurseForge')),
+                      DropdownMenuItem(
+                        value: 'modrinth',
+                        child: Text('Modrinth'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'curseforge',
+                        child: Text('CurseForge'),
+                      ),
                     ],
                     onChanged: _switchDataSource,
                   ),
@@ -385,7 +398,9 @@ class DownloadResourcesState extends State<DownloadResources> {
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: _dataSource == 'modrinth' ? '在Modrinth搜索' : '在CurseForge搜索',
+                hintText: _dataSource == 'modrinth'
+                    ? '在Modrinth搜索'
+                    : '在CurseForge搜索',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -396,14 +411,20 @@ class DownloadResourcesState extends State<DownloadResources> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 12.0,
+                  horizontal: 16.0,
+                ),
               ),
               onSubmitted: (value) => _searchProjects(value),
               textInputAction: TextInputAction.search,
             ),
             const SizedBox(height: 12.0),
             // 项目类型选择
-            const Text('项目类型', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            const Text(
+              '项目类型',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
             const SizedBox(height: 4.0),
             _dataSource == 'modrinth'
                 ? DropdownButton<String>(
@@ -518,11 +539,8 @@ class DownloadResourcesState extends State<DownloadResources> {
         isThreeLine: true,
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => InfoPage(
-              slug: project['slug'] ?? '',
-              projectInfo: project,
-            ),
+          SlidePageRoute(
+            page: InfoPage(slug: project['slug'] ?? '', projectInfo: project),
           ),
         ),
       ),
@@ -576,17 +594,18 @@ class DownloadResourcesState extends State<DownloadResources> {
               spacing: 4,
               children: categories != null
                   ? categories
-                      .take(3)
-                      .map<Widget>(
-                        (cat) => Chip(
-                          label: Text(cat['name'] ?? ''),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          labelStyle: const TextStyle(fontSize: 10),
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      )
-                      .toList()
+                        .take(3)
+                        .map<Widget>(
+                          (cat) => Chip(
+                            label: Text(cat['name'] ?? ''),
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            labelStyle: const TextStyle(fontSize: 10),
+                            padding: EdgeInsets.zero,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        )
+                        .toList()
                   : [],
             ),
           ],
@@ -594,8 +613,8 @@ class DownloadResourcesState extends State<DownloadResources> {
         isThreeLine: true,
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => CurseforgeInfoPage(
+          SlidePageRoute(
+            page: CurseforgeInfoPage(
               modId: project['id'],
               projectInfo: Map<String, dynamic>.from(project),
               apiKey: _curseforgeApiKey,
@@ -643,10 +662,7 @@ class DownloadResourcesState extends State<DownloadResources> {
           children: [
             const Text('未找到相关项目'),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _clearSearch,
-              child: const Text('清除搜索'),
-            ),
+            ElevatedButton(onPressed: _clearSearch, child: const Text('清除搜索')),
           ],
         ),
       );

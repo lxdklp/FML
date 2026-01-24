@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dio/dio.dart';
@@ -35,9 +36,15 @@ Future<void> initLogs() async {
     await LogUtil.clearLogs();
   }
   if (kDebugMode) {
-    await LogUtil.log('启动FML,平台:${Platform.operatingSystem},版本: $appVersion,构建号: $buildNumber,debug模式', level: 'INFO');
+    await LogUtil.log(
+      '启动FML,平台:${Platform.operatingSystem},版本: $appVersion,构建号: $buildNumber,debug模式',
+      level: 'INFO',
+    );
   } else {
-    await LogUtil.log('启动FML,平台:${Platform.operatingSystem},版本: $appVersion,构建号: $buildNumber', level: 'INFO');
+    await LogUtil.log(
+      '启动FML,平台:${Platform.operatingSystem},版本: $appVersion,构建号: $buildNumber',
+      level: 'INFO',
+    );
   }
 }
 
@@ -61,9 +68,9 @@ class MyApp extends StatefulWidget {
 class MyAppState extends State<MyApp> {
   ThemeMode _themeMode = ThemeMode.system;
   Color _themeColor = Colors.blue;
-  static const double bodyWght = 520;     // 正文
-  static const double labelWght = 520;    // 标签/按钮
-  static const double titleWght = 700;    // 标题
+  static const double bodyWght = 520; // 正文
+  static const double labelWght = 520; // 标签/按钮
+  static const double titleWght = 700; // 标题
   static const double headlineWght = 850; // 更大标题
 
   ThemeMode get themeMode => _themeMode;
@@ -128,19 +135,20 @@ class MyAppState extends State<MyApp> {
       _themeColor = color;
     });
     final prefs = await SharedPreferences.getInstance();
-    int colorValue = (((color.a * 255.0).round() & 0xFF) << 24) |
-                (((color.r * 255.0).round() & 0xFF) << 16) |
-                (((color.g * 255.0).round() & 0xFF) << 8) |
-                ((color.b * 255.0).round() & 0xFF);
+    int colorValue =
+        (((color.a * 255.0).round() & 0xFF) << 24) |
+        (((color.r * 255.0).round() & 0xFF) << 16) |
+        (((color.g * 255.0).round() & 0xFF) << 8) |
+        ((color.b * 255.0).round() & 0xFF);
     await prefs.setInt('themeColor', colorValue);
   }
 
   // 可变字体权重
   TextTheme _withVariableWeights(TextTheme base) {
     TextStyle setW(TextStyle? s, double w) => (s ?? const TextStyle()).copyWith(
-          fontFamily: 'NotoSans',
-          fontVariations: [FontVariation('wght', w)],
-        );
+      fontFamily: 'NotoSans',
+      fontVariations: [FontVariation('wght', w)],
+    );
     return base.copyWith(
       bodySmall: setW(base.bodySmall, bodyWght),
       bodyMedium: setW(base.bodyMedium, bodyWght),
@@ -166,7 +174,9 @@ class MyAppState extends State<MyApp> {
       brightness: brightness,
     );
     final baseTypography = Typography.material2021();
-    final raw = brightness == Brightness.dark ? baseTypography.white : baseTypography.black;
+    final raw = brightness == Brightness.dark
+        ? baseTypography.white
+        : baseTypography.black;
     final textTheme = _withVariableWeights(raw);
     return ThemeData(
       useMaterial3: true,
@@ -198,8 +208,8 @@ class MyAppState extends State<MyApp> {
         if (settings.name == '/online/owner') {
           final int port = settings.arguments as int;
           final String etServer = settings.arguments as String;
-          return MaterialPageRoute(
-            builder: (context) => OwnerPage(port: port, etServer: etServer),
+          return SlidePageRoute(
+            page: OwnerPage(port: port, etServer: etServer),
           );
         }
         return null;
@@ -267,7 +277,7 @@ class MyHomePageState extends State<MyHomePage> {
   }
 
   // 显示Java未找到的对话框
-  Future<void> _showJavaNotFoundDialog() async{
+  Future<void> _showJavaNotFoundDialog() async {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showDialog(
         context: context,
@@ -277,7 +287,9 @@ class MyHomePageState extends State<MyHomePage> {
           content: const Text('未检测到 Java 环境或者 Java 环境未正确配置，请先安装 Java 后再打开启动器'),
           actions: [
             TextButton(
-              onPressed: () => _launchURL('https://www.oracle.com/cn/java/technologies/downloads/'),
+              onPressed: () => _launchURL(
+                'https://www.oracle.com/cn/java/technologies/downloads/',
+              ),
               child: const Text('打开Java下载页面'),
             ),
           ],
@@ -294,15 +306,15 @@ class MyHomePageState extends State<MyHomePage> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (!mounted) return; // 添加 mounted 检查
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法打开链接: $url')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
       }
     } catch (e) {
       if (!mounted) return; // 添加 mounted 检查
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('发生错误: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
     }
   }
 
@@ -312,17 +324,24 @@ class MyHomePageState extends State<MyHomePage> {
       LogUtil.log('正在检查更新', level: 'INFO');
       final dio = Dio();
       if (kDebugMode) {
-        dio.options.headers['User-Agent'] = 'FML/${Platform.operatingSystem}/$appVersion debug';
+        dio.options.headers['User-Agent'] =
+            'FML/${Platform.operatingSystem}/$appVersion debug';
       } else {
-        dio.options.headers['User-Agent'] = 'FML/${Platform.operatingSystem}/$appVersion';
+        dio.options.headers['User-Agent'] =
+            'FML/${Platform.operatingSystem}/$appVersion';
       }
-      final response = await dio.get('https://api.lxdklp.top/v1/fml/get_version');
+      final response = await dio.get(
+        'https://api.lxdklp.top/v1/fml/get_version',
+      );
       LogUtil.log('status: ${response.statusCode}', level: 'INFO');
       LogUtil.log('data: ${response.data}', level: 'INFO');
       if (response.statusCode == 200) {
         String rawVersionData = response.data.toString();
-        String cleanedVersionString = rawVersionData.replaceAll("[", "").replaceAll("]", "");
-        final int latestVersion = int.tryParse(cleanedVersionString) ?? buildNumber;
+        String cleanedVersionString = rawVersionData
+            .replaceAll("[", "")
+            .replaceAll("]", "");
+        final int latestVersion =
+            int.tryParse(cleanedVersionString) ?? buildNumber;
         LogUtil.log('最新版本: $latestVersion');
         if (latestVersion > buildNumber && mounted) {
           _showUpdateDialog(latestVersion.toString());
@@ -334,14 +353,10 @@ class MyHomePageState extends State<MyHomePage> {
   }
 
   // 获取更新日志
-  Future<List<String>> _getUpdateInfo() async{
+  Future<List<String>> _getUpdateInfo() async {
     try {
       Dio dio = Dio();
-      Options options = Options(
-        headers: {
-          'User-Agent': 'FML-App/$appVersion',
-        },
-      );
+      Options options = Options(headers: {'User-Agent': 'FML-App/$appVersion'});
       final response = await dio.get(
         'https://api.github.com/repos/lxdklp/FML/releases',
         options: options,
@@ -352,14 +367,14 @@ class MyHomePageState extends State<MyHomePage> {
       }
     } catch (e) {
       LogUtil.log('获取更新日志失败: $e', level: 'ERROR');
-      return ['','请前往 GitHub 查看更新日志'];
+      return ['', '请前往 GitHub 查看更新日志'];
     }
-    return ['','请前往 GitHub 查看更新日志'];
+    return ['', '请前往 GitHub 查看更新日志'];
   }
 
   // 显示更新对话框
-  Future<void> _showUpdateDialog(String latestVersion) async{
-    List<String>info = await _getUpdateInfo();
+  Future<void> _showUpdateDialog(String latestVersion) async {
+    List<String> info = await _getUpdateInfo();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -368,7 +383,7 @@ class MyHomePageState extends State<MyHomePage> {
           width: double.maxFinite,
           height: 300,
           child: SingleChildScrollView(
-              child: Markdown(
+            child: Markdown(
               data: info[1],
               selectable: true,
               shrinkWrap: true,
@@ -377,7 +392,7 @@ class MyHomePageState extends State<MyHomePage> {
                 if (href != null) _launchURL(href);
               },
             ),
-          )
+          ),
         ),
         actions: [
           TextButton(
@@ -427,9 +442,7 @@ class MyHomePageState extends State<MyHomePage> {
               ),
             ],
           ),
-          Expanded(
-            child: Center(child: _buildPage(_selectedIndex)),
-          ),
+          Expanded(child: Center(child: _buildPage(_selectedIndex))),
         ],
       ),
     );
@@ -445,18 +458,21 @@ class MyHomePageState extends State<MyHomePage> {
                 label: '关于',
                 onSelected: () => _showAboutDialog(context),
               ),
-              PlatformMenuItem(
-                label: '检查更新',
-                onSelected: () => _checkUpdate(),
-              ),
+              PlatformMenuItem(label: '检查更新', onSelected: () => _checkUpdate()),
               PlatformMenuItem(
                 label: '设置',
-                shortcut: const SingleActivator(LogicalKeyboardKey.comma, meta: true),
+                shortcut: const SingleActivator(
+                  LogicalKeyboardKey.comma,
+                  meta: true,
+                ),
                 onSelected: () => setState(() => _selectedIndex = 3),
               ),
               PlatformMenuItem(
                 label: '退出',
-                shortcut: const SingleActivator(LogicalKeyboardKey.keyQ, meta: true),
+                shortcut: const SingleActivator(
+                  LogicalKeyboardKey.keyQ,
+                  meta: true,
+                ),
                 onSelected: () => SystemNavigator.pop(),
               ),
             ],
@@ -467,22 +483,34 @@ class MyHomePageState extends State<MyHomePage> {
             menus: [
               PlatformMenuItem(
                 label: '启动',
-                shortcut: const SingleActivator(LogicalKeyboardKey.digit1, meta: true),
+                shortcut: const SingleActivator(
+                  LogicalKeyboardKey.digit1,
+                  meta: true,
+                ),
                 onSelected: () => setState(() => _selectedIndex = 0),
               ),
               PlatformMenuItem(
                 label: '联机',
-                shortcut: const SingleActivator(LogicalKeyboardKey.digit2, meta: true),
+                shortcut: const SingleActivator(
+                  LogicalKeyboardKey.digit2,
+                  meta: true,
+                ),
                 onSelected: () => setState(() => _selectedIndex = 1),
               ),
               PlatformMenuItem(
                 label: '下载',
-                shortcut: const SingleActivator(LogicalKeyboardKey.digit3, meta: true),
+                shortcut: const SingleActivator(
+                  LogicalKeyboardKey.digit3,
+                  meta: true,
+                ),
                 onSelected: () => setState(() => _selectedIndex = 2),
               ),
               PlatformMenuItem(
                 label: '设置',
-                shortcut: const SingleActivator(LogicalKeyboardKey.digit4, meta: true),
+                shortcut: const SingleActivator(
+                  LogicalKeyboardKey.digit4,
+                  meta: true,
+                ),
                 onSelected: () => setState(() => _selectedIndex = 3),
               ),
             ],

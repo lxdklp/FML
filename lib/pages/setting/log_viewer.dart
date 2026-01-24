@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fml/function/log.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/pages/setting/log_viewer/log_setting.dart';
 
 class LogViewerPage extends StatefulWidget {
@@ -58,9 +59,9 @@ class LogViewerPageState extends State<LogViewerPage> {
       await LogUtil.clearLogs();
       _loadLogs();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('日志已清除')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('日志已清除')));
       }
     }
   }
@@ -68,16 +69,18 @@ class LogViewerPageState extends State<LogViewerPage> {
   // 文件夹选择器
   Future<void> _selectDirectory() async {
     final path = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: '选择版本路径');
-      if (!mounted) return;
-      if (path == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('未选择任何路径')));
-        return;
-      }
-      setState(() {
-        _dirPath = path;
-      });
+      dialogTitle: '选择版本路径',
+    );
+    if (!mounted) return;
+    if (path == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('未选择任何路径')));
+      return;
+    }
+    setState(() {
+      _dirPath = path;
+    });
   }
 
   // 导出全部日志
@@ -92,9 +95,15 @@ class LogViewerPageState extends State<LogViewerPage> {
         await directory.create(recursive: true);
       }
       final logs = await LogUtil.getLogs();
-      final timestamp = DateTime.now().toString().replaceAll(':', '-').replaceAll(' ', '_').split('.')[0];
+      final timestamp = DateTime.now()
+          .toString()
+          .replaceAll(':', '-')
+          .replaceAll(' ', '_')
+          .split('.')[0];
       final logFileName = 'fml_$timestamp.log';
-      final logFile = File('${directory.path}${Platform.pathSeparator}$logFileName');
+      final logFile = File(
+        '${directory.path}${Platform.pathSeparator}$logFileName',
+      );
       final StringBuffer logContent = StringBuffer();
       logContent.writeln('===== FML 日志 =====');
       logContent.writeln('导出时间: ${DateTime.now()}');
@@ -105,21 +114,22 @@ class LogViewerPageState extends State<LogViewerPage> {
         final caller = log['caller'] as String;
         final message = log['message'] as String;
         final dateTime = DateTime.parse(timestamp);
-        final formattedTime = '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
+        final formattedTime =
+            '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
             '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}';
         logContent.writeln('[$formattedTime] [$level] [$caller] $message');
       }
       await logFile.writeAsString(logContent.toString());
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('日志已保存至: ${logFile.path}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('日志已保存至: ${logFile.path}')));
       LogUtil.log('日志已导出到: ${logFile.path}', level: 'INFO');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('日志保存失败: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('日志保存失败: $e')));
       LogUtil.log('日志导出失败: $e', level: 'ERROR');
     }
   }
@@ -146,7 +156,7 @@ class LogViewerPageState extends State<LogViewerPage> {
     }
   }
 
-// 获取日志级别对应的颜色
+  // 获取日志级别对应的颜色
   Color _getLevelColor(String level) {
     switch (level.toUpperCase()) {
       case 'ERROR':
@@ -183,7 +193,8 @@ class LogViewerPageState extends State<LogViewerPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => LogSettingPage()))
+            onPressed: () =>
+                Navigator.push(context, SlidePageRoute(page: LogSettingPage())),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -205,85 +216,72 @@ class LogViewerPageState extends State<LogViewerPage> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : logs.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.inbox,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        '暂无日志',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.inbox, size: 64, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
+                    Text(
+                      '暂无日志',
+                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : ListView.builder(
+              itemCount: logs.length,
+              itemBuilder: (context, index) {
+                final log = logs[index];
+                final timestamp = log['timestamp'] as String;
+                final level = log['level'] as String;
+                final caller = log['caller'] as String;
+                final message = log['message'] as String;
+                final dateTime = DateTime.parse(timestamp);
+                final formattedTime =
+                    '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
+                    '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}';
+                return Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
                   ),
-                )
-              )
-              : ListView.builder(
-                  itemCount: logs.length,
-                  itemBuilder: (context, index) {
-                    final log = logs[index];
-                    final timestamp = log['timestamp'] as String;
-                    final level = log['level'] as String;
-                    final caller = log['caller'] as String;
-                    final message = log['message'] as String;
-                    final dateTime = DateTime.parse(timestamp);
-                    final formattedTime =
-                        '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
-                        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}';
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
+                  child: ListTile(
+                    leading: Icon(
+                      _getLevelIcon(level),
+                      color: _getLevelColor(level),
+                    ),
+                    title: Text(message, style: const TextStyle(fontSize: 14)),
+                    subtitle: Text(
+                      '$caller\n$formattedTime',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 8,
                         vertical: 4,
                       ),
-                      child: ListTile(
-                        leading: Icon(
-                          _getLevelIcon(level),
+                      decoration: BoxDecoration(
+                        color: _getLevelColor(level).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        level,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                           color: _getLevelColor(level),
                         ),
-                        title: Text(
-                          message,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        subtitle: Text(
-                          '$caller\n$formattedTime',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getLevelColor(level).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            level,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: _getLevelColor(level),
-                            ),
-                          ),
-                        ),
-                        onLongPress: () => _copySingleLog(log),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                    onLongPress: () => _copySingleLog(log),
+                  ),
+                );
+              },
+            ),
     );
   }
 }

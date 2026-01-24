@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fml/function/log.dart';
@@ -60,9 +61,7 @@ class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
       });
       final response = await dio.get(
         'https://api.curseforge.com/v1/mods/${widget.modId}/files',
-        queryParameters: {
-          'pageSize': 50,
-        },
+        queryParameters: {'pageSize': 50},
         options: Options(
           headers: {
             'x-api-key': widget.apiKey,
@@ -80,15 +79,15 @@ class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
             for (var version in fileGameVersions) {
               final versionStr = version.toString();
               if (versionStr.contains('.') &&
-                !versionStr.contains('Forge') &&
-                !versionStr.contains('Fabric') &&
-                !versionStr.contains('NeoForge') &&
-                !versionStr.contains('Quilt')) {
+                  !versionStr.contains('Forge') &&
+                  !versionStr.contains('Fabric') &&
+                  !versionStr.contains('NeoForge') &&
+                  !versionStr.contains('Quilt')) {
                 gameVersions.add(versionStr);
               } else if (versionStr == 'Forge' ||
-                versionStr == 'Fabric' ||
-                versionStr == 'NeoForge' ||
-                versionStr == 'Quilt') {
+                  versionStr == 'Fabric' ||
+                  versionStr == 'NeoForge' ||
+                  versionStr == 'Quilt') {
                 loaders.add(versionStr);
               }
             }
@@ -121,9 +120,11 @@ class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
       _filteredFilesList = _filesList.where((file) {
         final fileGameVersions = file['gameVersions'] as List?;
         if (fileGameVersions == null) return false;
-        bool matchesVersion = _selectedGameVersion == null ||
+        bool matchesVersion =
+            _selectedGameVersion == null ||
             fileGameVersions.contains(_selectedGameVersion);
-        bool matchesLoader = _selectedLoader == null ||
+        bool matchesLoader =
+            _selectedLoader == null ||
             fileGameVersions.contains(_selectedLoader);
         return matchesVersion && matchesLoader;
       }).toList();
@@ -161,12 +162,10 @@ class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.modName ?? '模组文件'),
-      ),
+      appBar: AppBar(title: Text(widget.modName ?? '模组文件')),
       body: _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _error != null
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -190,7 +189,10 @@ class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('筛选', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          '筛选',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -204,8 +206,11 @@ class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
                                     value: null,
                                     child: Text('全部版本'),
                                   ),
-                                  ..._availableGameVersions.map((v) =>
-                                    DropdownMenuItem(value: v, child: Text(v))
+                                  ..._availableGameVersions.map(
+                                    (v) => DropdownMenuItem(
+                                      value: v,
+                                      child: Text(v),
+                                    ),
                                   ),
                                 ],
                                 onChanged: (value) {
@@ -227,8 +232,11 @@ class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
                                     value: null,
                                     child: Text('全部'),
                                   ),
-                                  ..._availableLoaders.map((l) =>
-                                    DropdownMenuItem(value: l, child: Text(l))
+                                  ..._availableLoaders.map(
+                                    (l) => DropdownMenuItem(
+                                      value: l,
+                                      child: Text(l),
+                                    ),
                                   ),
                                 ],
                                 onChanged: (value) {
@@ -254,29 +262,43 @@ class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
                       final isSelected = _selectedFile == file;
                       final releaseType = file['releaseType'] as int?;
                       return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                        color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 8.0,
+                          vertical: 4.0,
+                        ),
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : null,
                         child: ListTile(
                           leading: Icon(
                             Icons.insert_drive_file,
                             color: _getReleaseTypeColor(releaseType),
                           ),
-                          title: Text(file['displayName'] ?? file['fileName'] ?? '未知文件'),
+                          title: Text(
+                            file['displayName'] ?? file['fileName'] ?? '未知文件',
+                          ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('${_getReleaseTypeText(releaseType)} - ${file['fileName'] ?? ''}'),
+                              Text(
+                                '${_getReleaseTypeText(releaseType)} - ${file['fileName'] ?? ''}',
+                              ),
                               Wrap(
                                 spacing: 4,
                                 children: (file['gameVersions'] as List? ?? [])
                                     .take(5)
-                                    .map<Widget>((v) => Chip(
-                                          label: Text(v.toString()),
-                                          labelStyle: const TextStyle(fontSize: 10),
-                                          padding: EdgeInsets.zero,
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                          visualDensity: VisualDensity.compact,
-                                        ))
+                                    .map<Widget>(
+                                      (v) => Chip(
+                                        label: Text(v.toString()),
+                                        labelStyle: const TextStyle(
+                                          fontSize: 10,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    )
                                     .toList(),
                               ),
                             ],
@@ -300,10 +322,15 @@ class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('下载', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          '下载',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         if (_selectedFile != null)
-                          Text('已选择: ${_selectedFile!['displayName'] ?? _selectedFile!['fileName']}'),
+                          Text(
+                            '已选择: ${_selectedFile!['displayName'] ?? _selectedFile!['fileName']}',
+                          ),
                         const SizedBox(height: 8),
                         const SizedBox(height: 8),
                         SizedBox(
@@ -316,8 +343,8 @@ class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
                                 : () {
                                     Navigator.push(
                                       context,
-                                      MaterialPageRoute(
-                                        builder: (context) => CurseforgeDownloadInfoPage(
+                                      SlidePageRoute(
+                                        page: CurseforgeDownloadInfoPage(
                                           _selectedFile!,
                                           apiKey: widget.apiKey,
                                         ),

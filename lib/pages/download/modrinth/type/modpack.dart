@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 
 import 'package:fml/function/log.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/pages/download/modrinth/type/download_modpack/donwnload_info.dart';
 
 class ModpackPage extends StatefulWidget {
@@ -49,7 +50,8 @@ class ModpackPageState extends State<ModpackPage> {
         final versions = allVersions.where((version) {
           final versionLoaders = version['loaders'] as List?;
           if (versionLoaders == null) return false;
-          return versionLoaders.contains('neoforge') || versionLoaders.contains('fabric');
+          return versionLoaders.contains('neoforge') ||
+              versionLoaders.contains('fabric');
         }).toList();
         Set<String> gameVersions = {};
         for (var version in versions) {
@@ -67,10 +69,16 @@ class ModpackPageState extends State<ModpackPage> {
           isLoading = false;
           if (filteredVersionsList.isNotEmpty) {
             selectedVersion = filteredVersionsList[0];
-            LogUtil.log('获取到${versions.length}个版本，默认选择: ${selectedVersion!['version_number']}', level: 'INFO');
+            LogUtil.log(
+              '获取到${versions.length}个版本，默认选择: ${selectedVersion!['version_number']}',
+              level: 'INFO',
+            );
           }
           LogUtil.log('支持的加载器: neoforge, fabric', level: 'INFO');
-          LogUtil.log('支持的游戏版本: ${availableGameVersions.join(", ")}', level: 'INFO');
+          LogUtil.log(
+            '支持的游戏版本: ${availableGameVersions.join(", ")}',
+            level: 'INFO',
+          );
         });
       } else {
         setState(() {
@@ -101,7 +109,8 @@ class ModpackPageState extends State<ModpackPage> {
       if (selectedGameVersion != null) {
         filteredVersionsList = filteredVersionsList.where((version) {
           final gameVersions = version['game_versions'] as List?;
-          return gameVersions != null && gameVersions.contains(selectedGameVersion);
+          return gameVersions != null &&
+              gameVersions.contains(selectedGameVersion);
         }).toList();
       }
       if (filteredVersionsList.isNotEmpty) {
@@ -109,7 +118,10 @@ class ModpackPageState extends State<ModpackPage> {
       } else {
         selectedVersion = null;
       }
-      LogUtil.log('应用筛选 - 加载器: $selectedLoader, 游戏版本: $selectedGameVersion, 结果数量: ${filteredVersionsList.length}', level: 'INFO');
+      LogUtil.log(
+        '应用筛选 - 加载器: $selectedLoader, 游戏版本: $selectedGameVersion, 结果数量: ${filteredVersionsList.length}',
+        level: 'INFO',
+      );
     });
   }
 
@@ -144,12 +156,10 @@ class ModpackPageState extends State<ModpackPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.projectName ?? '整合包下载'),
-      ),
+      appBar: AppBar(title: Text(widget.projectName ?? '整合包下载')),
       body: isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : error != null
+          ? const Center(child: CircularProgressIndicator())
+          : error != null
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -164,8 +174,8 @@ class ModpackPageState extends State<ModpackPage> {
               ),
             )
           : versionsList.isEmpty
-            ? const Center(child: Text('没有可用的 NeoForge 或 Fabric 版本'))
-            : Column(
+          ? const Center(child: Text('没有可用的 NeoForge 或 Fabric 版本'))
+          : Column(
               children: [
                 // 筛选器
                 Card(
@@ -175,7 +185,10 @@ class ModpackPageState extends State<ModpackPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('筛选', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          '筛选',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -189,8 +202,11 @@ class ModpackPageState extends State<ModpackPage> {
                                     value: null,
                                     child: Text('全部版本'),
                                   ),
-                                  ...availableGameVersions.map((v) =>
-                                    DropdownMenuItem(value: v, child: Text(v))
+                                  ...availableGameVersions.map(
+                                    (v) => DropdownMenuItem(
+                                      value: v,
+                                      child: Text(v),
+                                    ),
                                   ),
                                 ],
                                 onChanged: (value) {
@@ -244,39 +260,60 @@ class ModpackPageState extends State<ModpackPage> {
                       final isSelected = selectedVersion == version;
                       final versionType = version['version_type'] as String?;
                       return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                        color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 8.0,
+                          vertical: 4.0,
+                        ),
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : null,
                         child: ListTile(
                           leading: Icon(
                             Icons.insert_drive_file,
                             color: _getVersionTypeColor(versionType),
                           ),
-                          title: Text(version['name'] ?? version['version_number'] ?? '未知文件'),
+                          title: Text(
+                            version['name'] ??
+                                version['version_number'] ??
+                                '未知文件',
+                          ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('${_getVersionTypeText(versionType)} - ${version['version_number'] ?? ''}'),
+                              Text(
+                                '${_getVersionTypeText(versionType)} - ${version['version_number'] ?? ''}',
+                              ),
                               Wrap(
                                 spacing: 4,
                                 children: [
                                   ...(version['loaders'] as List? ?? [])
                                       .take(3)
-                                      .map<Widget>((v) => Chip(
-                                            label: Text(v.toString()),
-                                            labelStyle: const TextStyle(fontSize: 10),
-                                            padding: EdgeInsets.zero,
-                                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                            visualDensity: VisualDensity.compact,
-                                          )),
+                                      .map<Widget>(
+                                        (v) => Chip(
+                                          label: Text(v.toString()),
+                                          labelStyle: const TextStyle(
+                                            fontSize: 10,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          materialTapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                      ),
                                   ...(version['game_versions'] as List? ?? [])
                                       .take(3)
-                                      .map<Widget>((v) => Chip(
-                                            label: Text(v.toString()),
-                                            labelStyle: const TextStyle(fontSize: 10),
-                                            padding: EdgeInsets.zero,
-                                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                            visualDensity: VisualDensity.compact,
-                                          )),
+                                      .map<Widget>(
+                                        (v) => Chip(
+                                          label: Text(v.toString()),
+                                          labelStyle: const TextStyle(
+                                            fontSize: 10,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          materialTapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                      ),
                                 ],
                               ),
                             ],
@@ -300,10 +337,15 @@ class ModpackPageState extends State<ModpackPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('下载', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          '下载',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         if (selectedVersion != null)
-                          Text('已选择: ${selectedVersion!['name'] ?? selectedVersion!['version_number']}'),
+                          Text(
+                            '已选择: ${selectedVersion!['name'] ?? selectedVersion!['version_number']}',
+                          ),
                         const SizedBox(height: 8),
                         SizedBox(
                           width: double.infinity,
@@ -312,8 +354,8 @@ class ModpackPageState extends State<ModpackPage> {
                                 ? () {
                                     Navigator.push(
                                       context,
-                                      MaterialPageRoute(
-                                        builder: (context) => DownloadInfo(selectedVersion!),
+                                      SlidePageRoute(
+                                        page: DownloadInfo(selectedVersion!),
                                       ),
                                     );
                                   }
