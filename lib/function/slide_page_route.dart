@@ -15,7 +15,7 @@ class SlidePageRoute extends PageRouteBuilder {
   ///
   SlidePageRoute({
     required this.page,
-    this.duration = const Duration(milliseconds: 3000),
+    this.duration = const Duration(milliseconds: 300),
   }) : super(
          //传入动画时间
          transitionDuration: duration,
