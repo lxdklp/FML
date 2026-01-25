@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide LicensePage;
+import 'package:fml/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -10,7 +11,6 @@ class AboutPage extends StatefulWidget {
 }
 
 class AboutPageState extends State<AboutPage> {
-
   String _appVersion = "unknown";
 
   Future<void> _loadAppVersion() async {
@@ -27,14 +27,14 @@ class AboutPageState extends State<AboutPage> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法打开链接: $url')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('发生错误: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
     }
   }
 
@@ -47,9 +47,7 @@ class AboutPageState extends State<AboutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('关于'),
-      ),
+      appBar: AppBar(title: const Text('关于')),
       body: ListView(
         children: [
           Card(
@@ -87,7 +85,7 @@ class AboutPageState extends State<AboutPage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Flutter Minecraft Launcher Version $_appVersion',
+                      '$kAppName Version $_appVersion',
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
@@ -135,14 +133,14 @@ class AboutPageState extends State<AboutPage> {
             ),
           ),
           Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: ListTile(
-                title: Text('许可'),
-                subtitle: Text('感谢各位依赖库的贡献者'),
-                trailing: const Icon(Icons.open_in_new),
-                onTap: () => showLicensePage(context: context)
-              ),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ListTile(
+              title: Text('许可'),
+              subtitle: Text('感谢各位依赖库的贡献者'),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => showLicensePage(context: context),
             ),
+          ),
           Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Column(
@@ -153,7 +151,9 @@ class AboutPageState extends State<AboutPage> {
                 ),
                 ListTile(
                   title: const Text('bangbang93'),
-                  subtitle: const Text('下载源 BMCLAPI 维护者\nhttps://bmclapidoc.bangbang93.com'),
+                  subtitle: const Text(
+                    '下载源 BMCLAPI 维护者\nhttps://bmclapidoc.bangbang93.com',
+                  ),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () => _launchURL('https://bmclapidoc.bangbang93.com'),
                 ),
@@ -177,46 +177,71 @@ class AboutPageState extends State<AboutPage> {
                 ),
                 ListTile(
                   title: const Text('Sawaratsuki'),
-                  subtitle: const Text('Flutter LOGO 绘制\nhttps://github.com/SAWARATSUKI/KawaiiLogos'),
+                  subtitle: const Text(
+                    'Flutter LOGO 绘制\nhttps://github.com/SAWARATSUKI/KawaiiLogos',
+                  ),
                   trailing: const Icon(Icons.open_in_new),
-                  onTap: () => _launchURL('https://github.com/SAWARATSUKI/KawaiiLogos'),
+                  onTap: () =>
+                      _launchURL('https://github.com/SAWARATSUKI/KawaiiLogos'),
                 ),
                 ListTile(
                   title: const Text('Noto CJK fonts'),
-                  subtitle: const Text('软件字体\nhttps://github.com/notofonts/noto-cjk'),
+                  subtitle: const Text(
+                    '软件字体\nhttps://github.com/notofonts/noto-cjk',
+                  ),
                   trailing: const Icon(Icons.open_in_new),
-                  onTap: () => _launchURL('https://github.com/notofonts/noto-cjk'),
+                  onTap: () =>
+                      _launchURL('https://github.com/notofonts/noto-cjk'),
                 ),
                 ListTile(
                   title: const Text('GNU General Public License Version 3'),
-                  subtitle: const Text('开源协议\nhttps://www.gnu.org/licenses/gpl-3.0.html'),
+                  subtitle: const Text(
+                    '开源协议\nhttps://www.gnu.org/licenses/gpl-3.0.html',
+                  ),
                   trailing: const Icon(Icons.open_in_new),
-                  onTap: () => _launchURL('https://www.gnu.org/licenses/gpl-3.0.html'),
+                  onTap: () =>
+                      _launchURL('https://www.gnu.org/licenses/gpl-3.0.html'),
                 ),
                 ListTile(
                   title: const Text('authlib-injector'),
-                  subtitle: const Text('外置登录\nhttps://github.com/yushijinhun/authlib-injector'),
+                  subtitle: const Text(
+                    '外置登录\nhttps://github.com/yushijinhun/authlib-injector',
+                  ),
                   trailing: const Icon(Icons.open_in_new),
-                  onTap: () => _launchURL('https://github.com/yushijinhun/authlib-injector'),
+                  onTap: () => _launchURL(
+                    'https://github.com/yushijinhun/authlib-injector',
+                  ),
                 ),
                 ListTile(
                   title: const Text('EasyTier'),
                   subtitle: const Text('异地组网\nhttps://easytier.cn/'),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () => _launchURL('https://easytier.cn/'),
-                ),ListTile(
+                ),
+                ListTile(
                   title: const Text('Scaffolding-MC'),
-                  subtitle: const Text('联机协议\nhttps://github.com/Scaffolding-MC/Scaffolding-MC'),
+                  subtitle: const Text(
+                    '联机协议\nhttps://github.com/Scaffolding-MC/Scaffolding-MC',
+                  ),
                   trailing: const Icon(Icons.open_in_new),
-                  onTap: () => _launchURL('https://github.com/Scaffolding-MC/Scaffolding-MC'),
-                ),ListTile(
+                  onTap: () => _launchURL(
+                    'https://github.com/Scaffolding-MC/Scaffolding-MC',
+                  ),
+                ),
+                ListTile(
                   title: const Text('Terracotta'),
-                  subtitle: const Text('联机实现参考\nhttps://github.com/burningtnt/Terracotta'),
+                  subtitle: const Text(
+                    '联机实现参考\nhttps://github.com/burningtnt/Terracotta',
+                  ),
                   trailing: const Icon(Icons.open_in_new),
-                  onTap: () => _launchURL('https://github.com/burningtnt/Terracotta'),
-                ),ListTile(
+                  onTap: () =>
+                      _launchURL('https://github.com/burningtnt/Terracotta'),
+                ),
+                ListTile(
                   title: const Text('HMCL'),
-                  subtitle: const Text('部分功能实现参考\nhttps://github.com/HMCL-dev/HMCL'),
+                  subtitle: const Text(
+                    '部分功能实现参考\nhttps://github.com/HMCL-dev/HMCL',
+                  ),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () => _launchURL('https://github.com/HMCL-dev/HMCL'),
                 ),

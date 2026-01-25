@@ -17,9 +17,9 @@ class ThemePageState extends State<ThemePage> {
   @override
   void initState() {
     super.initState();
-    _isDarkMode = MyApp.of(context).themeMode == ThemeMode.dark;
-    _followSystem = MyApp.of(context).themeMode == ThemeMode.system;
-    _themeColor = MyApp.of(context).themeColor;
+    _isDarkMode = FMLBaseApp.of(context).themeMode == ThemeMode.dark;
+    _followSystem = FMLBaseApp.of(context).themeMode == ThemeMode.system;
+    _themeColor = FMLBaseApp.of(context).themeColor;
   }
 
   Future<void> _selectColor() async {
@@ -33,7 +33,7 @@ class ThemePageState extends State<ThemePage> {
             onColorChanged: (Color color) {
               setState(() {
                 _themeColor = color;
-                MyApp.of(context).changeThemeColor(_themeColor);
+                FMLBaseApp.of(context).changeThemeColor(_themeColor);
               });
             },
           ),
@@ -53,9 +53,7 @@ class ThemePageState extends State<ThemePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('主题设置'),
-      ),
+      appBar: AppBar(title: const Text('主题设置')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -69,7 +67,11 @@ class ThemePageState extends State<ThemePage> {
                 onChanged: (bool value) {
                   setState(() {
                     _followSystem = value;
-                    MyApp.of(context).changeTheme(_followSystem ? ThemeMode.system : (_isDarkMode ? ThemeMode.dark : ThemeMode.light));
+                    FMLBaseApp.of(context).changeTheme(
+                      _followSystem
+                          ? ThemeMode.system
+                          : (_isDarkMode ? ThemeMode.dark : ThemeMode.light),
+                    );
                   });
                 },
               ),
@@ -84,7 +86,9 @@ class ThemePageState extends State<ThemePage> {
                   onChanged: (bool value) {
                     setState(() {
                       _isDarkMode = value;
-                      MyApp.of(context).changeTheme(_isDarkMode ? ThemeMode.dark : ThemeMode.light);
+                      FMLBaseApp.of(context).changeTheme(
+                        _isDarkMode ? ThemeMode.dark : ThemeMode.light,
+                      );
                     });
                   },
                 ),
@@ -94,11 +98,7 @@ class ThemePageState extends State<ThemePage> {
               child: ListTile(
                 title: const Text('主题色'),
                 leading: const Icon(Icons.color_lens),
-                trailing: Container(
-                  width: 24,
-                  height: 24,
-                  color: _themeColor,
-                ),
+                trailing: Container(width: 24, height: 24, color: _themeColor),
                 onTap: _selectColor,
               ),
             ),

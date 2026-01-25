@@ -1,20 +1,29 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fml/function/slide_page_route.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:dio/dio.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 
+import 'package:fml/constants.dart';
 import 'package:fml/function/log.dart';
+import 'package:fml/function/slide_page_route.dart';
+import 'package:fml/pages/download.dart';
 import 'package:fml/pages/home.dart';
 import 'package:fml/pages/online.dart';
-import 'package:fml/pages/download.dart';
-import 'package:fml/pages/setting.dart';
 import 'package:fml/pages/online/owner.dart';
+import 'package:fml/pages/setting.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initVersionInfo();
+  await initLogs();
+  runApp(const FMLBaseApp());
+}
 
 // 软件版本
 late String appVersion;
@@ -48,30 +57,19 @@ Future<void> initLogs() async {
   }
 }
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await initVersionInfo();
-  await initLogs();
-  runApp(const MyApp());
-}
+class FMLBaseApp extends StatefulWidget {
+  const FMLBaseApp({super.key});
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
-
-  static MyAppState of(BuildContext context) =>
-      context.findAncestorStateOfType<MyAppState>()!;
+  static FMLBaseAppState of(BuildContext context) =>
+      context.findAncestorStateOfType<FMLBaseAppState>()!;
 
   @override
-  MyAppState createState() => MyAppState();
+  FMLBaseAppState createState() => FMLBaseAppState();
 }
 
-class MyAppState extends State<MyApp> {
+class FMLBaseAppState extends State<FMLBaseApp> {
   ThemeMode _themeMode = ThemeMode.system;
   Color _themeColor = Colors.blue;
-  static const double bodyWght = 520; // 正文
-  static const double labelWght = 520; // 标签/按钮
-  static const double titleWght = 700; // 标题
-  static const double headlineWght = 850; // 更大标题
 
   ThemeMode get themeMode => _themeMode;
   Color get themeColor => _themeColor;
@@ -150,21 +148,21 @@ class MyAppState extends State<MyApp> {
       fontVariations: [FontVariation('wght', w)],
     );
     return base.copyWith(
-      bodySmall: setW(base.bodySmall, bodyWght),
-      bodyMedium: setW(base.bodyMedium, bodyWght),
-      bodyLarge: setW(base.bodyLarge, bodyWght),
-      labelSmall: setW(base.labelSmall, labelWght),
-      labelMedium: setW(base.labelMedium, labelWght),
-      labelLarge: setW(base.labelLarge, labelWght),
-      titleSmall: setW(base.titleSmall, titleWght),
-      titleMedium: setW(base.titleMedium, titleWght),
-      titleLarge: setW(base.titleLarge, titleWght),
-      headlineSmall: setW(base.headlineSmall, headlineWght),
-      headlineMedium: setW(base.headlineMedium, headlineWght),
-      headlineLarge: setW(base.headlineLarge, headlineWght),
-      displaySmall: setW(base.displaySmall, headlineWght),
-      displayMedium: setW(base.displayMedium, headlineWght),
-      displayLarge: setW(base.displayLarge, headlineWght),
+      bodySmall: setW(base.bodySmall, AppFontWeights.bodyWght),
+      bodyMedium: setW(base.bodyMedium, AppFontWeights.bodyWght),
+      bodyLarge: setW(base.bodyLarge, AppFontWeights.bodyWght),
+      labelSmall: setW(base.labelSmall, AppFontWeights.labelWght),
+      labelMedium: setW(base.labelMedium, AppFontWeights.labelWght),
+      labelLarge: setW(base.labelLarge, AppFontWeights.labelWght),
+      titleSmall: setW(base.titleSmall, AppFontWeights.titleWght),
+      titleMedium: setW(base.titleMedium, AppFontWeights.titleWght),
+      titleLarge: setW(base.titleLarge, AppFontWeights.titleWght),
+      headlineSmall: setW(base.headlineSmall, AppFontWeights.headlineWght),
+      headlineMedium: setW(base.headlineMedium, AppFontWeights.headlineWght),
+      headlineLarge: setW(base.headlineLarge, AppFontWeights.headlineWght),
+      displaySmall: setW(base.displaySmall, AppFontWeights.headlineWght),
+      displayMedium: setW(base.displayMedium, AppFontWeights.headlineWght),
+      displayLarge: setW(base.displayLarge, AppFontWeights.headlineWght),
     );
   }
 
@@ -199,7 +197,7 @@ class MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Minecraft Launcher',
+      title: kAppName,
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: _themeMode,
@@ -287,9 +285,7 @@ class MyHomePageState extends State<MyHomePage> {
           content: const Text('未检测到 Java 环境或者 Java 环境未正确配置，请先安装 Java 后再打开启动器'),
           actions: [
             TextButton(
-              onPressed: () => _launchURL(
-                'https://www.oracle.com/cn/java/technologies/downloads/',
-              ),
+              onPressed: () => _launchURL(AppUrls.javaDownload),
               child: const Text('打开Java下载页面'),
             ),
           ],
@@ -325,14 +321,12 @@ class MyHomePageState extends State<MyHomePage> {
       final dio = Dio();
       if (kDebugMode) {
         dio.options.headers['User-Agent'] =
-            'FML/${Platform.operatingSystem}/$appVersion debug';
+            '$kAppNameAbb/${Platform.operatingSystem}/$appVersion debug';
       } else {
         dio.options.headers['User-Agent'] =
-            'FML/${Platform.operatingSystem}/$appVersion';
+            '$kAppNameAbb/${Platform.operatingSystem}/$appVersion';
       }
-      final response = await dio.get(
-        'https://api.lxdklp.top/v1/fml/get_version',
-      );
+      final response = await dio.get(AppUrls.latestVersionApi);
       LogUtil.log('status: ${response.statusCode}', level: 'INFO');
       LogUtil.log('data: ${response.data}', level: 'INFO');
       if (response.statusCode == 200) {
@@ -356,9 +350,11 @@ class MyHomePageState extends State<MyHomePage> {
   Future<List<String>> _getUpdateInfo() async {
     try {
       Dio dio = Dio();
-      Options options = Options(headers: {'User-Agent': 'FML-App/$appVersion'});
+      Options options = Options(
+        headers: {'User-Agent': '$kAppNameAbb-App/$appVersion'},
+      );
       final response = await dio.get(
-        'https://api.github.com/repos/lxdklp/FML/releases',
+        AppUrls.githubReleasesApi,
         options: options,
       );
       if (response.statusCode == 200) {
@@ -397,7 +393,7 @@ class MyHomePageState extends State<MyHomePage> {
         actions: [
           TextButton(
             onPressed: () async {
-              _launchURL('https://github.com/lxdklp/FML/releases/latest');
+              _launchURL(AppUrls.githubLatestRelease);
             },
             child: const Text('前往Gtihub下载'),
           ),
@@ -414,7 +410,7 @@ class MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     // 主界面内容
     Widget mainContent = Scaffold(
-      appBar: AppBar(title: const Text('Flutter Minecraft Launcher')),
+      appBar: AppBar(title: const Text(kAppName)),
       body: Row(
         children: [
           NavigationRail(
@@ -452,7 +448,7 @@ class MyHomePageState extends State<MyHomePage> {
         menus: [
           // FML 菜单
           PlatformMenu(
-            label: 'Flutter Minecraft Launcher',
+            label: kAppName,
             menus: [
               PlatformMenuItem(
                 label: '关于',
@@ -521,7 +517,7 @@ class MyHomePageState extends State<MyHomePage> {
             menus: [
               PlatformMenuItem(
                 label: '访问 GitHub',
-                onSelected: () => _launchURL('https://github.com/lxdklp/FML'),
+                onSelected: () => _launchURL(AppUrls.githubProject),
               ),
             ],
           ),
