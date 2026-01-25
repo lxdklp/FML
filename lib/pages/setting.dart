@@ -26,7 +26,10 @@ class SettingPageState extends State<SettingPage> {
                 title: Text('\n 主题设置 \n'),
                 leading: Icon(Icons.imagesearch_roller),
                 onTap: () {
-                  Navigator.push(context, SlidePageRoute(page: ThemePage()));
+                  Navigator.push(
+                    context,
+                    SlidePageRoute(page: const ThemePage()),
+                  );
                 },
               ),
             ),
@@ -36,7 +39,10 @@ class SettingPageState extends State<SettingPage> {
                 title: Text('\n Java 管理 \n'),
                 leading: Icon(Icons.code),
                 onTap: () {
-                  Navigator.push(context, SlidePageRoute(page: JavaPage()));
+                  Navigator.push(
+                    context,
+                    SlidePageRoute(page: const JavaPage()),
+                  );
                 },
               ),
             ),
@@ -48,7 +54,7 @@ class SettingPageState extends State<SettingPage> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    SlidePageRoute(page: LogViewerPage()),
+                    SlidePageRoute(page: const LogViewerPage()),
                   );
                 },
               ),
@@ -59,7 +65,10 @@ class SettingPageState extends State<SettingPage> {
                 title: Text('\n 关于 \n'),
                 leading: Icon(Icons.info),
                 onTap: () {
-                  Navigator.push(context, SlidePageRoute(page: AboutPage()));
+                  Navigator.push(
+                    context,
+                    SlidePageRoute(page: const AboutPage()),
+                  );
                 },
               ),
             ),
