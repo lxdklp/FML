@@ -194,7 +194,7 @@ class LogViewerPageState extends State<LogViewerPage> {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () =>
-                Navigator.push(context, SlidePageRoute(page: LogSettingPage())),
+                Navigator.push(context, SlidePageRoute(page: const LogSettingPage())),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
