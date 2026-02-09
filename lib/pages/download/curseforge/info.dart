@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:share_plus/share_plus.dart';
 
@@ -29,11 +29,9 @@ class CurseforgeInfoPage extends StatefulWidget {
 }
 
 class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
-  final Dio dio = Dio();
   bool isLoading = true;
   Map<String, dynamic> projectDetails = {};
   String? error;
-  String _appVersion = '';
   String _description = '';
 
   // 项目类型映射
@@ -63,29 +61,19 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
 
   // 读取App版本
   Future<void> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "UnknownVersion";
-    setState(() {
-      _appVersion = version;
-    });
     _fetchProjectDetails();
   }
 
   // 获取请求选项
   Options _getRequestOptions() {
-    return Options(
-      headers: {
-        'x-api-key': widget.apiKey,
-        'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-      },
-    );
+    return Options(headers: {'x-api-key': widget.apiKey});
   }
 
   // 获取模组详情
   Future<void> _fetchProjectDetails() async {
     try {
       LogUtil.log('正在获取CurseForge项目详情: ${widget.modId}', level: 'INFO');
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.curseforge.com/v1/mods/${widget.modId}',
         options: _getRequestOptions(),
       );
@@ -115,7 +103,7 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
   Future<void> _fetchDescription() async {
     try {
       LogUtil.log('正在获取CurseForge项目描述: ${widget.modId}', level: 'INFO');
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.curseforge.com/v1/mods/${widget.modId}/description',
         options: _getRequestOptions(),
       );

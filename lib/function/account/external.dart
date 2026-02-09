@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:fml/function/log.dart';
@@ -42,10 +43,7 @@ class Profile {
   Profile({required this.id, required this.name});
 
   factory Profile.fromJson(Map<String, dynamic> json) {
-    return Profile(
-      id: json['id'],
-      name: json['name'],
-    );
+    return Profile(id: json['id'], name: json['name']);
   }
 }
 
@@ -55,27 +53,22 @@ class User {
   User({required this.id});
 
   factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'],
-    );
+    return User(id: json['id']);
   }
 }
 
 // 向外置登录服务器发送认证请求
-Future<AuthResponse> authenticate(String serverUrl, String username, String password) async {
-  final dio = Dio();
-  // 获取应用版本号
-  final prefs = await SharedPreferences.getInstance();
-  final appVersion = prefs.getString('version') ?? 'unknown';
+Future<AuthResponse> authenticate(
+  String serverUrl,
+  String username,
+  String password,
+) async {
   try {
     LogUtil.log('开始认证外置登录: $serverUrl, 用户名: $username', level: 'INFO');
-    final response = await dio.post(
+    final response = await DioClient().dio.post(
       '$serverUrl/authserver/authenticate',
       options: Options(
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'User-Agent': 'FML/$appVersion'
-        },
+        headers: {'Content-Type': 'application/json; charset=utf-8'},
         validateStatus: (status) {
           return status! < 500;
         },
@@ -84,10 +77,7 @@ Future<AuthResponse> authenticate(String serverUrl, String username, String pass
         'username': username,
         'password': password,
         'requestUser': true,
-        'agent': {
-          'name': 'Minecraft',
-          'version': 1
-        }
+        'agent': {'name': 'Minecraft', 'version': 1},
       },
     );
 
@@ -100,7 +90,10 @@ Future<AuthResponse> authenticate(String serverUrl, String username, String pass
         Map<String, dynamic> errorData = response.data as Map<String, dynamic>;
         String errorType = errorData['error'] ?? '未知错误类型';
         String errorDetail = errorData['errorMessage'] ?? '';
-        LogUtil.log('外置登录认证失败: 错误类型: $errorType, 错误信息: $errorDetail', level: 'ERROR');
+        LogUtil.log(
+          '外置登录认证失败: 错误类型: $errorType, 错误信息: $errorDetail',
+          level: 'ERROR',
+        );
         if (errorType == 'ForbiddenOperationException' &&
             errorDetail.contains('用户名或密码错误')) {
           errorMessage = '用户名或密码错误，请检查后重试';
@@ -108,7 +101,10 @@ Future<AuthResponse> authenticate(String serverUrl, String username, String pass
           errorMessage = '$errorType: $errorDetail';
         }
       } else {
-        LogUtil.log('外置登录认证失败: 状态码: ${response.statusCode}, 响应: ${response.data}', level: 'ERROR');
+        LogUtil.log(
+          '外置登录认证失败: 状态码: ${response.statusCode}, 响应: ${response.data}',
+          level: 'ERROR',
+        );
         errorMessage = '认证失败，状态码: ${response.statusCode}';
       }
       throw Exception(errorMessage);
@@ -118,7 +114,8 @@ Future<AuthResponse> authenticate(String serverUrl, String username, String pass
     if (e.response != null) {
       try {
         if (e.response!.data is Map) {
-          Map<String, dynamic> errorData = e.response!.data as Map<String, dynamic>;
+          Map<String, dynamic> errorData =
+              e.response!.data as Map<String, dynamic>;
           String errorType = errorData['error'] ?? '未知错误类型';
           String errorDetail = errorData['errorMessage'] ?? '';
           LogUtil.log('外置登录Dio异常: $errorType - $errorDetail', level: 'ERROR');
@@ -130,7 +127,10 @@ Future<AuthResponse> authenticate(String serverUrl, String username, String pass
           }
         } else {
           errorMessage = '请求失败: ${e.response?.statusMessage}';
-          LogUtil.log('外置登录请求异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}', level: 'ERROR');
+          LogUtil.log(
+            '外置登录请求异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}',
+            level: 'ERROR',
+          );
         }
       } catch (_) {
         errorMessage = '解析错误响应失败: ${e.message}';
@@ -158,14 +158,14 @@ Future<AuthResponse> authenticate(String serverUrl, String username, String pass
 
 // 保存单个外置登录账户信息
 Future<void> _saveAccount(
-    String name,
-    String uuid,
-    String serverUrl,
-    String username,
-    String password,
-    String accessToken,
-    String clientToken
-    ) async {
+  String name,
+  String uuid,
+  String serverUrl,
+  String username,
+  String password,
+  String accessToken,
+  String clientToken,
+) async {
   final prefs = await SharedPreferences.getInstance();
   List<String> accounts = prefs.getStringList('AccountsList') ?? [];
   if (!accounts.contains(name)) {
@@ -192,38 +192,57 @@ Future<void> _saveAccount(
 
 // 保存外置登录账户信息（多账号情况）
 Future<void> saveAuthLibInjectorAccount(
-    BuildContext context, String serverUrl, String username, String password) async {
+  BuildContext context,
+  String serverUrl,
+  String username,
+  String password,
+) async {
   try {
     // 验证输入
     if (serverUrl.isEmpty || username.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请填写完整的外置登录信息')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请填写完整的外置登录信息')));
       return;
     }
     String formattedUrl = serverUrl.endsWith('/')
         ? serverUrl.substring(0, serverUrl.length - 1)
         : serverUrl;
-    AuthResponse authResponse = await authenticate(formattedUrl, username, password);
+    AuthResponse authResponse = await authenticate(
+      formattedUrl,
+      username,
+      password,
+    );
     if (authResponse.availableProfiles.isEmpty) {
       LogUtil.log('没有可用的游戏账号', level: 'WARN');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('没有可用的游戏账号')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('没有可用的游戏账号')));
       return;
     }
     if (authResponse.selectedProfile != null) {
       String name = authResponse.selectedProfile!.name;
       String uuid = authResponse.selectedProfile!.id;
-      await _saveAccount(name, uuid, serverUrl, username, password, authResponse.accessToken, authResponse.clientToken);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已添加外置登录账号: $name')),
+      await _saveAccount(
+        name,
+        uuid,
+        serverUrl,
+        username,
+        password,
+        authResponse.accessToken,
+        authResponse.clientToken,
       );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已添加外置登录账号: $name')));
       Navigator.pop(context);
       return;
     }
     if (authResponse.availableProfiles.length > 1) {
-      LogUtil.log('发现多个可用账号，数量: ${authResponse.availableProfiles.length}', level: 'INFO');
+      LogUtil.log(
+        '发现多个可用账号，数量: ${authResponse.availableProfiles.length}',
+        level: 'INFO',
+      );
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -246,18 +265,22 @@ Future<void> saveAuthLibInjectorAccount(
                           username,
                           password,
                           authResponse.accessToken,
-                          authResponse.clientToken
+                          authResponse.clientToken,
                         );
                       }
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('已添加${authResponse.availableProfiles.length}个外置登录账号')),
+                        SnackBar(
+                          content: Text(
+                            '已添加${authResponse.availableProfiles.length}个外置登录账号',
+                          ),
+                        ),
                       );
                       Navigator.pop(context);
                     },
                   ),
                   const Divider(),
-                  ...authResponse.availableProfiles.map((profile) =>
-                    ListTile(
+                  ...authResponse.availableProfiles.map(
+                    (profile) => ListTile(
                       title: Text(profile.name),
                       subtitle: Text('UUID: ${profile.id}'),
                       onTap: () async {
@@ -268,16 +291,16 @@ Future<void> saveAuthLibInjectorAccount(
                           serverUrl,
                           username,
                           password,
-                          authResponse.accessToken
-                          , authResponse.clientToken
+                          authResponse.accessToken,
+                          authResponse.clientToken,
                         );
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('已添加外置登录账号: ${profile.name}')),
                         );
                         Navigator.pop(context);
                       },
-                    )
-                  )
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -292,12 +315,12 @@ Future<void> saveAuthLibInjectorAccount(
         serverUrl,
         username,
         password,
-        authResponse.accessToken
-        , authResponse.clientToken
+        authResponse.accessToken,
+        authResponse.clientToken,
       );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已添加外置登录账号: ${profile.name}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已添加外置登录账号: ${profile.name}')));
       Navigator.pop(context);
     }
   } catch (e) {

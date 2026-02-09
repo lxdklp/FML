@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:path/path.dart' as path;
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,11 +22,12 @@ class CurseforgeResourcepackPage extends StatefulWidget {
   final String apiKey;
 
   @override
-  CurseforgeResourcepackPageState createState() => CurseforgeResourcepackPageState();
+  CurseforgeResourcepackPageState createState() =>
+      CurseforgeResourcepackPageState();
 }
 
-class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> {
-  final Dio dio = Dio();
+class CurseforgeResourcepackPageState
+    extends State<CurseforgeResourcepackPage> {
   bool _isLoading = true;
   String? _error;
   List<dynamic> _filesList = [];
@@ -34,23 +36,12 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
   Set<String> _availableGameVersions = {};
   String? _selectedGameVersion;
   String _savePath = '';
-  String _appVersion = '';
   bool _customLocation = false;
 
   @override
   void initState() {
     super.initState();
     LogUtil.log('加载CurseForge资源包ID: ${widget.modId}', level: 'INFO');
-    _loadAppVersion();
-  }
-
-  // 读取应用版本
-  Future<void> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "UnknownVersion";
-    setState(() {
-      _appVersion = version;
-    });
     _fetchFiles();
   }
 
@@ -61,17 +52,10 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
         _isLoading = true;
         _error = null;
       });
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.curseforge.com/v1/mods/${widget.modId}/files',
-        queryParameters: {
-          'pageSize': 50,
-        },
-        options: Options(
-          headers: {
-            'x-api-key': widget.apiKey,
-            'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-          },
-        ),
+        queryParameters: {'pageSize': 50},
+        options: Options(headers: {'x-api-key': widget.apiKey}),
       );
       if (response.statusCode == 200) {
         final allFiles = response.data['data'] as List;
@@ -134,7 +118,8 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
     final prefs = await SharedPreferences.getInstance();
     final path = prefs.getString('Path_${prefs.getString('SelectedPath')}');
     final game = prefs.getString('SelectedGame');
-    _savePath = '$path${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}resourcepacks';
+    _savePath =
+        '$path${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}resourcepacks';
     return _savePath;
   }
 
@@ -152,17 +137,17 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
   // 下载文件
   Future<void> _downloadFile() async {
     if (_selectedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择一个文件')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先选择一个文件')));
       return;
     }
     if (_savePath.isEmpty) {
       _savePath = await _getCurrentVersionDirectory(_selectedFile!['fileName']);
       if (_savePath.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('未选择版本目录')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('未选择版本目录')));
         return;
       }
     }
@@ -217,36 +202,39 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
                               const SizedBox(height: 8),
                               Text('${(progress * 100).toStringAsFixed(1)}%'),
                               const SizedBox(height: 8),
-                              Text('保存到: $savePath', style: const TextStyle(fontSize: 12)),
+                              Text(
+                                '保存到: $savePath',
+                                style: const TextStyle(fontSize: 12),
+                              ),
                             ],
                           ),
                         if (!isDownloading && errorMessage == null)
                           const Text('下载完成！'),
                       ],
                     );
-                  }
+                  },
                 );
-              }
+              },
             );
-          }
+          },
         ),
         actions: [
           ValueListenableBuilder(
             valueListenable: isDownloadingNotifier,
             builder: (context, isDownloading, _) {
               return isDownloading
-                ? TextButton(
-                    onPressed: () {
-                      cancelToken?.cancel();
-                      Navigator.of(dialogContext).pop();
-                    },
-                    child: const Text('取消'),
-                  )
-                : TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('关闭'),
-                  );
-            }
+                  ? TextButton(
+                      onPressed: () {
+                        cancelToken?.cancel();
+                        Navigator.of(dialogContext).pop();
+                      },
+                      child: const Text('取消'),
+                    )
+                  : TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: const Text('关闭'),
+                    );
+            },
           ),
         ],
       ),
@@ -277,9 +265,9 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
         },
         onCancel: () {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('下载已取消')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('下载已取消')));
             LogUtil.log('下载已取消', level: 'INFO');
           }
         },
@@ -287,9 +275,9 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
     } catch (e) {
       errorMessageNotifier.value = '启动下载失败: $e';
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('启动下载失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('启动下载失败: $e')));
         LogUtil.log('启动下载失败: $e', level: 'ERROR');
       }
     }
@@ -326,12 +314,10 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.modName ?? '资源包文件'),
-      ),
+      appBar: AppBar(title: Text(widget.modName ?? '资源包文件')),
       body: _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _error != null
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -354,7 +340,10 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('筛选', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          '筛选',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         DropdownButton<String>(
                           isExpanded: true,
@@ -365,8 +354,8 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
                               value: null,
                               child: Text('全部版本'),
                             ),
-                            ..._availableGameVersions.map((v) =>
-                              DropdownMenuItem(value: v, child: Text(v))
+                            ..._availableGameVersions.map(
+                              (v) => DropdownMenuItem(value: v, child: Text(v)),
                             ),
                           ],
                           onChanged: (value) {
@@ -388,36 +377,53 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
                       final isSelected = _selectedFile == file;
                       final releaseType = file['releaseType'] as int?;
                       return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                        color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 8.0,
+                          vertical: 4.0,
+                        ),
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : null,
                         child: ListTile(
                           leading: Icon(
                             Icons.insert_drive_file,
                             color: _getReleaseTypeColor(releaseType),
                           ),
-                          title: Text(file['displayName'] ?? file['fileName'] ?? '未知文件'),
+                          title: Text(
+                            file['displayName'] ?? file['fileName'] ?? '未知文件',
+                          ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('${_getReleaseTypeText(releaseType)} - ${file['fileName'] ?? ''}'),
+                              Text(
+                                '${_getReleaseTypeText(releaseType)} - ${file['fileName'] ?? ''}',
+                              ),
                               Wrap(
                                 spacing: 4,
                                 children: (file['gameVersions'] as List? ?? [])
                                     .take(5)
-                                    .map<Widget>((v) => Chip(
-                                          label: Text(v.toString()),
-                                          labelStyle: const TextStyle(fontSize: 10),
-                                          padding: EdgeInsets.zero,
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                          visualDensity: VisualDensity.compact,
-                                        ))
+                                    .map<Widget>(
+                                      (v) => Chip(
+                                        label: Text(v.toString()),
+                                        labelStyle: const TextStyle(
+                                          fontSize: 10,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    )
                                     .toList(),
                               ),
                             ],
                           ),
                           isThreeLine: true,
                           onTap: () async {
-                            final currentVersion = await _getCurrentVersionDirectory(_selectedFile?['fileName']);
+                            final currentVersion =
+                                await _getCurrentVersionDirectory(
+                                  _selectedFile?['fileName'],
+                                );
                             setState(() {
                               _selectedFile = file;
                               _savePath = currentVersion;
@@ -435,10 +441,15 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('下载', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          '下载',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         if (_selectedFile != null)
-                          Text('已选择: ${_selectedFile!['displayName'] ?? _selectedFile!['fileName']}'),
+                          Text(
+                            '已选择: ${_selectedFile!['displayName'] ?? _selectedFile!['fileName']}',
+                          ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -446,7 +457,10 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
                               value: _customLocation,
                               onChanged: (value) async {
                                 if (value) {
-                                  final currentVersion = await _getCurrentVersionDirectory(_selectedFile?['fileName']);
+                                  final currentVersion =
+                                      await _getCurrentVersionDirectory(
+                                        _selectedFile?['fileName'],
+                                      );
                                   setState(() {
                                     _customLocation = value;
                                     _savePath = currentVersion;
@@ -486,7 +500,9 @@ class CurseforgeResourcepackPageState extends State<CurseforgeResourcepackPage> 
                                 ? _downloadFile
                                 : null,
                             icon: const Icon(Icons.download),
-                            label: Text(_customLocation ? '下载到自定义位置' : '下载到当前版本目录'),
+                            label: Text(
+                              _customLocation ? '下载到自定义位置' : '下载到当前版本目录',
+                            ),
                           ),
                         ),
                       ],

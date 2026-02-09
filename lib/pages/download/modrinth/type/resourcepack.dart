@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:path/path.dart' as path;
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,7 +10,11 @@ import 'package:fml/function/log.dart';
 import 'package:fml/function/download.dart';
 
 class ResourcepackPage extends StatefulWidget {
-  const ResourcepackPage({required this.projectId, this.projectName, super.key});
+  const ResourcepackPage({
+    required this.projectId,
+    this.projectName,
+    super.key,
+  });
 
   final String projectId;
   final String? projectName;
@@ -19,7 +24,6 @@ class ResourcepackPage extends StatefulWidget {
 }
 
 class ResourcepackPageState extends State<ResourcepackPage> {
-  final Dio dio = Dio();
   bool isLoading = true;
   String? error;
   List<dynamic> versionsList = [];
@@ -45,7 +49,7 @@ class ResourcepackPageState extends State<ResourcepackPage> {
         error = null;
       });
 
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.modrinth.com/v2/project/${widget.projectId}/version',
       );
 
@@ -67,9 +71,15 @@ class ResourcepackPageState extends State<ResourcepackPage> {
           isLoading = false;
           if (filteredVersionsList.isNotEmpty) {
             selectedVersion = filteredVersionsList[0];
-            LogUtil.log('获取到${versions.length}个版本，默认选择: ${selectedVersion!['version_number']}', level: 'INFO');
+            LogUtil.log(
+              '获取到${versions.length}个版本，默认选择: ${selectedVersion!['version_number']}',
+              level: 'INFO',
+            );
           }
-          LogUtil.log('支持的游戏版本: ${availableGameVersions.join(", ")}', level: 'INFO');
+          LogUtil.log(
+            '支持的游戏版本: ${availableGameVersions.join(", ")}',
+            level: 'INFO',
+          );
         });
       } else {
         setState(() {
@@ -93,7 +103,8 @@ class ResourcepackPageState extends State<ResourcepackPage> {
       if (selectedGameVersion != null) {
         filteredVersionsList = filteredVersionsList.where((version) {
           final gameVersions = version['game_versions'] as List?;
-          return gameVersions != null && gameVersions.contains(selectedGameVersion);
+          return gameVersions != null &&
+              gameVersions.contains(selectedGameVersion);
         }).toList();
       }
       if (filteredVersionsList.isNotEmpty) {
@@ -101,7 +112,10 @@ class ResourcepackPageState extends State<ResourcepackPage> {
       } else {
         selectedVersion = null;
       }
-      LogUtil.log('应用筛选 - 游戏版本: $selectedGameVersion, 结果数量: ${filteredVersionsList.length}', level: 'INFO');
+      LogUtil.log(
+        '应用筛选 - 游戏版本: $selectedGameVersion, 结果数量: ${filteredVersionsList.length}',
+        level: 'INFO',
+      );
     });
   }
 
@@ -149,30 +163,31 @@ class ResourcepackPageState extends State<ResourcepackPage> {
     final pathStr = prefs.getString('Path_${prefs.getString('SelectedPath')}');
     final game = prefs.getString('SelectedGame');
     if (pathStr == null || game == null) return '';
-    savePath = '$pathStr${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}resourcepacks';
+    savePath =
+        '$pathStr${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}resourcepacks';
     return savePath;
   }
 
   // 下载文件
   Future<void> _downloadFile() async {
     if (selectedVersion == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择一个文件')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请先选择一个文件')));
       return;
     }
 
     final files = selectedVersion!['files'] as List?;
     if (files == null || files.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('没有找到可下载的文件')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('没有找到可下载的文件')));
       return;
     }
 
     final primaryFile = files.firstWhere(
       (file) => file['primary'] == true,
-      orElse: () => files.first
+      orElse: () => files.first,
     );
     final downloadUrl = primaryFile['url'];
     final fileName = primaryFile['filename'] ?? 'unknown.zip';
@@ -180,9 +195,9 @@ class ResourcepackPageState extends State<ResourcepackPage> {
     if (savePath.isEmpty) {
       savePath = await _getCurrentVersionDirectory();
       if (savePath.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('未选择版本目录')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('未选择版本目录')));
         return;
       }
     }
@@ -230,36 +245,39 @@ class ResourcepackPageState extends State<ResourcepackPage> {
                               const SizedBox(height: 8),
                               Text('${(progress * 100).toStringAsFixed(1)}%'),
                               const SizedBox(height: 8),
-                              Text('保存到: $savePath', style: const TextStyle(fontSize: 12)),
+                              Text(
+                                '保存到: $savePath',
+                                style: const TextStyle(fontSize: 12),
+                              ),
                             ],
                           ),
                         if (!isDownloading && errorMessage == null)
                           const Text('下载完成！'),
                       ],
                     );
-                  }
+                  },
                 );
-              }
+              },
             );
-          }
+          },
         ),
         actions: [
           ValueListenableBuilder(
             valueListenable: isDownloadingNotifier,
             builder: (context, isDownloading, _) {
               return isDownloading
-                ? TextButton(
-                    onPressed: () {
-                      cancelToken?.cancel();
-                      Navigator.of(dialogContext).pop();
-                    },
-                    child: const Text('取消'),
-                  )
-                : TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                    child: const Text('关闭'),
-                  );
-            }
+                  ? TextButton(
+                      onPressed: () {
+                        cancelToken?.cancel();
+                        Navigator.of(dialogContext).pop();
+                      },
+                      child: const Text('取消'),
+                    )
+                  : TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: const Text('关闭'),
+                    );
+            },
           ),
         ],
       ),
@@ -290,9 +308,9 @@ class ResourcepackPageState extends State<ResourcepackPage> {
         },
         onCancel: () {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('下载已取消')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('下载已取消')));
             LogUtil.log('下载已取消', level: 'INFO');
           }
         },
@@ -300,9 +318,9 @@ class ResourcepackPageState extends State<ResourcepackPage> {
     } catch (e) {
       errorMessageNotifier.value = '启动下载失败: $e';
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('启动下载失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('启动下载失败: $e')));
         LogUtil.log('启动下载失败: $e', level: 'ERROR');
       }
     }
@@ -311,12 +329,10 @@ class ResourcepackPageState extends State<ResourcepackPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.projectName ?? '资源包下载'),
-      ),
+      appBar: AppBar(title: Text(widget.projectName ?? '资源包下载')),
       body: isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : error != null
+          ? const Center(child: CircularProgressIndicator())
+          : error != null
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -331,8 +347,8 @@ class ResourcepackPageState extends State<ResourcepackPage> {
               ),
             )
           : versionsList.isEmpty
-            ? const Center(child: Text('没有可用版本'))
-            : Column(
+          ? const Center(child: Text('没有可用版本'))
+          : Column(
               children: [
                 // 筛选器
                 Card(
@@ -342,7 +358,10 @@ class ResourcepackPageState extends State<ResourcepackPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('筛选', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          '筛选',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -356,8 +375,11 @@ class ResourcepackPageState extends State<ResourcepackPage> {
                                     value: null,
                                     child: Text('全部版本'),
                                   ),
-                                  ...availableGameVersions.map((v) =>
-                                    DropdownMenuItem(value: v, child: Text(v))
+                                  ...availableGameVersions.map(
+                                    (v) => DropdownMenuItem(
+                                      value: v,
+                                      child: Text(v),
+                                    ),
                                   ),
                                 ],
                                 onChanged: (value) {
@@ -383,36 +405,56 @@ class ResourcepackPageState extends State<ResourcepackPage> {
                       final isSelected = selectedVersion == version;
                       final versionType = version['version_type'] as String?;
                       return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                        color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 8.0,
+                          vertical: 4.0,
+                        ),
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : null,
                         child: ListTile(
                           leading: Icon(
                             Icons.insert_drive_file,
                             color: _getVersionTypeColor(versionType),
                           ),
-                          title: Text(version['name'] ?? version['version_number'] ?? '未知文件'),
+                          title: Text(
+                            version['name'] ??
+                                version['version_number'] ??
+                                '未知文件',
+                          ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('${_getVersionTypeText(versionType)} - ${version['version_number'] ?? ''}'),
+                              Text(
+                                '${_getVersionTypeText(versionType)} - ${version['version_number'] ?? ''}',
+                              ),
                               Wrap(
                                 spacing: 4,
-                                children: (version['game_versions'] as List? ?? [])
-                                    .take(5)
-                                    .map<Widget>((v) => Chip(
-                                          label: Text(v.toString()),
-                                          labelStyle: const TextStyle(fontSize: 10),
-                                          padding: EdgeInsets.zero,
-                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                          visualDensity: VisualDensity.compact,
-                                        ))
-                                    .toList(),
+                                children:
+                                    (version['game_versions'] as List? ?? [])
+                                        .take(5)
+                                        .map<Widget>(
+                                          (v) => Chip(
+                                            label: Text(v.toString()),
+                                            labelStyle: const TextStyle(
+                                              fontSize: 10,
+                                            ),
+                                            padding: EdgeInsets.zero,
+                                            materialTapTargetSize:
+                                                MaterialTapTargetSize
+                                                    .shrinkWrap,
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                          ),
+                                        )
+                                        .toList(),
                               ),
                             ],
                           ),
                           isThreeLine: true,
                           onTap: () async {
-                            final currentVersion = await _getCurrentVersionDirectory();
+                            final currentVersion =
+                                await _getCurrentVersionDirectory();
                             setState(() {
                               selectedVersion = version;
                               savePath = currentVersion;
@@ -431,10 +473,15 @@ class ResourcepackPageState extends State<ResourcepackPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('下载', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          '下载',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         if (selectedVersion != null)
-                          Text('已选择: ${selectedVersion!['name'] ?? selectedVersion!['version_number']}'),
+                          Text(
+                            '已选择: ${selectedVersion!['name'] ?? selectedVersion!['version_number']}',
+                          ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -442,7 +489,8 @@ class ResourcepackPageState extends State<ResourcepackPage> {
                               value: customLocation,
                               onChanged: (value) async {
                                 if (value) {
-                                  final currentVersion = await _getCurrentVersionDirectory();
+                                  final currentVersion =
+                                      await _getCurrentVersionDirectory();
                                   setState(() {
                                     customLocation = value;
                                     savePath = currentVersion;
@@ -482,7 +530,9 @@ class ResourcepackPageState extends State<ResourcepackPage> {
                                 ? _downloadFile
                                 : null,
                             icon: const Icon(Icons.download),
-                            label: Text(customLocation ? '下载到自定义位置' : '下载到当前版本目录'),
+                            label: Text(
+                              customLocation ? '下载到自定义位置' : '下载到当前版本目录',
+                            ),
                           ),
                         ),
                       ],

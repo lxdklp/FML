@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -203,7 +203,7 @@ class FMLBaseAppState extends State<FMLBaseApp> {
       themeMode: _themeMode,
       home: const MyHomePage(),
       onGenerateRoute: (settings) {
-        if (settings.name == '/online/owner') {
+        if (settings.name == kOnlineOwnerRoute) {
           final int port = settings.arguments as int;
           final String etServer = settings.arguments as String;
           return SlidePageRoute(
@@ -318,17 +318,9 @@ class MyHomePageState extends State<MyHomePage> {
   Future<void> _checkUpdate() async {
     try {
       LogUtil.log('正在检查更新', level: 'INFO');
-      final dio = Dio();
-      if (kDebugMode) {
-        dio.options.headers['User-Agent'] =
-            '$kAppNameAbb/${Platform.operatingSystem}/$appVersion debug';
-      } else {
-        dio.options.headers['User-Agent'] =
-            '$kAppNameAbb/${Platform.operatingSystem}/$appVersion';
-      }
-      final response = await dio.get(AppUrls.latestVersionApi);
-      LogUtil.log('status: ${response.statusCode}', level: 'INFO');
-      LogUtil.log('data: ${response.data}', level: 'INFO');
+
+      final response = await DioClient().dio.get(AppUrls.latestVersionApi);
+
       if (response.statusCode == 200) {
         String rawVersionData = response.data.toString();
         String cleanedVersionString = rawVersionData
@@ -337,6 +329,7 @@ class MyHomePageState extends State<MyHomePage> {
         final int latestVersion =
             int.tryParse(cleanedVersionString) ?? buildNumber;
         LogUtil.log('最新版本: $latestVersion');
+
         if (latestVersion > buildNumber && mounted) {
           _showUpdateDialog(latestVersion.toString());
         }
@@ -349,14 +342,8 @@ class MyHomePageState extends State<MyHomePage> {
   // 获取更新日志
   Future<List<String>> _getUpdateInfo() async {
     try {
-      Dio dio = Dio();
-      Options options = Options(
-        headers: {'User-Agent': '$kAppNameAbb-App/$appVersion'},
-      );
-      final response = await dio.get(
-        AppUrls.githubReleasesApi,
-        options: options,
-      );
+      final response = await DioClient().dio.get(AppUrls.githubReleasesApi);
+
       if (response.statusCode == 200) {
         Map<String, dynamic> loaderData = response.data[0];
         return [loaderData['name'], loaderData['body']];
@@ -530,7 +517,7 @@ class MyHomePageState extends State<MyHomePage> {
 
   // 显示关于对话框
   Future<void> _showAboutDialog(BuildContext context) async {
-    const channel = MethodChannel('lxdklp/fml_native');
+    const channel = MethodChannel(kNativeMethodChannel);
     await channel.invokeMethod('showAboutPanel');
   }
 }

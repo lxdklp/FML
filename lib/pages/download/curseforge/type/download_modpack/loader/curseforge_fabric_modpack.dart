@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/download.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -24,12 +25,14 @@ class CurseforgeFabricModpackPage extends StatefulWidget {
   final String apiKey;
 
   @override
-  CurseforgeFabricModpackPageState createState() => CurseforgeFabricModpackPageState();
+  CurseforgeFabricModpackPageState createState() =>
+      CurseforgeFabricModpackPageState();
 }
 
-class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage> {
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  final Dio dio = Dio();
+class CurseforgeFabricModpackPageState
+    extends State<CurseforgeFabricModpackPage> {
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
   bool _downloadZip = false;
   bool _unzipPack = false;
@@ -54,7 +57,6 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
   String _name = '';
   String _fabricVersion = '';
   String _minecraftVersion = '';
-  String _appVersion = "unknown";
   String _overridesFolder = 'overrides';
   List<dynamic> _fabricFullJson = [];
   Map<String, dynamic> _fabricJson = {};
@@ -73,14 +75,23 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
   // BMCLAPI 镜像
   String replaceWithMirror(String url) {
     return url
-      .replaceAll('piston-meta.mojang.com', 'bmclapi2.bangbang93.com')
-      .replaceAll('piston-data.mojang.com', 'bmclapi2.bangbang93.com')
-      .replaceAll('launcher.mojang.com', 'bmclapi2.bangbang93.com')
-      .replaceAll('launchermeta.mojang.com', 'bmclapi2.bangbang93.com')
-      .replaceAll('libraries.minecraft.net', 'bmclapi2.bangbang93.com/maven')
-      .replaceAll('resources.download.minecraft.net', 'bmclapi2.bangbang93.com/assets')
-      .replaceAll('https://meta.fabricmc.net', 'https://bmclapi2.bangbang93.com/fabric-meta')
-      .replaceAll('https://maven.fabricmc.net', 'https://bmclapi2.bangbang93.com/maven');
+        .replaceAll('piston-meta.mojang.com', 'bmclapi2.bangbang93.com')
+        .replaceAll('piston-data.mojang.com', 'bmclapi2.bangbang93.com')
+        .replaceAll('launcher.mojang.com', 'bmclapi2.bangbang93.com')
+        .replaceAll('launchermeta.mojang.com', 'bmclapi2.bangbang93.com')
+        .replaceAll('libraries.minecraft.net', 'bmclapi2.bangbang93.com/maven')
+        .replaceAll(
+          'resources.download.minecraft.net',
+          'bmclapi2.bangbang93.com/assets',
+        )
+        .replaceAll(
+          'https://meta.fabricmc.net',
+          'https://bmclapi2.bangbang93.com/fabric-meta',
+        )
+        .replaceAll(
+          'https://maven.fabricmc.net',
+          'https://bmclapi2.bangbang93.com/maven',
+        );
   }
 
   // 初始化通知
@@ -96,11 +107,12 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
             appUserModelId: 'lxdklp.fml',
             guid: '11451419-0721-0721-0721-114514191981',
           );
-      const InitializationSettings initializationSettings = InitializationSettings(
-        macOS: initializationSettingsDarwin,
-        linux: initializationSettingsLinux,
-        windows: initializationSettingsWindows,
-      );
+      const InitializationSettings initializationSettings =
+          InitializationSettings(
+            macOS: initializationSettingsDarwin,
+            linux: initializationSettingsLinux,
+            windows: initializationSettingsWindows,
+          );
       await flutterLocalNotificationsPlugin.initialize(initializationSettings);
     }
   }
@@ -108,25 +120,20 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
   // 弹出通知
   Future<void> _showNotification(String title, String body) async {
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
-      const DarwinNotificationDetails darwinDetails = DarwinNotificationDetails();
+      const DarwinNotificationDetails darwinDetails =
+          DarwinNotificationDetails();
       const LinuxNotificationDetails linuxDetails = LinuxNotificationDetails();
       const NotificationDetails platformChannelSpecifics = NotificationDetails(
         macOS: darwinDetails,
         linux: linuxDetails,
       );
       await flutterLocalNotificationsPlugin.show(
-        0, title, body, platformChannelSpecifics,
+        0,
+        title,
+        body,
+        platformChannelSpecifics,
       );
     }
-  }
-
-  // 读取App版本
-  Future<void> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "1.0.0";
-    setState(() {
-      _appVersion = version;
-    });
   }
 
   // 文件夹创建
@@ -134,17 +141,24 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
     final prefs = await SharedPreferences.getInstance();
     final selectedGamePath = prefs.getString('SelectedPath') ?? '';
     final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
-    final directory = Directory('$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}');
+    final directory = Directory(
+      '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}',
+    );
     if (!await directory.exists()) {
       await directory.create(recursive: true);
-      await LogUtil.log('创建目录: $gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}', level: 'INFO');
+      await LogUtil.log(
+        '创建目录: $gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}',
+        level: 'INFO',
+      );
     }
   }
 
   // 解压 ZIP 文件
   Future<void> _unzipPackFile(String versionPath) async {
     try {
-      final zipFile = File('$versionPath${Platform.pathSeparator}${widget.name}.zip');
+      final zipFile = File(
+        '$versionPath${Platform.pathSeparator}${widget.name}.zip',
+      );
       final extractPath = '$versionPath${Platform.pathSeparator}curseforge';
       if (!await zipFile.exists()) {
         throw Exception('整合包文件不存在: ${zipFile.path}');
@@ -159,7 +173,9 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
         final filename = file.name;
         if (file.isFile) {
           final data = file.content as List<int>;
-          final outFile = File('$extractPath${Platform.pathSeparator}$filename');
+          final outFile = File(
+            '$extractPath${Platform.pathSeparator}$filename',
+          );
           await outFile.parent.create(recursive: true);
           await outFile.writeAsBytes(data);
         }
@@ -179,11 +195,15 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
   Future<void> _parseManifestContent(String versionPath) async {
     try {
       final extractPath = '$versionPath${Platform.pathSeparator}curseforge';
-      final manifestFile = File('$extractPath${Platform.pathSeparator}manifest.json');
+      final manifestFile = File(
+        '$extractPath${Platform.pathSeparator}manifest.json',
+      );
       if (!await manifestFile.exists()) {
         throw Exception('找不到manifest.json文件');
       }
-      final Map<String, dynamic> manifest = jsonDecode(await manifestFile.readAsString());
+      final Map<String, dynamic> manifest = jsonDecode(
+        await manifestFile.readAsString(),
+      );
       _overridesFolder = manifest['overrides'] ?? 'overrides';
       if (manifest.containsKey('minecraft')) {
         final minecraft = manifest['minecraft'];
@@ -232,41 +252,40 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
   // 从 CurseForge API 获取模组下载链接
   Future<String?> _getModDownloadUrl(int projectId, int fileId) async {
     try {
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.curseforge.com/v1/mods/$projectId/files/$fileId/download-url',
-        options: Options(
-          headers: {
-            'x-api-key': widget.apiKey,
-            'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-          },
-        )
+        options: Options(headers: {'x-api-key': widget.apiKey}),
       );
       if (response.statusCode == 200 && response.data['data'] != null) {
         return response.data['data'];
       }
     } catch (e) {
-      await LogUtil.log('获取模组下载链接失败 (projectId: $projectId, fileId: $fileId): $e', level: 'ERROR');
+      await LogUtil.log(
+        '获取模组下载链接失败 (projectId: $projectId, fileId: $fileId): $e',
+        level: 'ERROR',
+      );
     }
     return null;
   }
 
   // 获取模组文件信息
-  Future<Map<String, dynamic>?> _getModFileInfo(int projectId, int fileId) async {
+  Future<Map<String, dynamic>?> _getModFileInfo(
+    int projectId,
+    int fileId,
+  ) async {
     try {
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.curseforge.com/v1/mods/$projectId/files/$fileId',
-        options:  Options(
-          headers: {
-            'x-api-key': widget.apiKey,
-            'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-          },
-        )
+        options: Options(headers: {'x-api-key': widget.apiKey}),
       );
       if (response.statusCode == 200 && response.data['data'] != null) {
         return response.data['data'];
       }
     } catch (e) {
-      await LogUtil.log('获取模组文件信息失败 (projectId: $projectId, fileId: $fileId): $e', level: 'ERROR');
+      await LogUtil.log(
+        '获取模组文件信息失败 (projectId: $projectId, fileId: $fileId): $e',
+        level: 'ERROR',
+      );
     }
     return null;
   }
@@ -303,49 +322,73 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
             fileInfo = await _getModFileInfo(projectId, fileId);
             if (fileInfo == null) {
               retryCount++;
-              final delayMs = (300 * (1 << (retryCount - 1).clamp(0, 5))).clamp(300, 10000);
-              await LogUtil.log('获取模组信息失败 (projectId: $projectId, fileId: $fileId), ${delayMs}ms 后重试...', level: 'WARNING');
+              final delayMs = (300 * (1 << (retryCount - 1).clamp(0, 5))).clamp(
+                300,
+                10000,
+              );
+              await LogUtil.log(
+                '获取模组信息失败 (projectId: $projectId, fileId: $fileId), ${delayMs}ms 后重试...',
+                level: 'WARNING',
+              );
               await Future.delayed(Duration(milliseconds: delayMs));
             }
           }
-          final fileName = fileInfo['fileName'] ?? 'mod_${projectId}_$fileId.jar';
+          final fileName =
+              fileInfo['fileName'] ?? 'mod_${projectId}_$fileId.jar';
           String? downloadUrl;
           retryCount = 0;
           while (downloadUrl == null || downloadUrl.isEmpty) {
             downloadUrl = await _getModDownloadUrl(projectId, fileId);
             if (downloadUrl == null || downloadUrl.isEmpty) {
               retryCount++;
-              final delayMs = (300 * (1 << (retryCount - 1).clamp(0, 5))).clamp(300, 10000);
-              await LogUtil.log('获取下载链接失败 (projectId: $projectId, fileId: $fileId), ${delayMs}ms 后重试', level: 'WARNING');
+              final delayMs = (300 * (1 << (retryCount - 1).clamp(0, 5))).clamp(
+                300,
+                10000,
+              );
+              await LogUtil.log(
+                '获取下载链接失败 (projectId: $projectId, fileId: $fileId), ${delayMs}ms 后重试',
+                level: 'WARNING',
+              );
               await Future.delayed(Duration(milliseconds: delayMs));
               if (retryCount >= 3) {
-                downloadUrl = 'https://edge.forgecdn.net/files/${fileId ~/ 1000}/${fileId % 1000}/$fileName';
+                downloadUrl =
+                    'https://edge.forgecdn.net/files/${fileId ~/ 1000}/${fileId % 1000}/$fileName';
                 await LogUtil.log('使用备用下载链接: $downloadUrl', level: 'INFO');
                 break;
               }
             }
           }
-          final targetPath = '$versionPath${Platform.pathSeparator}mods${Platform.pathSeparator}$fileName';
+          final targetPath =
+              '$versionPath${Platform.pathSeparator}mods${Platform.pathSeparator}$fileName';
           downloadTasks.add({'url': downloadUrl, 'path': targetPath});
           completedCount++;
           final now = DateTime.now();
-          if (now.difference(lastUpdateTime).inMilliseconds >= 200 || completedCount % 10 == 0 || completedCount == _totalMods) {
+          if (now.difference(lastUpdateTime).inMilliseconds >= 200 ||
+              completedCount % 10 == 0 ||
+              completedCount == _totalMods) {
             lastUpdateTime = now;
             final progress = completedCount / _totalMods * 0.1;
             setState(() {
               _progress = progress;
             });
             if (completedCount % 50 == 0 || completedCount == _totalMods) {
-              await LogUtil.log('获取进度: $completedCount/$_totalMods', level: 'INFO');
+              await LogUtil.log(
+                '获取进度: $completedCount/$_totalMods',
+                level: 'INFO',
+              );
             }
           }
         }
       }
+
       final workerCount = maxConcurrent.clamp(1, _modFiles.length);
       await LogUtil.log('启动 $workerCount 个工作线程获取下载链接', level: 'INFO');
       final workers = List.generate(workerCount, (_) => worker());
       await Future.wait(workers);
-      await LogUtil.log('已获取 ${downloadTasks.length}/${_modFiles.length} 个下载链接, 开始并发下载', level: 'INFO');
+      await LogUtil.log(
+        '已获取 ${downloadTasks.length}/${_modFiles.length} 个下载链接, 开始并发下载',
+        level: 'INFO',
+      );
       final downloadResult = await DownloadUtils.batchDownload(
         tasks: downloadTasks,
         onProgress: (progress) {
@@ -354,7 +397,10 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
           });
         },
       );
-      await LogUtil.log('下载完成: 总数=${downloadResult.totalCount}, 成功=${downloadResult.completedCount}, 失败=${downloadResult.failedList.length}', level: 'INFO');
+      await LogUtil.log(
+        '下载完成: 总数=${downloadResult.totalCount}, 成功=${downloadResult.completedCount}, 失败=${downloadResult.failedList.length}',
+        level: 'INFO',
+      );
       setState(() {
         _downloadModsStatus = true;
         _progress = 1.0;
@@ -369,17 +415,12 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
 
   // 获取游戏 Json
   Future<void> _saveMinecraftJson(String versionPath) async {
-    final options = Options(
-      headers: {
-        'User-Agent': 'FML/$_appVersion',
-      },
-      responseType: ResponseType.plain,
-    );
+    final options = Options(responseType: ResponseType.plain);
     int retry = 0;
     while (true) {
       try {
         await LogUtil.log('请求版本清单 (尝试第 ${retry + 1} 次)', level: 'INFO');
-        final response = await dio.get(
+        final response = await DioClient().dio.get(
           'https://bmclapi2.bangbang93.com/mc/game/version_manifest.json',
           options: options,
         );
@@ -398,11 +439,20 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 final url = v['url'];
                 if (url != null) {
                   try {
-                    final resp = await dio.get(url, options: Options(responseType: ResponseType.plain));
+                    final resp = await DioClient().dio.get(
+                      url,
+                      options: Options(responseType: ResponseType.plain),
+                    );
                     if (resp.statusCode == 200) {
-                      final filePath = '$versionPath${Platform.pathSeparator}${widget.name}.json';
-                      await File(filePath).writeAsString(resp.data is String ? resp.data : jsonEncode(resp.data));
-                      await LogUtil.log('已保存游戏 JSON 到: $filePath', level: 'INFO');
+                      final filePath =
+                          '$versionPath${Platform.pathSeparator}${widget.name}.json';
+                      await File(filePath).writeAsString(
+                        resp.data is String ? resp.data : jsonEncode(resp.data),
+                      );
+                      await LogUtil.log(
+                        '已保存游戏 JSON 到: $filePath',
+                        level: 'INFO',
+                      );
                       setState(() {
                         _downloadMinecraftJson = true;
                       });
@@ -421,8 +471,14 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
         }
       } catch (e) {
         retry++;
-        final delayMs = (300 * (1 << ((retry - 1).clamp(0, 8)))).clamp(300, 30000);
-        await LogUtil.log('请求版本清单失败 (第 $retry 次): $e —— ${delayMs}ms 后重试', level: 'WARNING');
+        final delayMs = (300 * (1 << ((retry - 1).clamp(0, 8)))).clamp(
+          300,
+          30000,
+        );
+        await LogUtil.log(
+          '请求版本清单失败 (第 $retry 次): $e —— ${delayMs}ms 后重试',
+          level: 'WARNING',
+        );
         await Future.delayed(Duration(milliseconds: delayMs));
       }
     }
@@ -452,7 +508,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
       }
       if (jsonData['libraries'] != null && jsonData['libraries'] is List) {
         for (var lib in jsonData['libraries']) {
-          if (lib['downloads'] != null && lib['downloads']['artifact'] != null) {
+          if (lib['downloads'] != null &&
+              lib['downloads']['artifact'] != null) {
             final artifact = lib['downloads']['artifact'];
             if (artifact['path'] != null) {
               librariesPath.add(artifact['path']);
@@ -516,7 +573,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
     for (int i = 0; i < librariesURL.length; i++) {
       final url = librariesURL[i];
       final relativePath = librariesPath[i];
-      final fullPath = '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
+      final fullPath =
+          '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
       if (!File(fullPath).existsSync()) {
         downloadTasks.add({'url': url, 'path': fullPath});
       }
@@ -551,7 +609,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
     List<Map<String, String>> downloadTasks = [];
     for (final hash in _assetHash) {
       final hashPrefix = hash.substring(0, 2);
-      final assetPath = '$gamePath${Platform.pathSeparator}assets${Platform.pathSeparator}objects${Platform.pathSeparator}$hashPrefix${Platform.pathSeparator}$hash';
+      final assetPath =
+          '$gamePath${Platform.pathSeparator}assets${Platform.pathSeparator}objects${Platform.pathSeparator}$hashPrefix${Platform.pathSeparator}$hash';
       if (!File(assetPath).existsSync()) {
         final url = 'https://bmclapi2.bangbang93.com/assets/$hashPrefix/$hash';
         downloadTasks.add({'url': url, 'path': assetPath});
@@ -579,7 +638,10 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
   }
 
   // 提取LWJGL本地库文件的名称和路径
-  Future<void> extractLwjglNativeLibrariesPath(String jsonFilePath, String gamePath) async {
+  Future<void> extractLwjglNativeLibrariesPath(
+    String jsonFilePath,
+    String gamePath,
+  ) async {
     final namesList = <String>[];
     final pathsList = <String>[];
     final file = File(jsonFilePath);
@@ -625,15 +687,21 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
       final fileName = path.split('/').last;
       // 检查是否为所需的LWJGL库
       if ((fileName.startsWith('lwjgl-') && fileName.contains('-natives-')) ||
-          (fileName.startsWith('lwjgl-freetype-') && fileName.contains('-natives-')) ||
-          (fileName.startsWith('lwjgl-glfw-') && fileName.contains('-natives-')) ||
-          (fileName.startsWith('lwjgl-jemalloc-') && fileName.contains('-natives-')) ||
-          (fileName.startsWith('lwjgl-openal-') && fileName.contains('-natives-')) ||
-          (fileName.startsWith('lwjgl-stb-') && fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-freetype-') &&
+              fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-glfw-') &&
+              fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-jemalloc-') &&
+              fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-openal-') &&
+              fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-stb-') &&
+              fileName.contains('-natives-')) ||
           fileName.startsWith('lwjgl-tinyfd')) {
         namesList.add(fileName);
         String nativePath = path.replaceAll('/', Platform.pathSeparator);
-        final fullPath = ('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$nativePath');
+        final fullPath =
+            ('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$nativePath');
         pathsList.add(fullPath);
         await LogUtil.log('找到LWJGL库: $fileName, 路径: $fullPath', level: 'INFO');
       }
@@ -658,7 +726,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
     final prefs = await SharedPreferences.getInstance();
     final selectedGamePath = prefs.getString('SelectedPath') ?? '';
     final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
-    final nativesDir = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}natives';
+    final nativesDir =
+        '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}natives';
     final nativesDirObj = Directory(nativesDir);
     if (!await nativesDirObj.exists()) {
       await nativesDirObj.create(recursive: true);
@@ -671,8 +740,14 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
       final fullPath = lwjglNativePaths[i];
       final fileName = lwjglNativeNames[i];
       try {
-        final jarDir = fullPath.substring(0, fullPath.lastIndexOf(Platform.pathSeparator));
-        await LogUtil.log('提取: $fileName 从 $jarDir 到 $nativesDir', level: 'INFO');
+        final jarDir = fullPath.substring(
+          0,
+          fullPath.lastIndexOf(Platform.pathSeparator),
+        );
+        await LogUtil.log(
+          '提取: $fileName 从 $jarDir 到 $nativesDir',
+          level: 'INFO',
+        );
         final extracted = await extractNatives(jarDir, fileName, nativesDir);
         if (extracted.isNotEmpty) {
           successCount++;
@@ -683,7 +758,10 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
         await LogUtil.log('提取 $fileName 时出错: $e', level: 'ERROR');
       }
     }
-    await LogUtil.log('完成LWJGL本地库提取, 共处理 ${lwjglNativePaths.length} 个文件, 成功: $successCount', level: 'INFO');
+    await LogUtil.log(
+      '完成LWJGL本地库提取, 共处理 ${lwjglNativePaths.length} 个文件, 成功: $successCount',
+      level: 'INFO',
+    );
     await LogUtil.log('提取的文件: ${extractedFiles.join(', ')}', level: 'INFO');
     setState(() {
       _extractedLwjglNatives = true;
@@ -693,9 +771,10 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
   // 获取 Fabric Loader Json
   Future<void> _saveFabricJson(String versionPath) async {
     try {
-      final fabricVersionsUrl = 'https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader/$_minecraftVersion';
+      final fabricVersionsUrl =
+          'https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader/$_minecraftVersion';
       LogUtil.log('请求Fabric版本列表: $fabricVersionsUrl', level: 'INFO');
-      final response = await dio.get(fabricVersionsUrl);
+      final response = await DioClient().dio.get(fabricVersionsUrl);
       if (response.statusCode == 200) {
         _fabricFullJson = response.data;
         Map<String, dynamic>? targetVersion;
@@ -707,9 +786,12 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
             }
           }
         }
-        targetVersion ??= _fabricFullJson.isNotEmpty ? _fabricFullJson[0] : null;
+        targetVersion ??= _fabricFullJson.isNotEmpty
+            ? _fabricFullJson[0]
+            : null;
         if (targetVersion != null) {
-          _fabricVersion = targetVersion['loader']?['version'] ?? _fabricVersion;
+          _fabricVersion =
+              targetVersion['loader']?['version'] ?? _fabricVersion;
           LogUtil.log('使用Fabric版本: $_fabricVersion', level: 'INFO');
           _fabricJson = targetVersion;
           final jsonString = jsonEncode(_fabricJson);
@@ -733,8 +815,11 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
       final prefs = await SharedPreferences.getInstance();
       final selectedGamePath = prefs.getString('SelectedPath') ?? '';
       final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
-      final versionPath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}';
-      final fabricJsonFile = File('$versionPath${Platform.pathSeparator}fabric.json');
+      final versionPath =
+          '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}';
+      final fabricJsonFile = File(
+        '$versionPath${Platform.pathSeparator}fabric.json',
+      );
       if (!await fabricJsonFile.exists()) {
         throw Exception('fabric.json文件不存在');
       }
@@ -750,25 +835,37 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
             final String group = loaderParts[0].replaceAll('.', '/');
             final String artifact = loaderParts[1];
             final String version = loaderParts[2];
-            final String relativePath = '$group/$artifact/$version/$artifact-$version.jar';
-            final String url = 'https://bmclapi2.bangbang93.com/maven/$group/$artifact/$version/$artifact-$version.jar';
-            _fabricDownloadTasks.add({'url': replaceWithMirror(url), 'path': relativePath});
+            final String relativePath =
+                '$group/$artifact/$version/$artifact-$version.jar';
+            final String url =
+                'https://bmclapi2.bangbang93.com/maven/$group/$artifact/$version/$artifact-$version.jar';
+            _fabricDownloadTasks.add({
+              'url': replaceWithMirror(url),
+              'path': relativePath,
+            });
             await LogUtil.log('添加Fabric Loader: $relativePath', level: 'INFO');
           }
         }
       }
-      if (loaderJson.containsKey('intermediary') && loaderJson['intermediary'] != null) {
+      if (loaderJson.containsKey('intermediary') &&
+          loaderJson['intermediary'] != null) {
         final intermediaryInfo = loaderJson['intermediary'];
-        if (intermediaryInfo.containsKey('maven') && intermediaryInfo['maven'] != null) {
+        if (intermediaryInfo.containsKey('maven') &&
+            intermediaryInfo['maven'] != null) {
           final String intermediaryMaven = intermediaryInfo['maven'];
           final List<String> parts = intermediaryMaven.split(':');
           if (parts.length >= 3) {
             final String group = parts[0].replaceAll('.', '/');
             final String artifact = parts[1];
             final String version = parts[2];
-            final String relativePath = '$group/$artifact/$version/$artifact-$version.jar';
-            final String url = 'https://bmclapi2.bangbang93.com/maven/$group/$artifact/$version/$artifact-$version.jar';
-            _fabricDownloadTasks.add({'url': replaceWithMirror(url), 'path': relativePath});
+            final String relativePath =
+                '$group/$artifact/$version/$artifact-$version.jar';
+            final String url =
+                'https://bmclapi2.bangbang93.com/maven/$group/$artifact/$version/$artifact-$version.jar';
+            _fabricDownloadTasks.add({
+              'url': replaceWithMirror(url),
+              'path': relativePath,
+            });
             await LogUtil.log('添加Intermediary: $relativePath', level: 'INFO');
           }
         }
@@ -782,7 +879,9 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
           for (var lib in commonLibs) {
             if (lib.containsKey('name')) {
               final String name = lib['name'];
-              String baseUrl = lib.containsKey('url') ? lib['url'] : 'https://bmclapi2.bangbang93.com/maven/';
+              String baseUrl = lib.containsKey('url')
+                  ? lib['url']
+                  : 'https://bmclapi2.bangbang93.com/maven/';
               final List<String> parts = name.split(':');
               if (parts.length >= 3) {
                 final String group = parts[0].replaceAll('.', '/');
@@ -791,15 +890,23 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 if (version.contains('@')) {
                   version = version.split('@')[0];
                 }
-                final String relativePath = '$group/$artifact/$version/$artifact-$version.jar';
-                final String fullUrl = '$baseUrl$group/$artifact/$version/$artifact-$version.jar';
-                _fabricDownloadTasks.add({'url': replaceWithMirror(fullUrl), 'path': relativePath});
+                final String relativePath =
+                    '$group/$artifact/$version/$artifact-$version.jar';
+                final String fullUrl =
+                    '$baseUrl$group/$artifact/$version/$artifact-$version.jar';
+                _fabricDownloadTasks.add({
+                  'url': replaceWithMirror(fullUrl),
+                  'path': relativePath,
+                });
               }
             }
           }
         }
       }
-      await LogUtil.log('找到 ${_fabricDownloadTasks.length} 个Fabric文件需要下载', level: 'INFO');
+      await LogUtil.log(
+        '找到 ${_fabricDownloadTasks.length} 个Fabric文件需要下载',
+        level: 'INFO',
+      );
       setState(() {
         _parseFabricJson = true;
       });
@@ -811,7 +918,10 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
 
   // 下载 Fabric 库
   Future<void> _downloadFabricLibraries() async {
-    await LogUtil.log('开始下载 Fabric 库,任务数: ${_fabricDownloadTasks.length}', level: 'INFO');
+    await LogUtil.log(
+      '开始下载 Fabric 库,任务数: ${_fabricDownloadTasks.length}',
+      level: 'INFO',
+    );
     if (_fabricDownloadTasks.isEmpty) {
       setState(() {
         _downloadFabric = true;
@@ -825,8 +935,11 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
     for (var task in _fabricDownloadTasks) {
       final relativePath = task['path']!;
       final url = task['url']!;
-      final fullPath = '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
-      final directory = Directory(fullPath.substring(0, fullPath.lastIndexOf(Platform.pathSeparator)));
+      final fullPath =
+          '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
+      final directory = Directory(
+        fullPath.substring(0, fullPath.lastIndexOf(Platform.pathSeparator)),
+      );
       if (!directory.existsSync()) {
         directory.createSync(recursive: true);
       }
@@ -877,7 +990,7 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
         },
         onError: (error) async {
           await LogUtil.log('下载失败: $error, URL: $url', level: 'ERROR');
-        }
+        },
       );
       final file = File(path);
       if (await file.exists()) {
@@ -894,9 +1007,14 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
   // 复制overrides内容
   Future<void> _copyOverridesContent(String versionPath) async {
     try {
-      final overridesDir = Directory('$versionPath${Platform.pathSeparator}curseforge${Platform.pathSeparator}$_overridesFolder');
+      final overridesDir = Directory(
+        '$versionPath${Platform.pathSeparator}curseforge${Platform.pathSeparator}$_overridesFolder',
+      );
       if (!await overridesDir.exists()) {
-        await LogUtil.log('overrides 文件夹不存在($_overridesFolder),跳过复制', level: 'INFO');
+        await LogUtil.log(
+          'overrides 文件夹不存在($_overridesFolder),跳过复制',
+          level: 'INFO',
+        );
         setState(() {
           _copyOverrides = true;
         });
@@ -905,12 +1023,18 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
       await LogUtil.log('开始复制 overrides 文件夹内容到版本文件夹', level: 'INFO');
       int copiedFiles = 0;
       int copiedDirs = 0;
-      Future<void> copyDirectory(Directory source, Directory destination) async {
+      Future<void> copyDirectory(
+        Directory source,
+        Directory destination,
+      ) async {
         if (!await destination.exists()) {
           await destination.create(recursive: true);
           copiedDirs++;
         }
-        await for (final entity in source.list(recursive: false, followLinks: false)) {
+        await for (final entity in source.list(
+          recursive: false,
+          followLinks: false,
+        )) {
           final String relativePath = entity.path.substring(source.path.length);
           final String destinationPath = '${destination.path}$relativePath';
           if (entity is File) {
@@ -921,8 +1045,12 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
           }
         }
       }
+
       await copyDirectory(overridesDir, Directory(versionPath));
-      await LogUtil.log('overrides 内容复制完成,共复制 $copiedFiles 个文件和 $copiedDirs 个目录', level: 'INFO');
+      await LogUtil.log(
+        'overrides 内容复制完成,共复制 $copiedFiles 个文件和 $copiedDirs 个目录',
+        level: 'INFO',
+      );
       setState(() {
         _copyOverrides = true;
       });
@@ -955,7 +1083,7 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
       '854',
       '480',
       'Fabric',
-      ''
+      '',
     ];
     final key = 'Config_${_name}_${widget.name}';
     await prefs.setStringList(key, defaultConfig);
@@ -972,21 +1100,25 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
     final prefs = await SharedPreferences.getInstance();
     final selectedGamePath = prefs.getString('SelectedPath') ?? '';
     final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
-    final versionPath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}';
+    final versionPath =
+        '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}';
     try {
       await LogUtil.log('正在下载 CurseForge 整合包 ${widget.name}', level: 'INFO');
       await _showNotification('开始下载', '正在下载 ${widget.name}');
       await _createGameDirectories();
       // 下载整合包
       try {
-        await _downloadFile('$versionPath${Platform.pathSeparator}${widget.name}.zip', widget.url);
+        await _downloadFile(
+          '$versionPath${Platform.pathSeparator}${widget.name}.zip',
+          widget.url,
+        );
         setState(() {
           _downloadZip = true;
         });
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('下载整合包失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('下载整合包失败: $e')));
         return;
       }
       // 解压整合包
@@ -998,33 +1130,39 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
       // 保存 Minecraft Json
       await _saveMinecraftJson(versionPath);
       // 解析游戏 Json
-      await _parseGameJson('$versionPath${Platform.pathSeparator}${widget.name}.json');
+      await _parseGameJson(
+        '$versionPath${Platform.pathSeparator}${widget.name}.json',
+      );
       // 下载资产索引文件
       if (assetIndexURL != null) {
-        final assetIndexPath = '$gamePath${Platform.pathSeparator}assets${Platform.pathSeparator}indexes${Platform.pathSeparator}$assetIndexId.json';
+        final assetIndexPath =
+            '$gamePath${Platform.pathSeparator}assets${Platform.pathSeparator}indexes${Platform.pathSeparator}$assetIndexId.json';
         try {
           await _downloadFile(assetIndexPath, assetIndexURL!);
           setState(() {
             _downloadAssetJson = true;
           });
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('下载资产索引失败: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('下载资产索引失败: $e')));
           return;
         }
         // 解析资产索引
         await _parseAssetIndex(assetIndexPath);
         // 下载客户端
         try {
-          await _downloadFile('$versionPath${Platform.pathSeparator}${widget.name}.jar', clientURL!);
+          await _downloadFile(
+            '$versionPath${Platform.pathSeparator}${widget.name}.jar',
+            clientURL!,
+          );
           setState(() {
             _downloadClient = true;
           });
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('下载客户端失败: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('下载客户端失败: $e')));
           return;
         }
         // 下载库文件
@@ -1032,7 +1170,10 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
         // 下载资源文件
         await _downloadAssets();
         // 提取 LWJGL 本地库路径
-        await extractLwjglNativeLibrariesPath('$versionPath${Platform.pathSeparator}${widget.name}.json', gamePath);
+        await extractLwjglNativeLibrariesPath(
+          '$versionPath${Platform.pathSeparator}${widget.name}.json',
+          gamePath,
+        );
         // 提取 LWJGL Natives
         await _extractLwjglNatives();
         // 保存 Fabric Json
@@ -1049,9 +1190,9 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
         await _showNotification('安装完成', '${widget.name} 安装完成');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('发生错误: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
     }
   }
 
@@ -1059,7 +1200,6 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
   void initState() {
     super.initState();
     _initNotifications();
-    _loadAppVersion();
     _getMemory();
     _startDownload();
   }
@@ -1079,8 +1219,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
               title: const Text('正在下载整合包'),
               subtitle: Text(_downloadZip ? '下载完成' : '下载中...'),
               trailing: _downloadZip
-                ? const Icon(Icons.check)
-                : const CircularProgressIndicator(),
+                  ? const Icon(Icons.check)
+                  : const CircularProgressIndicator(),
             ),
           ),
           if (_downloadZip) ...[
@@ -1089,8 +1229,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 title: const Text('正在解压整合包'),
                 subtitle: Text(_unzipPack ? '解压完成' : '解压中...'),
                 trailing: _unzipPack
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1100,8 +1240,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 title: const Text('正在解析manifest.json'),
                 subtitle: Text(_parseManifest ? '解析完成' : '解析中...'),
                 trailing: _parseManifest
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1111,12 +1251,14 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 children: [
                   ListTile(
                     title: const Text('正在下载模组文件'),
-                    subtitle: Text(_downloadModsStatus
-                      ? '下载完成'
-                      : '下载中... 已下载${(_progress * 100).toStringAsFixed(1)}%'),
+                    subtitle: Text(
+                      _downloadModsStatus
+                          ? '下载完成'
+                          : '下载中... 已下载${(_progress * 100).toStringAsFixed(1)}%',
+                    ),
                     trailing: _downloadModsStatus
-                      ? const Icon(Icons.check)
-                      : const CircularProgressIndicator(),
+                        ? const Icon(Icons.check)
+                        : const CircularProgressIndicator(),
                   ),
                   if (!_downloadModsStatus)
                     Padding(
@@ -1133,8 +1275,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 title: const Text('正在获取游戏Json'),
                 subtitle: Text(_downloadMinecraftJson ? '获取完成' : '获取中...'),
                 trailing: _downloadMinecraftJson
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1144,8 +1286,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 title: const Text('正在解析游戏Json'),
                 subtitle: Text(_parseGameJsonStatus ? '解析完成' : '解析中...'),
                 trailing: _parseGameJsonStatus
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1155,8 +1297,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 title: const Text('正在获取资源Json'),
                 subtitle: Text(_downloadAssetJson ? '获取完成' : '获取中...'),
                 trailing: _downloadAssetJson
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1166,8 +1308,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 title: const Text('正在解析资源Json'),
                 subtitle: Text(_parseAssetJson ? '解析完成' : '解析中...'),
                 trailing: _parseAssetJson
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1177,12 +1319,14 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 children: [
                   ListTile(
                     title: const Text('正在下载客户端'),
-                    subtitle: Text(_downloadClient
-                      ? '下载完成'
-                      : '下载中... ${(_progress * 100).toStringAsFixed(1)}%'),
+                    subtitle: Text(
+                      _downloadClient
+                          ? '下载完成'
+                          : '下载中... ${(_progress * 100).toStringAsFixed(1)}%',
+                    ),
                     trailing: _downloadClient
-                      ? const Icon(Icons.check)
-                      : const CircularProgressIndicator(),
+                        ? const Icon(Icons.check)
+                        : const CircularProgressIndicator(),
                   ),
                   if (!_downloadClient)
                     Padding(
@@ -1199,12 +1343,14 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 children: [
                   ListTile(
                     title: const Text('正在下载游戏库'),
-                    subtitle: Text(_downloadLibrary
-                      ? '下载完成'
-                      : '下载中... ${(_progress * 100).toStringAsFixed(1)}%'),
+                    subtitle: Text(
+                      _downloadLibrary
+                          ? '下载完成'
+                          : '下载中... ${(_progress * 100).toStringAsFixed(1)}%',
+                    ),
                     trailing: _downloadLibrary
-                      ? const Icon(Icons.check)
-                      : const CircularProgressIndicator(),
+                        ? const Icon(Icons.check)
+                        : const CircularProgressIndicator(),
                   ),
                   if (!_downloadLibrary)
                     Padding(
@@ -1221,12 +1367,14 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 children: [
                   ListTile(
                     title: const Text('正在下载游戏资源'),
-                    subtitle: Text(_downloadAsset
-                      ? '下载完成'
-                      : '下载中... ${(_progress * 100).toStringAsFixed(1)}%'),
+                    subtitle: Text(
+                      _downloadAsset
+                          ? '下载完成'
+                          : '下载中... ${(_progress * 100).toStringAsFixed(1)}%',
+                    ),
                     trailing: _downloadAsset
-                      ? const Icon(Icons.check)
-                      : const CircularProgressIndicator(),
+                        ? const Icon(Icons.check)
+                        : const CircularProgressIndicator(),
                   ),
                   if (!_downloadAsset)
                     Padding(
@@ -1243,8 +1391,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 title: const Text('正在提取LWJGL路径'),
                 subtitle: Text(_extractedLwjglNativesPath ? '提取完成' : '提取中...'),
                 trailing: _extractedLwjglNativesPath
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1254,8 +1402,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 title: const Text('正在提取LWJGL'),
                 subtitle: Text(_extractedLwjglNatives ? '提取完成' : '提取中...'),
                 trailing: _extractedLwjglNatives
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1265,8 +1413,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 title: const Text('正在获取Fabric Json'),
                 subtitle: Text(_saveFabricJsonStatus ? '获取完成' : '获取中...'),
                 trailing: _saveFabricJsonStatus
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1276,8 +1424,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 title: const Text('正在解析Fabric Json'),
                 subtitle: Text(_parseFabricJson ? '解析完成' : '解析中...'),
                 trailing: _parseFabricJson
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1287,12 +1435,14 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 children: [
                   ListTile(
                     title: const Text('正在下载Fabric'),
-                    subtitle: Text(_downloadFabric
-                      ? '下载完成'
-                      : '下载中... ${(_progress * 100).toStringAsFixed(1)}%'),
+                    subtitle: Text(
+                      _downloadFabric
+                          ? '下载完成'
+                          : '下载中... ${(_progress * 100).toStringAsFixed(1)}%',
+                    ),
                     trailing: _downloadFabric
-                      ? const Icon(Icons.check)
-                      : const CircularProgressIndicator(),
+                        ? const Icon(Icons.check)
+                        : const CircularProgressIndicator(),
                   ),
                   if (!_downloadFabric)
                     Padding(
@@ -1309,8 +1459,8 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 title: const Text('正在复制整合包文件'),
                 subtitle: Text(_copyOverrides ? '复制完成' : '复制中...'),
                 trailing: _copyOverrides
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1320,21 +1470,21 @@ class CurseforgeFabricModpackPageState extends State<CurseforgeFabricModpackPage
                 title: const Text('正在写入配置文件'),
                 subtitle: Text(_writeConfig ? '写入完成' : '写入中...'),
                 trailing: _writeConfig
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
         ],
       ),
       floatingActionButton: _writeConfig
-        ? FloatingActionButton(
-            onPressed: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
-            child: const Icon(Icons.check),
-          )
-        : null,
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
+              child: const Icon(Icons.check),
+            )
+          : null,
     );
   }
 }

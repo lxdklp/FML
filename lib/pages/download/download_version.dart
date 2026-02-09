@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,28 +16,16 @@ class DownloadVersion extends StatefulWidget {
 }
 
 class DownloadVersionState extends State<DownloadVersion> {
-  final Dio dio = Dio();
   int retry = 3;
   List<dynamic> _versionList = [];
   bool _isLoading = true;
   String? _error;
-  String _appVersion = '';
   bool _showSnapshots = false;
   bool _showOld = false;
 
   @override
   void initState() {
     super.initState();
-    _loadAppVersion();
-  }
-
-  // 读取App版本
-  Future<void> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "UnknownVersion";
-    setState(() {
-      _appVersion = version;
-    });
     fetchVersionManifest();
   }
 
@@ -47,12 +36,9 @@ class DownloadVersionState extends State<DownloadVersion> {
         _isLoading = true;
         _error = null;
       });
-      final options = Options(
-        headers: {'User-Agent': 'FML/$_appVersion'},
-        responseType: ResponseType.plain,
-      );
+      final options = Options(responseType: ResponseType.plain);
       LogUtil.log('开始请求版本清单', level: 'INFO');
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://bmclapi2.bangbang93.com/mc/game/version_manifest.json',
         options: options,
       );

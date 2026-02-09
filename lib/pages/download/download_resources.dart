@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download/modrinth/info.dart';
@@ -15,11 +15,9 @@ class DownloadResources extends StatefulWidget {
 }
 
 class DownloadResourcesState extends State<DownloadResources> {
-  final Dio dio = Dio();
   List<dynamic> _projectsList = [];
   bool _isLoading = true;
   String? _error;
-  String _appVersion = '';
   final ScrollController _scrollController = ScrollController();
   bool _showScrollToTop = false;
   final TextEditingController _searchController = TextEditingController();
@@ -48,7 +46,7 @@ class DownloadResourcesState extends State<DownloadResources> {
   @override
   void initState() {
     super.initState();
-    _loadAppVersion();
+    _fetchProjects();
     _scrollController.addListener(() {
       setState(() {
         _showScrollToTop = _scrollController.offset > 200;
@@ -72,31 +70,9 @@ class DownloadResourcesState extends State<DownloadResources> {
     );
   }
 
-  // 加载应用版本
-  Future<void> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "UnknownVersion";
-    setState(() {
-      _appVersion = version;
-    });
-    _fetchProjects();
-  }
-
   // CurseForge 请求头
   Options _getCurseforgeOptions() {
-    return Options(
-      headers: {
-        'x-api-key': _curseforgeApiKey,
-        'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-      },
-    );
-  }
-
-  // Modrinth 请求头
-  Options _getModrinthOptions() {
-    return Options(
-      headers: {'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)'},
-    );
+    return Options(headers: {'x-api-key': _curseforgeApiKey});
   }
 
   // 获取项目（根据数据源）
@@ -116,9 +92,8 @@ class DownloadResourcesState extends State<DownloadResources> {
         _error = null;
       });
       LogUtil.log('开始请求Modrinth随机项目', level: 'INFO');
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.modrinth.com/v2/projects_random?count=50',
-        options: _getModrinthOptions(),
       );
       if (response.statusCode == 200) {
         LogUtil.log('成功获取Modrinth项目', level: 'INFO');
@@ -152,7 +127,7 @@ class DownloadResourcesState extends State<DownloadResources> {
         _error = null;
       });
       LogUtil.log('开始请求CurseForge精选项目', level: 'INFO');
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.curseforge.com/v1/mods/search',
         queryParameters: {
           'gameId': minecraftGameId,
@@ -217,10 +192,9 @@ class DownloadResourcesState extends State<DownloadResources> {
         '搜索Modrinth项目: $query, 类型: $_modrinthProjectType',
         level: 'INFO',
       );
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.modrinth.com/v2/search',
         queryParameters: queryParams,
-        options: _getModrinthOptions(),
       );
       if (response.statusCode == 200) {
         LogUtil.log('成功获取搜索结果', level: 'INFO');
@@ -268,7 +242,7 @@ class DownloadResourcesState extends State<DownloadResources> {
         '搜索CurseForge项目: $query, classId: $_curseforgeClassId',
         level: 'INFO',
       );
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.curseforge.com/v1/mods/search',
         queryParameters: queryParams,
         options: _getCurseforgeOptions(),

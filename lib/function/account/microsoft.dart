@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dio/dio.dart';
@@ -31,13 +32,13 @@ Future<void> _showCodeDialog(BuildContext context, String code) async {
         content: Text('验证代码 $code 已复制到剪贴板,请在稍后显示的浏览器中打开的网页中输入'),
         actions: [
           TextButton(
-            onPressed:() => Clipboard.setData(ClipboardData(text: code)),
+            onPressed: () => Clipboard.setData(ClipboardData(text: code)),
             child: const Text('再次复制到剪贴板'),
           ),
           TextButton(
-            onPressed:() => _launchURL(),
+            onPressed: () => _launchURL(),
             child: const Text('重新打开网页'),
-          )
+          ),
         ],
       ),
     );
@@ -46,50 +47,51 @@ Future<void> _showCodeDialog(BuildContext context, String code) async {
 
 // 获取代码
 Future<List<String>> getCode(context) async {
-  final dio = Dio();
-  final prefs = await SharedPreferences.getInstance();
-  final appVersion = prefs.getString('version') ?? 'unknown';
   try {
-    final response = await dio.post(
+    final response = await DioClient().dio.post(
       'https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode',
       options: Options(
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'FML/$appVersion'
-        },
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       ),
       data: {
         'client_id': '3847de77-c7ca-4daa-a0b7-50850446d58c',
-        'scope': 'XboxLive.signin offline_access'
-      }
+        'scope': 'XboxLive.signin offline_access',
+      },
     );
     if (response.statusCode == 200) {
       if (response.data is Map) {
-        Map<String, dynamic> data =response.data as Map<String, dynamic>;
+        Map<String, dynamic> data = response.data as Map<String, dynamic>;
         String userCode = data['user_code'];
         String deviceCode = data['device_code'];
         if (userCode.isNotEmpty && deviceCode.isNotEmpty) {
-          return [userCode,deviceCode];
+          return [userCode, deviceCode];
         } else {
           LogUtil.log('无法获取Code', level: 'ERROR');
         }
       }
     } else {
-      LogUtil.log('请求Code失败: 状态码: ${response.statusCode}, 响应: ${response.data}', level: 'ERROR');
+      LogUtil.log(
+        '请求Code失败: 状态码: ${response.statusCode}, 响应: ${response.data}',
+        level: 'ERROR',
+      );
     }
   } on DioException catch (e) {
     String errorMessage;
     if (e.response != null) {
       try {
         if (e.response!.data is Map) {
-          Map<String, dynamic> errorData = e.response!.data as Map<String, dynamic>;
+          Map<String, dynamic> errorData =
+              e.response!.data as Map<String, dynamic>;
           String errorType = errorData['error'] ?? '未知错误类型';
           String errorDetail = errorData['errorMessage'] ?? '';
           LogUtil.log('Dio异常: $errorType - $errorDetail', level: 'ERROR');
           errorMessage = '$errorType: $errorDetail';
         } else {
           errorMessage = '请求失败: ${e.response?.statusMessage}';
-          LogUtil.log('请求Code异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}', level: 'ERROR');
+          LogUtil.log(
+            '请求Code异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}',
+            level: 'ERROR',
+          );
         }
       } catch (_) {
         errorMessage = '解析错误响应失败: ${e.message}';
@@ -108,63 +110,65 @@ Future<List<String>> getCode(context) async {
       errorMessage = '连接服务器失败: ${e.message}';
       LogUtil.log('请求Code请求异常: ${e.message}', level: 'ERROR');
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('发生错误: $errorMessage')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('发生错误: $errorMessage')));
   } catch (e) {
     LogUtil.log('请求Code发生其他错误: $e', level: 'ERROR');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('请求Code发生其他错误: $e')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('请求Code发生其他错误: $e')));
   }
-  return ['',''];
+  return ['', ''];
 }
 
 // 获取微软账号令牌
-Future<List<String>> _getMsToken(context, String userCode, String deviceCode) async {
-  final dio = Dio();
-  final prefs = await SharedPreferences.getInstance();
-  final appVersion = prefs.getString('version') ?? 'unknown';
+Future<List<String>> _getMsToken(
+  context,
+  String userCode,
+  String deviceCode,
+) async {
   await Clipboard.setData(ClipboardData(text: userCode));
   await _showCodeDialog(context, userCode);
   await _launchURL();
   while (true) {
     try {
-      final response = await dio.post(
-      'https://login.microsoftonline.com/consumers/oauth2/v2.0/token',
-      options: Options(
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'FML/$appVersion'
+      final response = await DioClient().dio.post(
+        'https://login.microsoftonline.com/consumers/oauth2/v2.0/token',
+        options: Options(
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        ),
+        data: {
+          'client_id': '3847de77-c7ca-4daa-a0b7-50850446d58c',
+          'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
+          'scope': 'XboxLive.signin offline_access',
+          'device_code': deviceCode,
         },
-      ),
-      data: {
-        'client_id': '3847de77-c7ca-4daa-a0b7-50850446d58c',
-        'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
-        'scope': 'XboxLive.signin offline_access',
-        'device_code': deviceCode
-      }
-    );
-    if (response.statusCode == 200) {
-      if (response.data is Map) {
-        Map<String, dynamic> data =response.data as Map<String, dynamic>;
-        String accessToken = data['access_token'] ?? '';
-        String refreshToken = data['refresh_token'] ?? '';
-        if (userCode.isNotEmpty && deviceCode.isNotEmpty) {
-          return [accessToken,refreshToken];
-        } else {
-          LogUtil.log('无法获取微软账号令牌', level: 'ERROR');
+      );
+      if (response.statusCode == 200) {
+        if (response.data is Map) {
+          Map<String, dynamic> data = response.data as Map<String, dynamic>;
+          String accessToken = data['access_token'] ?? '';
+          String refreshToken = data['refresh_token'] ?? '';
+          if (userCode.isNotEmpty && deviceCode.isNotEmpty) {
+            return [accessToken, refreshToken];
+          } else {
+            LogUtil.log('无法获取微软账号令牌', level: 'ERROR');
+          }
         }
+      } else {
+        LogUtil.log(
+          '请求微软账号令牌失败: 状态码: ${response.statusCode}, 响应: ${response.data}',
+          level: 'ERROR',
+        );
       }
-    } else {
-      LogUtil.log('请求微软账号令牌失败: 状态码: ${response.statusCode}, 响应: ${response.data}', level: 'ERROR');
-    }
     } on DioException catch (e) {
       String errorMessage;
       if (e.response != null) {
         try {
           if (e.response!.data is Map) {
-            Map<String, dynamic> errorData = e.response!.data as Map<String, dynamic>;
+            Map<String, dynamic> errorData =
+                e.response!.data as Map<String, dynamic>;
             String errorType = errorData['error'] ?? '未知错误类型';
             String errorDetail = errorData['error_description'] ?? '';
             LogUtil.log('Dio异常: $errorType - $errorDetail', level: 'ERROR');
@@ -178,7 +182,10 @@ Future<List<String>> _getMsToken(context, String userCode, String deviceCode) as
             errorMessage = '$errorType: $errorDetail';
           } else {
             errorMessage = '请求失败: ${e.response?.statusMessage}';
-            LogUtil.log('请求微软账号令牌异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}', level: 'ERROR');
+            LogUtil.log(
+              '请求微软账号令牌异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}',
+              level: 'ERROR',
+            );
           }
         } catch (_) {
           errorMessage = '解析错误响应失败: ${e.message}';
@@ -197,46 +204,42 @@ Future<List<String>> _getMsToken(context, String userCode, String deviceCode) as
         errorMessage = '连接服务器失败: ${e.message}';
         LogUtil.log('请求微软账号令牌异常: ${e.message}', level: 'ERROR');
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('发生错误: $errorMessage')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('发生错误: $errorMessage')));
     } catch (e) {
       LogUtil.log('请求微软账号令牌发生其他错误: $e', level: 'ERROR');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('请求微软账号令牌发生其他错误: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('请求微软账号令牌发生其他错误: $e')));
     }
   }
 }
 
 // 获取 Xbox Live令牌
 Future<String> _getXboxLiveToken(context, msToken) async {
-  final dio = Dio();
-  final prefs = await SharedPreferences.getInstance();
-  final appVersion = prefs.getString('version') ?? 'unknown';
   try {
-    final response = await dio.post(
+    final response = await DioClient().dio.post(
       'https://user.auth.xboxlive.com/user/authenticate',
       options: Options(
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'FML/$appVersion'
         },
       ),
       data: {
         'Properties': {
           'AuthMethod': 'RPS',
           'SiteName': 'user.auth.xboxlive.com',
-          'RpsTicket': 'd=${msToken[0]}'
+          'RpsTicket': 'd=${msToken[0]}',
         },
         'RelyingParty': 'http://auth.xboxlive.com',
-        'TokenType': 'JWT'
-      }
+        'TokenType': 'JWT',
+      },
     );
     if (response.statusCode == 200) {
       if (response.data is Map) {
-        Map<String, dynamic> data =response.data as Map<String, dynamic>;
+        Map<String, dynamic> data = response.data as Map<String, dynamic>;
         String token = data['Token'] ?? '';
         if (token.isNotEmpty) {
           return token;
@@ -245,21 +248,28 @@ Future<String> _getXboxLiveToken(context, msToken) async {
         }
       }
     } else {
-      LogUtil.log('请求 Xbox Live 令牌失败: 状态码: ${response.statusCode}, 响应: ${response.data}', level: 'ERROR');
+      LogUtil.log(
+        '请求 Xbox Live 令牌失败: 状态码: ${response.statusCode}, 响应: ${response.data}',
+        level: 'ERROR',
+      );
     }
   } on DioException catch (e) {
     String errorMessage;
     if (e.response != null) {
       try {
         if (e.response!.data is Map) {
-          Map<String, dynamic> errorData = e.response!.data as Map<String, dynamic>;
+          Map<String, dynamic> errorData =
+              e.response!.data as Map<String, dynamic>;
           String errorType = errorData['error'] ?? '未知错误类型';
           String errorDetail = errorData['errorMessage'] ?? '';
           LogUtil.log('Dio异常: $errorType - $errorDetail', level: 'ERROR');
           errorMessage = '$errorType: $errorDetail';
         } else {
           errorMessage = '请求失败: ${e.response?.statusMessage}';
-          LogUtil.log('获取 Xbox Live 令牌异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}', level: 'ERROR');
+          LogUtil.log(
+            '获取 Xbox Live 令牌异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}',
+            level: 'ERROR',
+          );
         }
       } catch (_) {
         errorMessage = '解析错误响应失败: ${e.message}';
@@ -278,31 +288,27 @@ Future<String> _getXboxLiveToken(context, msToken) async {
       errorMessage = '连接服务器失败: ${e.message}';
       LogUtil.log('获取 Xbox Live 令牌异常: ${e.message}', level: 'ERROR');
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('发生错误: $errorMessage')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('发生错误: $errorMessage')));
   } catch (e) {
     LogUtil.log('获取 Xbox Live 令牌发生其他错误: $e', level: 'ERROR');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('获取 Xbox Live 令牌发生其他错误: $e')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('获取 Xbox Live 令牌发生其他错误: $e')));
   }
   return '';
 }
 
 // 获取 XSTS 令牌
 Future<List<String>> _getXSTSToken(context, String xblToken) async {
-  final dio = Dio();
-  final prefs = await SharedPreferences.getInstance();
-  final appVersion = prefs.getString('version') ?? 'unknown';
   try {
-    final response = await dio.post(
+    final response = await DioClient().dio.post(
       'https://xsts.auth.xboxlive.com/xsts/authorize',
       options: Options(
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'FML/$appVersion'
         },
       ),
       data: {
@@ -311,8 +317,8 @@ Future<List<String>> _getXSTSToken(context, String xblToken) async {
           'UserTokens': [xblToken],
         },
         'RelyingParty': 'rp://api.minecraftservices.com/',
-        'TokenType': 'JWT'
-      }
+        'TokenType': 'JWT',
+      },
     );
     if (response.statusCode == 200) {
       if (response.data is Map) {
@@ -331,22 +337,28 @@ Future<List<String>> _getXSTSToken(context, String xblToken) async {
         }
       }
     } else {
-      LogUtil.log('请求 XSTS 令牌失败: 状态码: ${response.statusCode}, 响应: ${response.data}', level: 'ERROR');
+      LogUtil.log(
+        '请求 XSTS 令牌失败: 状态码: ${response.statusCode}, 响应: ${response.data}',
+        level: 'ERROR',
+      );
     }
-  }
-  on DioException catch (e) {
+  } on DioException catch (e) {
     String errorMessage;
     if (e.response != null) {
       try {
         if (e.response!.data is Map) {
-          Map<String, dynamic> errorData = e.response!.data as Map<String, dynamic>;
+          Map<String, dynamic> errorData =
+              e.response!.data as Map<String, dynamic>;
           String errorType = errorData['error'] ?? '未知错误类型';
           String errorDetail = errorData['errorMessage'] ?? '';
           LogUtil.log('Dio异常: $errorType - $errorDetail', level: 'ERROR');
           errorMessage = '$errorType: $errorDetail';
         } else {
           errorMessage = '请求失败: ${e.response?.statusMessage}';
-          LogUtil.log('获取 XSTS 令牌异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}', level: 'ERROR');
+          LogUtil.log(
+            '获取 XSTS 令牌异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}',
+            level: 'ERROR',
+          );
         }
       } catch (_) {
         errorMessage = '解析错误响应失败: ${e.message}';
@@ -365,40 +377,34 @@ Future<List<String>> _getXSTSToken(context, String xblToken) async {
       errorMessage = '连接服务器失败: ${e.message}';
       LogUtil.log('获取 XSTS 令牌异常: ${e.message}', level: 'ERROR');
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('发生错误: $errorMessage')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('发生错误: $errorMessage')));
   } catch (e) {
     LogUtil.log('获取 XSTS 令牌发生其他错误: $e', level: 'ERROR');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('获取 XSTS 令牌发生其他错误: $e')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('获取 XSTS 令牌发生其他错误: $e')));
   }
-  return ['',''];
+  return ['', ''];
 }
 
 // 获取 Minecraft 令牌
 Future<String> _getMcToken(context, xstsToken) async {
-  final dio = Dio();
-  final prefs = await SharedPreferences.getInstance();
-  final appVersion = prefs.getString('version') ?? 'unknown';
   try {
-    final response = await dio.post(
+    final response = await DioClient().dio.post(
       'https://api.minecraftservices.com/authentication/login_with_xbox',
       options: Options(
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'FML/$appVersion'
         },
       ),
-      data: {
-        'identityToken': 'XBL3.0 x=${xstsToken[1]};${xstsToken[0]}'
-      }
+      data: {'identityToken': 'XBL3.0 x=${xstsToken[1]};${xstsToken[0]}'},
     );
     if (response.statusCode == 200) {
       if (response.data is Map) {
-        Map<String, dynamic> data =response.data as Map<String, dynamic>;
+        Map<String, dynamic> data = response.data as Map<String, dynamic>;
         String token = data['access_token'] ?? '';
         if (token.isNotEmpty) {
           return token;
@@ -407,21 +413,28 @@ Future<String> _getMcToken(context, xstsToken) async {
         }
       }
     } else {
-      LogUtil.log('请求 Minecraft 令牌失败: 状态码: ${response.statusCode}, 响应: ${response.data}', level: 'ERROR');
+      LogUtil.log(
+        '请求 Minecraft 令牌失败: 状态码: ${response.statusCode}, 响应: ${response.data}',
+        level: 'ERROR',
+      );
     }
   } on DioException catch (e) {
     String errorMessage;
     if (e.response != null) {
       try {
         if (e.response!.data is Map) {
-          Map<String, dynamic> errorData = e.response!.data as Map<String, dynamic>;
+          Map<String, dynamic> errorData =
+              e.response!.data as Map<String, dynamic>;
           String errorType = errorData['error'] ?? '未知错误类型';
           String errorDetail = errorData['errorMessage'] ?? '';
           LogUtil.log('Dio异常: $errorType - $errorDetail', level: 'ERROR');
           errorMessage = '$errorType: $errorDetail';
         } else {
           errorMessage = '请求失败: ${e.response?.statusMessage}';
-          LogUtil.log('获取 Minecraft 令牌异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}', level: 'ERROR');
+          LogUtil.log(
+            '获取 Minecraft 令牌异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}',
+            level: 'ERROR',
+          );
         }
       } catch (_) {
         errorMessage = '解析错误响应失败: ${e.message}';
@@ -440,34 +453,30 @@ Future<String> _getMcToken(context, xstsToken) async {
       errorMessage = '连接服务器失败: ${e.message}';
       LogUtil.log('获取 Minecraft 令牌异常: ${e.message}', level: 'ERROR');
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('发生错误: $errorMessage')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('发生错误: $errorMessage')));
   } catch (e) {
     LogUtil.log('获取 Minecraft 令牌发生其他错误: $e', level: 'ERROR');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('获取 Minecraft 令牌发生其他错误: $e')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('获取 Minecraft 令牌发生其他错误: $e')));
   }
   return '';
 }
 
 // 检查所有权
 Future<bool> _checkPurchase(BuildContext context, mcToken) async {
-  final dio = Dio();
-  final prefs = await SharedPreferences.getInstance();
-  final appVersion = prefs.getString('version') ?? 'unknown';
   try {
-    final response = await dio.get(
+    final response = await DioClient().dio.get(
       'https://api.minecraftservices.com/entitlements/mcstore',
       options: Options(
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'Bearer $mcToken',
-          'User-Agent': 'FML/$appVersion'
         },
-      )
+      ),
     );
     if (response.statusCode == 200) {
       if (response.data is Map) {
@@ -484,21 +493,28 @@ Future<bool> _checkPurchase(BuildContext context, mcToken) async {
         }
       }
     } else {
-      LogUtil.log('检查所有权失败: 状态码: ${response.statusCode}, 响应: ${response.data}', level: 'ERROR');
+      LogUtil.log(
+        '检查所有权失败: 状态码: ${response.statusCode}, 响应: ${response.data}',
+        level: 'ERROR',
+      );
     }
   } on DioException catch (e) {
     String errorMessage;
     if (e.response != null) {
       try {
         if (e.response!.data is Map) {
-          Map<String, dynamic> errorData = e.response!.data as Map<String, dynamic>;
+          Map<String, dynamic> errorData =
+              e.response!.data as Map<String, dynamic>;
           String errorType = errorData['error'] ?? '未知错误类型';
           String errorDetail = errorData['errorMessage'] ?? '';
           LogUtil.log('Dio异常: $errorType - $errorDetail', level: 'ERROR');
           errorMessage = '$errorType: $errorDetail';
         } else {
           errorMessage = '请求失败: ${e.response?.statusMessage}';
-          LogUtil.log('请求异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}', level: 'ERROR');
+          LogUtil.log(
+            '请求异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}',
+            level: 'ERROR',
+          );
         }
       } catch (_) {
         errorMessage = '解析错误响应失败: ${e.message}';
@@ -517,59 +533,59 @@ Future<bool> _checkPurchase(BuildContext context, mcToken) async {
       errorMessage = '连接服务器失败: ${e.message}';
       LogUtil.log('检查所有权请求异常: ${e.message}', level: 'ERROR');
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('发生错误: $errorMessage')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('发生错误: $errorMessage')));
   } catch (e) {
     LogUtil.log('检查所有权发生其他错误: $e', level: 'ERROR');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('检查所有权发生其他错误: $e')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('检查所有权发生其他错误: $e')));
   }
   return false;
 }
 
 // 获取档案
 Future<List<String>> _getProfile(context, mcToken) async {
-  final dio = Dio();
-  final prefs = await SharedPreferences.getInstance();
-  final appVersion = prefs.getString('version') ?? 'unknown';
   try {
-    final response = await dio.get(
+    final response = await DioClient().dio.get(
       'https://api.minecraftservices.com/minecraft/profile',
       options: Options(
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'Bearer $mcToken',
-          'User-Agent': 'FML/$appVersion'
         },
-      )
+      ),
     );
     if (response.statusCode == 200) {
       if (response.data is Map) {
         Map<String, dynamic> data = response.data as Map<String, dynamic>;
-        return [
-          data['id'] ?? '',
-          data['name'] ?? '',
-        ];
+        return [data['id'] ?? '', data['name'] ?? ''];
       }
     } else {
-      LogUtil.log('获取档案失败: 状态码: ${response.statusCode}, 响应: ${response.data}', level: 'ERROR');
+      LogUtil.log(
+        '获取档案失败: 状态码: ${response.statusCode}, 响应: ${response.data}',
+        level: 'ERROR',
+      );
     }
   } on DioException catch (e) {
     String errorMessage;
     if (e.response != null) {
       try {
         if (e.response!.data is Map) {
-          Map<String, dynamic> errorData = e.response!.data as Map<String, dynamic>;
+          Map<String, dynamic> errorData =
+              e.response!.data as Map<String, dynamic>;
           String errorType = errorData['error'] ?? '未知错误类型';
           String errorDetail = errorData['errorMessage'] ?? '';
           LogUtil.log('Dio异常: $errorType - $errorDetail', level: 'ERROR');
           errorMessage = '$errorType: $errorDetail';
         } else {
           errorMessage = '请求失败: ${e.response?.statusMessage}';
-          LogUtil.log('请求异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}', level: 'ERROR');
+          LogUtil.log(
+            '请求异常: 状态码: ${e.response?.statusCode}, 消息: ${e.response?.statusMessage}',
+            level: 'ERROR',
+          );
         }
       } catch (_) {
         errorMessage = '解析错误响应失败: ${e.message}';
@@ -588,16 +604,16 @@ Future<List<String>> _getProfile(context, mcToken) async {
       errorMessage = '连接服务器失败: ${e.message}';
       LogUtil.log('获取档案请求异常: ${e.message}', level: 'ERROR');
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('发生错误: $errorMessage')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('发生错误: $errorMessage')));
   } catch (e) {
     LogUtil.log('获取档案发生其他错误: $e', level: 'ERROR');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('获取档案发生其他错误: $e')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('获取档案发生其他错误: $e')));
   }
-  return ['',''];
+  return ['', ''];
 }
 
 // 保存账号
@@ -607,21 +623,18 @@ Future<void> _saveAccount(context, List<String> account) async {
   accounts.add(account[1]);
   await prefs.setStringList('online_accounts_list', accounts);
   String encryptedRefreshToken = await CryptoUtil.encrypt(account[2]);
-  await prefs.setStringList(
-    'online_account_${account[1]}',
-    [
-      '1',
-      account[0],
-      encryptedRefreshToken,
-    ],
-  );
+  await prefs.setStringList('online_account_${account[1]}', [
+    '1',
+    account[0],
+    encryptedRefreshToken,
+  ]);
 }
 
 // 登录
 Future<void> login(
-    BuildContext context,
-    Future<void> Function(int) onlineCallback
-  ) async{
+  BuildContext context,
+  Future<void> Function(int) onlineCallback,
+) async {
   await onlineCallback(1);
   // 请求代码
   List<String> code = await getCode(context);
@@ -631,7 +644,7 @@ Future<void> login(
     if (msToken[0].isNotEmpty && msToken[1].isNotEmpty) {
       await onlineCallback(2);
       Navigator.of(context).pop();
-      String xblToken = await _getXboxLiveToken(context,msToken);
+      String xblToken = await _getXboxLiveToken(context, msToken);
       if (xblToken.isNotEmpty) {
         List<String> xstsToken = await _getXSTSToken(context, xblToken);
         if (xstsToken[0].isNotEmpty && xstsToken[1].isNotEmpty) {
@@ -641,13 +654,7 @@ Future<void> login(
             if (hasMc) {
               List<String> profile = await _getProfile(context, mcToken);
               if (profile[0].isNotEmpty && profile[1].isNotEmpty) {
-                _saveAccount(context,
-                [
-                  profile[0],
-                  profile[1],
-                  msToken[1],
-                ]
-                );
+                _saveAccount(context, [profile[0], profile[1], msToken[1]]);
                 await onlineCallback(3);
               } else {
                 await onlineCallback(4);

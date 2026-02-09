@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,11 +15,9 @@ class DownloadCurseforge extends StatefulWidget {
 }
 
 class DownloadCurseforgeState extends State<DownloadCurseforge> {
-  final Dio dio = Dio();
   List<dynamic> _projectsList = [];
   bool _isLoading = true;
   String? _error;
-  String _appVersion = '';
   String _apiKey = '';
   final ScrollController _scrollController = ScrollController();
   bool _showScrollToTop = false;
@@ -70,10 +69,8 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
   // 读取设置
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "UnknownVersion";
     final apiKey = prefs.getString('curseforge_api_key') ?? '';
     setState(() {
-      _appVersion = version;
       _apiKey = apiKey;
       _apiKeyController.text = apiKey;
       _apiKeyConfigured = apiKey.isNotEmpty;
@@ -89,12 +86,7 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
 
   // 获取请求选项
   Options _getRequestOptions() {
-    return Options(
-      headers: {
-        'x-api-key': _apiKey,
-        'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-      },
-    );
+    return Options(headers: {'x-api-key': _apiKey});
   }
 
   // 获取精选/热门项目
@@ -107,7 +99,7 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
         _isSearching = false;
       });
       LogUtil.log('开始请求CurseForge热门项目', level: 'INFO');
-      final response = await dio.post(
+      final response = await DioClient().dio.post(
         'https://api.curseforge.com/v1/mods/featured',
         data: {'gameId': minecraftGameId, 'excludedModIds': []},
         options: _getRequestOptions(),
@@ -182,7 +174,7 @@ class DownloadCurseforgeState extends State<DownloadCurseforge> {
         '搜索CurseForge项目: $query, 类型: $_selectedClassId',
         level: 'INFO',
       );
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.curseforge.com/v1/mods/search',
         queryParameters: queryParams,
         options: _getRequestOptions(),

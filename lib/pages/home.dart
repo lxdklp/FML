@@ -74,7 +74,10 @@ class HomePageState extends State<HomePage> {
                 ),
                 leading: const Icon(Icons.account_circle),
                 onTap: () {
-                  Navigator.push(context, SlidePageRoute(page: const AccountPage()));
+                  Navigator.push(
+                    context,
+                    SlidePageRoute(page: const AccountPage()),
+                  );
                 },
               ),
             ),

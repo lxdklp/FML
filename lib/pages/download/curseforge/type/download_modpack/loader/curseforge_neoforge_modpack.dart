@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/download.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -25,12 +26,14 @@ class CurseforgeNeoForgeModpackPage extends StatefulWidget {
   final String apiKey;
 
   @override
-  CurseforgeNeoForgeModpackPageState createState() => CurseforgeNeoForgeModpackPageState();
+  CurseforgeNeoForgeModpackPageState createState() =>
+      CurseforgeNeoForgeModpackPageState();
 }
 
-class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpackPage> {
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  final Dio dio = Dio();
+class CurseforgeNeoForgeModpackPageState
+    extends State<CurseforgeNeoForgeModpackPage> {
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
   bool _downloadZip = false;
   bool _unzipPack = false;
@@ -57,7 +60,6 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
   String _name = '';
   String _neoforgeVersion = '';
   String _minecraftVersion = '';
-  String _appVersion = "unknown";
   String _overridesFolder = 'overrides';
   String _installerJson = '';
   String _neoForgeURL = '';
@@ -77,14 +79,23 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
   // BMCLAPI 镜像
   String replaceWithMirror(String url) {
     return url
-      .replaceAll('piston-meta.mojang.com', 'bmclapi2.bangbang93.com')
-      .replaceAll('piston-data.mojang.com', 'bmclapi2.bangbang93.com')
-      .replaceAll('launcher.mojang.com', 'bmclapi2.bangbang93.com')
-      .replaceAll('launchermeta.mojang.com', 'bmclapi2.bangbang93.com')
-      .replaceAll('libraries.minecraft.net', 'bmclapi2.bangbang93.com/maven')
-      .replaceAll('resources.download.minecraft.net', 'bmclapi2.bangbang93.com/assets')
-      .replaceAll('https://maven.neoforged.net/releases/net/neoforged/forge', 'https://bmclapi2.bangbang93.com/maven/net/neoforged/forge')
-      .replaceAll('https://maven.neoforged.net/releases/net/neoforged/neoforge', 'https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge');
+        .replaceAll('piston-meta.mojang.com', 'bmclapi2.bangbang93.com')
+        .replaceAll('piston-data.mojang.com', 'bmclapi2.bangbang93.com')
+        .replaceAll('launcher.mojang.com', 'bmclapi2.bangbang93.com')
+        .replaceAll('launchermeta.mojang.com', 'bmclapi2.bangbang93.com')
+        .replaceAll('libraries.minecraft.net', 'bmclapi2.bangbang93.com/maven')
+        .replaceAll(
+          'resources.download.minecraft.net',
+          'bmclapi2.bangbang93.com/assets',
+        )
+        .replaceAll(
+          'https://maven.neoforged.net/releases/net/neoforged/forge',
+          'https://bmclapi2.bangbang93.com/maven/net/neoforged/forge',
+        )
+        .replaceAll(
+          'https://maven.neoforged.net/releases/net/neoforged/neoforge',
+          'https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge',
+        );
   }
 
   // 初始化通知
@@ -100,11 +111,12 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
             appUserModelId: 'lxdklp.fml',
             guid: '11451419-0721-0721-0721-114514191981',
           );
-      const InitializationSettings initializationSettings = InitializationSettings(
-        macOS: initializationSettingsDarwin,
-        linux: initializationSettingsLinux,
-        windows: initializationSettingsWindows,
-      );
+      const InitializationSettings initializationSettings =
+          InitializationSettings(
+            macOS: initializationSettingsDarwin,
+            linux: initializationSettingsLinux,
+            windows: initializationSettingsWindows,
+          );
       await flutterLocalNotificationsPlugin.initialize(initializationSettings);
     }
   }
@@ -112,25 +124,20 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
   // 弹出通知
   Future<void> _showNotification(String title, String body) async {
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
-      const DarwinNotificationDetails darwinDetails = DarwinNotificationDetails();
+      const DarwinNotificationDetails darwinDetails =
+          DarwinNotificationDetails();
       const LinuxNotificationDetails linuxDetails = LinuxNotificationDetails();
       const NotificationDetails platformChannelSpecifics = NotificationDetails(
         macOS: darwinDetails,
         linux: linuxDetails,
       );
       await flutterLocalNotificationsPlugin.show(
-        0, title, body, platformChannelSpecifics,
+        0,
+        title,
+        body,
+        platformChannelSpecifics,
       );
     }
-  }
-
-  // 读取App版本
-  Future<void> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "1.0.0";
-    setState(() {
-      _appVersion = version;
-    });
   }
 
   // 文件夹创建
@@ -138,17 +145,24 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
     final prefs = await SharedPreferences.getInstance();
     final selectedGamePath = prefs.getString('SelectedPath') ?? '';
     final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
-    final directory = Directory('$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}');
+    final directory = Directory(
+      '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}',
+    );
     if (!await directory.exists()) {
       await directory.create(recursive: true);
-      await LogUtil.log('创建目录: $gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}', level: 'INFO');
+      await LogUtil.log(
+        '创建目录: $gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}',
+        level: 'INFO',
+      );
     }
   }
 
   // 解压 ZIP 文件
   Future<void> _unzipPackFile(String versionPath) async {
     try {
-      final zipFile = File('$versionPath${Platform.pathSeparator}${widget.name}.zip');
+      final zipFile = File(
+        '$versionPath${Platform.pathSeparator}${widget.name}.zip',
+      );
       final extractPath = '$versionPath${Platform.pathSeparator}curseforge';
       if (!await zipFile.exists()) {
         throw Exception('整合包文件不存在: ${zipFile.path}');
@@ -163,7 +177,9 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
         final filename = file.name;
         if (file.isFile) {
           final data = file.content as List<int>;
-          final outFile = File('$extractPath${Platform.pathSeparator}$filename');
+          final outFile = File(
+            '$extractPath${Platform.pathSeparator}$filename',
+          );
           await outFile.parent.create(recursive: true);
           await outFile.writeAsBytes(data);
         }
@@ -183,11 +199,15 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
   Future<void> _parseManifestContent(String versionPath) async {
     try {
       final extractPath = '$versionPath${Platform.pathSeparator}curseforge';
-      final manifestFile = File('$extractPath${Platform.pathSeparator}manifest.json');
+      final manifestFile = File(
+        '$extractPath${Platform.pathSeparator}manifest.json',
+      );
       if (!await manifestFile.exists()) {
         throw Exception('找不到manifest.json文件');
       }
-      final Map<String, dynamic> manifest = jsonDecode(await manifestFile.readAsString());
+      final Map<String, dynamic> manifest = jsonDecode(
+        await manifestFile.readAsString(),
+      );
       _overridesFolder = manifest['overrides'] ?? 'overrides';
       if (manifest.containsKey('minecraft')) {
         final minecraft = manifest['minecraft'];
@@ -199,9 +219,13 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
             final id = loader['id']?.toString() ?? '';
             if (id.startsWith('neoforge-')) {
               _neoforgeVersion = id.replaceFirst('neoforge-', '');
-              await LogUtil.log('检测到NeoForge版本: $_neoforgeVersion', level: 'INFO');
+              await LogUtil.log(
+                '检测到NeoForge版本: $_neoforgeVersion',
+                level: 'INFO',
+              );
               // 构建NeoForge安装器下载URL
-              _neoForgeURL = 'https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge/$_neoforgeVersion/neoforge-$_neoforgeVersion-installer.jar';
+              _neoForgeURL =
+                  'https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge/$_neoforgeVersion/neoforge-$_neoforgeVersion-installer.jar';
               await LogUtil.log('NeoForge安装器URL: $_neoForgeURL', level: 'INFO');
               break;
             }
@@ -239,41 +263,40 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
   // 从 CurseForge API 获取模组下载链接
   Future<String?> _getModDownloadUrl(int projectId, int fileId) async {
     try {
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.curseforge.com/v1/mods/$projectId/files/$fileId/download-url',
-        options: Options(
-          headers: {
-            'x-api-key': widget.apiKey,
-            'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-          },
-        )
+        options: Options(headers: {'x-api-key': widget.apiKey}),
       );
       if (response.statusCode == 200 && response.data['data'] != null) {
         return response.data['data'];
       }
     } catch (e) {
-      await LogUtil.log('获取模组下载链接失败 (projectId: $projectId, fileId: $fileId): $e', level: 'ERROR');
+      await LogUtil.log(
+        '获取模组下载链接失败 (projectId: $projectId, fileId: $fileId): $e',
+        level: 'ERROR',
+      );
     }
     return null;
   }
 
   // 获取模组文件信息
-  Future<Map<String, dynamic>?> _getModFileInfo(int projectId, int fileId) async {
+  Future<Map<String, dynamic>?> _getModFileInfo(
+    int projectId,
+    int fileId,
+  ) async {
     try {
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.curseforge.com/v1/mods/$projectId/files/$fileId',
-        options:  Options(
-          headers: {
-            'x-api-key': widget.apiKey,
-            'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-          },
-        )
+        options: Options(headers: {'x-api-key': widget.apiKey}),
       );
       if (response.statusCode == 200 && response.data['data'] != null) {
         return response.data['data'];
       }
     } catch (e) {
-      await LogUtil.log('获取模组文件信息失败 (projectId: $projectId, fileId: $fileId): $e', level: 'ERROR');
+      await LogUtil.log(
+        '获取模组文件信息失败 (projectId: $projectId, fileId: $fileId): $e',
+        level: 'ERROR',
+      );
     }
     return null;
   }
@@ -297,7 +320,7 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
       int taskIndex = 0;
       int completedCount = 0;
       DateTime lastUpdateTime = DateTime.now();
-      
+
       // 工作池函数
       Future<void> worker() async {
         while (true) {
@@ -306,7 +329,7 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
           final modInfo = _modFiles[currentIndex];
           final projectId = modInfo['projectId'] as int;
           final fileId = modInfo['fileId'] as int;
-          
+
           // 无限重试获取文件信息，指数退避
           Map<String, dynamic>? fileInfo;
           int retryCount = 0;
@@ -314,55 +337,78 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
             fileInfo = await _getModFileInfo(projectId, fileId);
             if (fileInfo == null) {
               retryCount++;
-              final delayMs = (300 * (1 << (retryCount - 1).clamp(0, 5))).clamp(300, 10000);
-              await LogUtil.log('获取模组信息失败 (projectId: $projectId, fileId: $fileId), ${delayMs}ms 后重试...', level: 'WARNING');
+              final delayMs = (300 * (1 << (retryCount - 1).clamp(0, 5))).clamp(
+                300,
+                10000,
+              );
+              await LogUtil.log(
+                '获取模组信息失败 (projectId: $projectId, fileId: $fileId), ${delayMs}ms 后重试...',
+                level: 'WARNING',
+              );
               await Future.delayed(Duration(milliseconds: delayMs));
             }
           }
-          final fileName = fileInfo['fileName'] ?? 'mod_${projectId}_$fileId.jar';
+          final fileName =
+              fileInfo['fileName'] ?? 'mod_${projectId}_$fileId.jar';
           String? downloadUrl;
           retryCount = 0;
           while (downloadUrl == null || downloadUrl.isEmpty) {
             downloadUrl = await _getModDownloadUrl(projectId, fileId);
             if (downloadUrl == null || downloadUrl.isEmpty) {
               retryCount++;
-              final delayMs = (300 * (1 << (retryCount - 1).clamp(0, 5))).clamp(300, 10000);
-              await LogUtil.log('获取下载链接失败 (projectId: $projectId, fileId: $fileId), ${delayMs}ms 后重试', level: 'WARNING');
+              final delayMs = (300 * (1 << (retryCount - 1).clamp(0, 5))).clamp(
+                300,
+                10000,
+              );
+              await LogUtil.log(
+                '获取下载链接失败 (projectId: $projectId, fileId: $fileId), ${delayMs}ms 后重试',
+                level: 'WARNING',
+              );
               await Future.delayed(Duration(milliseconds: delayMs));
               if (retryCount >= 3) {
-                downloadUrl = 'https://edge.forgecdn.net/files/${fileId ~/ 1000}/${fileId % 1000}/$fileName';
+                downloadUrl =
+                    'https://edge.forgecdn.net/files/${fileId ~/ 1000}/${fileId % 1000}/$fileName';
                 await LogUtil.log('使用备用下载链接: $downloadUrl', level: 'INFO');
                 break;
               }
             }
           }
-          
-          final targetPath = '$versionPath${Platform.pathSeparator}mods${Platform.pathSeparator}$fileName';
+
+          final targetPath =
+              '$versionPath${Platform.pathSeparator}mods${Platform.pathSeparator}$fileName';
           downloadTasks.add({'url': downloadUrl, 'path': targetPath});
           completedCount++;
-          
+
           // 节流更新：每200ms或每10个任务更新一次UI
           final now = DateTime.now();
-          if (now.difference(lastUpdateTime).inMilliseconds >= 200 || completedCount % 10 == 0 || completedCount == _totalMods) {
+          if (now.difference(lastUpdateTime).inMilliseconds >= 200 ||
+              completedCount % 10 == 0 ||
+              completedCount == _totalMods) {
             lastUpdateTime = now;
             final progress = completedCount / _totalMods * 0.1;
             setState(() {
               _progress = progress;
             });
             if (completedCount % 50 == 0 || completedCount == _totalMods) {
-              await LogUtil.log('获取进度: $completedCount/$_totalMods', level: 'INFO');
+              await LogUtil.log(
+                '获取进度: $completedCount/$_totalMods',
+                level: 'INFO',
+              );
             }
           }
         }
       }
-      
+
       // 启动工作池
       final workerCount = maxConcurrent.clamp(1, _modFiles.length);
       await LogUtil.log('启动 $workerCount 个工作线程获取下载链接', level: 'INFO');
       final workers = List.generate(workerCount, (_) => worker());
       await Future.wait(workers);
-      
-      await LogUtil.log('已获取 ${downloadTasks.length}/${_modFiles.length} 个下载链接, 开始并发下载', level: 'INFO');
+
+      await LogUtil.log(
+        '已获取 ${downloadTasks.length}/${_modFiles.length} 个下载链接, 开始并发下载',
+        level: 'INFO',
+      );
       // 多线程下载
       final downloadResult = await DownloadUtils.batchDownload(
         tasks: downloadTasks,
@@ -372,8 +418,11 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
           });
         },
       );
-      await LogUtil.log('下载完成: 总数=${downloadResult.totalCount}, 成功=${downloadResult.completedCount}, 失败=${downloadResult.failedList.length}', level: 'INFO');
-      
+      await LogUtil.log(
+        '下载完成: 总数=${downloadResult.totalCount}, 成功=${downloadResult.completedCount}, 失败=${downloadResult.failedList.length}',
+        level: 'INFO',
+      );
+
       setState(() {
         _downloadModsStatus = true;
         _progress = 1.0;
@@ -388,17 +437,12 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
 
   // 获取游戏 Json
   Future<void> _saveMinecraftJson(String versionPath) async {
-    final options = Options(
-      headers: {
-        'User-Agent': 'FML/$_appVersion',
-      },
-      responseType: ResponseType.plain,
-    );
+    final options = Options(responseType: ResponseType.plain);
     int retry = 0;
     while (true) {
       try {
         await LogUtil.log('请求版本清单 (尝试第 ${retry + 1} 次)', level: 'INFO');
-        final response = await dio.get(
+        final response = await DioClient().dio.get(
           'https://bmclapi2.bangbang93.com/mc/game/version_manifest.json',
           options: options,
         );
@@ -417,11 +461,20 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 final url = v['url'];
                 if (url != null) {
                   try {
-                    final resp = await dio.get(url, options: Options(responseType: ResponseType.plain));
+                    final resp = await DioClient().dio.get(
+                      url,
+                      options: Options(responseType: ResponseType.plain),
+                    );
                     if (resp.statusCode == 200) {
-                      final filePath = '$versionPath${Platform.pathSeparator}${widget.name}.json';
-                      await File(filePath).writeAsString(resp.data is String ? resp.data : jsonEncode(resp.data));
-                      await LogUtil.log('已保存游戏 JSON 到: $filePath', level: 'INFO');
+                      final filePath =
+                          '$versionPath${Platform.pathSeparator}${widget.name}.json';
+                      await File(filePath).writeAsString(
+                        resp.data is String ? resp.data : jsonEncode(resp.data),
+                      );
+                      await LogUtil.log(
+                        '已保存游戏 JSON 到: $filePath',
+                        level: 'INFO',
+                      );
                       setState(() {
                         _downloadMinecraftJson = true;
                       });
@@ -440,8 +493,14 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
         }
       } catch (e) {
         retry++;
-        final delayMs = (300 * (1 << ((retry - 1).clamp(0, 8)))).clamp(300, 30000);
-        await LogUtil.log('请求版本清单失败 (第 $retry 次): $e —— ${delayMs}ms 后重试', level: 'WARNING');
+        final delayMs = (300 * (1 << ((retry - 1).clamp(0, 8)))).clamp(
+          300,
+          30000,
+        );
+        await LogUtil.log(
+          '请求版本清单失败 (第 $retry 次): $e —— ${delayMs}ms 后重试',
+          level: 'WARNING',
+        );
         await Future.delayed(Duration(milliseconds: delayMs));
       }
     }
@@ -471,7 +530,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
       }
       if (jsonData['libraries'] != null && jsonData['libraries'] is List) {
         for (var lib in jsonData['libraries']) {
-          if (lib['downloads'] != null && lib['downloads']['artifact'] != null) {
+          if (lib['downloads'] != null &&
+              lib['downloads']['artifact'] != null) {
             final artifact = lib['downloads']['artifact'];
             if (artifact['path'] != null) {
               librariesPath.add(artifact['path']);
@@ -535,7 +595,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
     for (int i = 0; i < librariesURL.length; i++) {
       final url = librariesURL[i];
       final relativePath = librariesPath[i];
-      final fullPath = '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
+      final fullPath =
+          '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
       if (!File(fullPath).existsSync()) {
         downloadTasks.add({'url': url, 'path': fullPath});
       }
@@ -570,7 +631,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
     List<Map<String, String>> downloadTasks = [];
     for (final hash in _assetHash) {
       final hashPrefix = hash.substring(0, 2);
-      final assetPath = '$gamePath${Platform.pathSeparator}assets${Platform.pathSeparator}objects${Platform.pathSeparator}$hashPrefix${Platform.pathSeparator}$hash';
+      final assetPath =
+          '$gamePath${Platform.pathSeparator}assets${Platform.pathSeparator}objects${Platform.pathSeparator}$hashPrefix${Platform.pathSeparator}$hash';
       if (!File(assetPath).existsSync()) {
         final url = 'https://bmclapi2.bangbang93.com/assets/$hashPrefix/$hash';
         downloadTasks.add({'url': url, 'path': assetPath});
@@ -598,7 +660,10 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
   }
 
   // 提取LWJGL本地库文件的名称和路径
-  Future<void> extractLwjglNativeLibrariesPath(String jsonFilePath, String gamePath) async {
+  Future<void> extractLwjglNativeLibrariesPath(
+    String jsonFilePath,
+    String gamePath,
+  ) async {
     final namesList = <String>[];
     final pathsList = <String>[];
     final file = File(jsonFilePath);
@@ -644,15 +709,21 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
       final fileName = path.split('/').last;
       // 检查是否为所需的LWJGL库
       if ((fileName.startsWith('lwjgl-') && fileName.contains('-natives-')) ||
-          (fileName.startsWith('lwjgl-freetype-') && fileName.contains('-natives-')) ||
-          (fileName.startsWith('lwjgl-glfw-') && fileName.contains('-natives-')) ||
-          (fileName.startsWith('lwjgl-jemalloc-') && fileName.contains('-natives-')) ||
-          (fileName.startsWith('lwjgl-openal-') && fileName.contains('-natives-')) ||
-          (fileName.startsWith('lwjgl-stb-') && fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-freetype-') &&
+              fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-glfw-') &&
+              fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-jemalloc-') &&
+              fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-openal-') &&
+              fileName.contains('-natives-')) ||
+          (fileName.startsWith('lwjgl-stb-') &&
+              fileName.contains('-natives-')) ||
           fileName.startsWith('lwjgl-tinyfd')) {
         namesList.add(fileName);
         String nativePath = path.replaceAll('/', Platform.pathSeparator);
-        final fullPath = ('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$nativePath');
+        final fullPath =
+            ('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$nativePath');
         pathsList.add(fullPath);
         await LogUtil.log('找到LWJGL库: $fileName, 路径: $fullPath', level: 'INFO');
       }
@@ -677,7 +748,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
     final prefs = await SharedPreferences.getInstance();
     final selectedGamePath = prefs.getString('SelectedPath') ?? '';
     final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
-    final nativesDir = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}natives';
+    final nativesDir =
+        '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}natives';
     final nativesDirObj = Directory(nativesDir);
     if (!await nativesDirObj.exists()) {
       await nativesDirObj.create(recursive: true);
@@ -690,8 +762,14 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
       final fullPath = lwjglNativePaths[i];
       final fileName = lwjglNativeNames[i];
       try {
-        final jarDir = fullPath.substring(0, fullPath.lastIndexOf(Platform.pathSeparator));
-        await LogUtil.log('提取: $fileName 从 $jarDir 到 $nativesDir', level: 'INFO');
+        final jarDir = fullPath.substring(
+          0,
+          fullPath.lastIndexOf(Platform.pathSeparator),
+        );
+        await LogUtil.log(
+          '提取: $fileName 从 $jarDir 到 $nativesDir',
+          level: 'INFO',
+        );
         final extracted = await extractNatives(jarDir, fileName, nativesDir);
         if (extracted.isNotEmpty) {
           successCount++;
@@ -702,7 +780,10 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
         await LogUtil.log('提取 $fileName 时出错: $e', level: 'ERROR');
       }
     }
-    await LogUtil.log('完成LWJGL本地库提取, 共处理 ${lwjglNativePaths.length} 个文件, 成功: $successCount', level: 'INFO');
+    await LogUtil.log(
+      '完成LWJGL本地库提取, 共处理 ${lwjglNativePaths.length} 个文件, 成功: $successCount',
+      level: 'INFO',
+    );
     await LogUtil.log('提取的文件: ${extractedFiles.join(', ')}', level: 'INFO');
     setState(() {
       _extractedLwjglNatives = true;
@@ -715,7 +796,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
       if (_neoForgeURL.isEmpty) {
         throw Exception('NeoForge安装器URL为空');
       }
-      final installerPath = '$versionPath${Platform.pathSeparator}neoforge-installer.jar';
+      final installerPath =
+          '$versionPath${Platform.pathSeparator}neoforge-installer.jar';
       await LogUtil.log('开始下载NeoForge安装器: $_neoForgeURL', level: 'INFO');
       await _downloadFile(installerPath, _neoForgeURL);
       setState(() {
@@ -735,14 +817,17 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
       final prefs = await SharedPreferences.getInstance();
       final selectedGamePath = prefs.getString('SelectedPath') ?? '';
       final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
-      final neoForgePath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}neoforge-installer.jar';
+      final neoForgePath =
+          '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}neoforge-installer.jar';
       final bytes = await File(neoForgePath).readAsBytes();
       final archive = ZipDecoder().decodeBytes(bytes);
       for (final file in archive) {
         if (file.name == 'install_profile.json') {
           final content = file.content as List<int>;
           _installerJson = utf8.decode(content);
-          final jsonFile = File('$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}install_profile.json');
+          final jsonFile = File(
+            '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}install_profile.json',
+          );
           await jsonFile.writeAsBytes(content);
           break;
         }
@@ -768,7 +853,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
       if (json['libraries'] != null && json['libraries'] is List) {
         await LogUtil.log('找到NeoForge libraries,开始解析...', level: 'INFO');
         for (var lib in json['libraries']) {
-          if (lib['downloads'] != null && lib['downloads']['artifact'] != null) {
+          if (lib['downloads'] != null &&
+              lib['downloads']['artifact'] != null) {
             final artifact = lib['downloads']['artifact'];
             if (artifact['path'] != null) {
               neoForgeLibrariesPath.add(artifact['path']);
@@ -777,7 +863,7 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
               String url = artifact['url'];
               url = url.replaceAll(
                 'https://maven.neoforged.net/releases/net',
-                'https://bmclapi2.bangbang93.com/maven/net'
+                'https://bmclapi2.bangbang93.com/maven/net',
               );
               neoForgeLibrariesURL.add(url);
             }
@@ -795,13 +881,19 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 neoForgeLibrariesURL.add(url);
               }
             } catch (e) {
-              await LogUtil.log('解析Maven坐标失败: $mavenCoords, 错误: $e', level: 'ERROR');
+              await LogUtil.log(
+                '解析Maven坐标失败: $mavenCoords, 错误: $e',
+                level: 'ERROR',
+              );
             }
           }
         }
         librariesPath.addAll(neoForgeLibrariesPath);
         librariesURL.addAll(neoForgeLibrariesURL);
-        await LogUtil.log('成功解析NeoForge libraries: ${neoForgeLibrariesURL.length}个', level: 'INFO');
+        await LogUtil.log(
+          '成功解析NeoForge libraries: ${neoForgeLibrariesURL.length}个',
+          level: 'INFO',
+        );
       } else {
         await LogUtil.log('未找到NeoForge libraries或格式不正确', level: 'ERROR');
       }
@@ -831,7 +923,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
     for (int i = 0; i < neoForgeLibrariesURL.length; i++) {
       final url = neoForgeLibrariesURL[i];
       final relativePath = neoForgeLibrariesPath[i];
-      final fullPath = '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
+      final fullPath =
+          '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
       if (!File(fullPath).existsSync()) {
         downloadTasks.add({'url': url, 'path': fullPath});
       }
@@ -862,12 +955,16 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
     final prefs = await SharedPreferences.getInstance();
     final selectedGamePath = prefs.getString('SelectedPath') ?? '';
     final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
-    final installerPath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}neoforge-installer.jar';
-    final neoForgeJson = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}neoforge-$_neoforgeVersion${Platform.pathSeparator}neoforge-$_neoforgeVersion.json';
+    final installerPath =
+        '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}neoforge-installer.jar';
+    final neoForgeJson =
+        '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}neoforge-$_neoforgeVersion${Platform.pathSeparator}neoforge-$_neoforgeVersion.json';
     await LogUtil.log('开始执行NeoForge安装器: $installerPath', level: 'INFO');
     final result = await Process.run('java', [
-      '-jar', installerPath,
-      '--installClient', gamePath
+      '-jar',
+      installerPath,
+      '--installClient',
+      gamePath,
     ]);
     if (result.stderr.toString().isNotEmpty) {
       for (var line in result.stderr.toString().split('\n')) {
@@ -882,8 +979,14 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
       throw Exception('NeoForge安装器执行失败,退出码: $code');
     }
     await LogUtil.log('NeoForge安装器执行成功', level: 'INFO');
-    await LogUtil.log('移动$neoForgeJson 配置文件到: $gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}NeoForge.json', level: 'INFO');
-    await _moveFile(neoForgeJson, '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}NeoForge.json');
+    await LogUtil.log(
+      '移动$neoForgeJson 配置文件到: $gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}NeoForge.json',
+      level: 'INFO',
+    );
+    await _moveFile(
+      neoForgeJson,
+      '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}NeoForge.json',
+    );
     setState(() {
       _neoForgeInstalled = true;
     });
@@ -896,7 +999,12 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
       if (!await sourceFile.exists()) {
         throw Exception('源文件不存在: $sourcePath');
       }
-      final destinationDir = Directory(destinationPath.substring(0, destinationPath.lastIndexOf(Platform.pathSeparator)));
+      final destinationDir = Directory(
+        destinationPath.substring(
+          0,
+          destinationPath.lastIndexOf(Platform.pathSeparator),
+        ),
+      );
       if (!await destinationDir.exists()) {
         await destinationDir.create(recursive: true);
       }
@@ -925,7 +1033,7 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
         },
         onError: (error) async {
           await LogUtil.log('下载失败: $error, URL: $url', level: 'ERROR');
-        }
+        },
       );
       final file = File(path);
       if (await file.exists()) {
@@ -942,9 +1050,14 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
   // 复制 overrides 内容
   Future<void> _copyOverridesContent(String versionPath) async {
     try {
-      final overridesDir = Directory('$versionPath${Platform.pathSeparator}curseforge${Platform.pathSeparator}$_overridesFolder');
+      final overridesDir = Directory(
+        '$versionPath${Platform.pathSeparator}curseforge${Platform.pathSeparator}$_overridesFolder',
+      );
       if (!await overridesDir.exists()) {
-        await LogUtil.log('overrides 文件夹不存在($_overridesFolder),跳过复制', level: 'INFO');
+        await LogUtil.log(
+          'overrides 文件夹不存在($_overridesFolder),跳过复制',
+          level: 'INFO',
+        );
         setState(() {
           _copyOverrides = true;
         });
@@ -953,12 +1066,18 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
       await LogUtil.log('开始复制 overrides 文件夹内容到版本文件夹', level: 'INFO');
       int copiedFiles = 0;
       int copiedDirs = 0;
-      Future<void> copyDirectory(Directory source, Directory destination) async {
+      Future<void> copyDirectory(
+        Directory source,
+        Directory destination,
+      ) async {
         if (!await destination.exists()) {
           await destination.create(recursive: true);
           copiedDirs++;
         }
-        await for (final entity in source.list(recursive: false, followLinks: false)) {
+        await for (final entity in source.list(
+          recursive: false,
+          followLinks: false,
+        )) {
           final String relativePath = entity.path.substring(source.path.length);
           final String destinationPath = '${destination.path}$relativePath';
           if (entity is File) {
@@ -969,8 +1088,12 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
           }
         }
       }
+
       await copyDirectory(overridesDir, Directory(versionPath));
-      await LogUtil.log('overrides 内容复制完成,共复制 $copiedFiles 个文件和 $copiedDirs 个目录', level: 'INFO');
+      await LogUtil.log(
+        'overrides 内容复制完成,共复制 $copiedFiles 个文件和 $copiedDirs 个目录',
+        level: 'INFO',
+      );
       setState(() {
         _copyOverrides = true;
       });
@@ -1003,7 +1126,7 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
       '854',
       '480',
       'NeoForge',
-      ''
+      '',
     ];
     final key = 'Config_${_name}_${widget.name}';
     await prefs.setStringList(key, defaultConfig);
@@ -1020,21 +1143,25 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
     final prefs = await SharedPreferences.getInstance();
     final selectedGamePath = prefs.getString('SelectedPath') ?? '';
     final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
-    final versionPath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}';
+    final versionPath =
+        '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}';
     try {
       await LogUtil.log('正在下载 CurseForge 整合包 ${widget.name}', level: 'INFO');
       await _showNotification('开始下载', '正在下载 ${widget.name}');
       await _createGameDirectories();
       // 下载整合包
       try {
-        await _downloadFile('$versionPath${Platform.pathSeparator}${widget.name}.zip', widget.url);
+        await _downloadFile(
+          '$versionPath${Platform.pathSeparator}${widget.name}.zip',
+          widget.url,
+        );
         setState(() {
           _downloadZip = true;
         });
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('下载整合包失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('下载整合包失败: $e')));
         return;
       }
       // 解压整合包
@@ -1046,33 +1173,39 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
       // 保存 Minecraft Json
       await _saveMinecraftJson(versionPath);
       // 解析游戏 Json
-      await _parseGameJson('$versionPath${Platform.pathSeparator}${widget.name}.json');
+      await _parseGameJson(
+        '$versionPath${Platform.pathSeparator}${widget.name}.json',
+      );
       // 下载资产索引文件
       if (assetIndexURL != null) {
-        final assetIndexPath = '$gamePath${Platform.pathSeparator}assets${Platform.pathSeparator}indexes${Platform.pathSeparator}$assetIndexId.json';
+        final assetIndexPath =
+            '$gamePath${Platform.pathSeparator}assets${Platform.pathSeparator}indexes${Platform.pathSeparator}$assetIndexId.json';
         try {
           await _downloadFile(assetIndexPath, assetIndexURL!);
           setState(() {
             _downloadAssetJson = true;
           });
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('下载资产索引失败: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('下载资产索引失败: $e')));
           return;
         }
         // 解析资产索引
         await _parseAssetIndex(assetIndexPath);
         // 下载客户端
         try {
-          await _downloadFile('$versionPath${Platform.pathSeparator}${widget.name}.jar', clientURL!);
+          await _downloadFile(
+            '$versionPath${Platform.pathSeparator}${widget.name}.jar',
+            clientURL!,
+          );
           setState(() {
             _downloadClient = true;
           });
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('下载客户端失败: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('下载客户端失败: $e')));
           return;
         }
         // 下载库文件
@@ -1080,7 +1213,10 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
         // 下载资源文件
         await _downloadAssets();
         // 提取 LWJGL 本地库路径
-        await extractLwjglNativeLibrariesPath('$versionPath${Platform.pathSeparator}${widget.name}.json', gamePath);
+        await extractLwjglNativeLibrariesPath(
+          '$versionPath${Platform.pathSeparator}${widget.name}.json',
+          gamePath,
+        );
         // 提取 LWJGL Natives
         await _extractLwjglNatives();
         // 下载NeoForge安装器
@@ -1101,9 +1237,9 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
         await _showNotification('安装完成', '${widget.name} 安装完成');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('发生错误: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
     }
   }
 
@@ -1111,7 +1247,6 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
   void initState() {
     super.initState();
     _initNotifications();
-    _loadAppVersion();
     _getMemory();
     _startDownload();
   }
@@ -1131,8 +1266,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
               title: const Text('正在下载整合包'),
               subtitle: Text(_downloadZip ? '下载完成' : '下载中...'),
               trailing: _downloadZip
-                ? const Icon(Icons.check)
-                : const CircularProgressIndicator(),
+                  ? const Icon(Icons.check)
+                  : const CircularProgressIndicator(),
             ),
           ),
           if (_downloadZip) ...[
@@ -1141,8 +1276,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 title: const Text('正在解压整合包'),
                 subtitle: Text(_unzipPack ? '解压完成' : '解压中...'),
                 trailing: _unzipPack
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1152,8 +1287,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 title: const Text('正在解析manifest.json'),
                 subtitle: Text(_parseManifest ? '解析完成' : '解析中...'),
                 trailing: _parseManifest
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1163,12 +1298,14 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 children: [
                   ListTile(
                     title: const Text('正在下载模组文件'),
-                    subtitle: Text(_downloadModsStatus
-                      ? '下载完成'
-                      : '下载中... 已下载${(_progress * 100).toStringAsFixed(1)}%'),
+                    subtitle: Text(
+                      _downloadModsStatus
+                          ? '下载完成'
+                          : '下载中... 已下载${(_progress * 100).toStringAsFixed(1)}%',
+                    ),
                     trailing: _downloadModsStatus
-                      ? const Icon(Icons.check)
-                      : const CircularProgressIndicator(),
+                        ? const Icon(Icons.check)
+                        : const CircularProgressIndicator(),
                   ),
                   if (!_downloadModsStatus)
                     Padding(
@@ -1185,8 +1322,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 title: const Text('正在获取游戏Json'),
                 subtitle: Text(_downloadMinecraftJson ? '获取完成' : '获取中...'),
                 trailing: _downloadMinecraftJson
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1196,8 +1333,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 title: const Text('正在解析游戏Json'),
                 subtitle: Text(_parseGameJsonStatus ? '解析完成' : '解析中...'),
                 trailing: _parseGameJsonStatus
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1207,8 +1344,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 title: const Text('正在获取资源Json'),
                 subtitle: Text(_downloadAssetJson ? '获取完成' : '获取中...'),
                 trailing: _downloadAssetJson
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1218,8 +1355,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 title: const Text('正在解析资源Json'),
                 subtitle: Text(_parseAssetJson ? '解析完成' : '解析中...'),
                 trailing: _parseAssetJson
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1229,12 +1366,14 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 children: [
                   ListTile(
                     title: const Text('正在下载客户端'),
-                    subtitle: Text(_downloadClient
-                      ? '下载完成'
-                      : '下载中... ${(_progress * 100).toStringAsFixed(1)}%'),
+                    subtitle: Text(
+                      _downloadClient
+                          ? '下载完成'
+                          : '下载中... ${(_progress * 100).toStringAsFixed(1)}%',
+                    ),
                     trailing: _downloadClient
-                      ? const Icon(Icons.check)
-                      : const CircularProgressIndicator(),
+                        ? const Icon(Icons.check)
+                        : const CircularProgressIndicator(),
                   ),
                   if (!_downloadClient)
                     Padding(
@@ -1251,12 +1390,14 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 children: [
                   ListTile(
                     title: const Text('正在下载游戏库'),
-                    subtitle: Text(_downloadLibrary
-                      ? '下载完成'
-                      : '下载中... ${(_progress * 100).toStringAsFixed(1)}%'),
+                    subtitle: Text(
+                      _downloadLibrary
+                          ? '下载完成'
+                          : '下载中... ${(_progress * 100).toStringAsFixed(1)}%',
+                    ),
                     trailing: _downloadLibrary
-                      ? const Icon(Icons.check)
-                      : const CircularProgressIndicator(),
+                        ? const Icon(Icons.check)
+                        : const CircularProgressIndicator(),
                   ),
                   if (!_downloadLibrary)
                     Padding(
@@ -1273,12 +1414,14 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 children: [
                   ListTile(
                     title: const Text('正在下载游戏资源'),
-                    subtitle: Text(_downloadAsset
-                      ? '下载完成'
-                      : '下载中... ${(_progress * 100).toStringAsFixed(1)}%'),
+                    subtitle: Text(
+                      _downloadAsset
+                          ? '下载完成'
+                          : '下载中... ${(_progress * 100).toStringAsFixed(1)}%',
+                    ),
                     trailing: _downloadAsset
-                      ? const Icon(Icons.check)
-                      : const CircularProgressIndicator(),
+                        ? const Icon(Icons.check)
+                        : const CircularProgressIndicator(),
                   ),
                   if (!_downloadAsset)
                     Padding(
@@ -1295,8 +1438,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 title: const Text('正在提取LWJGL路径'),
                 subtitle: Text(_extractedLwjglNativesPath ? '提取完成' : '提取中...'),
                 trailing: _extractedLwjglNativesPath
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1306,8 +1449,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 title: const Text('正在提取LWJGL'),
                 subtitle: Text(_extractedLwjglNatives ? '提取完成' : '提取中...'),
                 trailing: _extractedLwjglNatives
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1317,12 +1460,14 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 children: [
                   ListTile(
                     title: const Text('正在下载NeoForge安装器'),
-                    subtitle: Text(_downloadNeoForge
-                      ? '下载完成'
-                      : '下载中... ${(_progress * 100).toStringAsFixed(1)}%'),
+                    subtitle: Text(
+                      _downloadNeoForge
+                          ? '下载完成'
+                          : '下载中... ${(_progress * 100).toStringAsFixed(1)}%',
+                    ),
                     trailing: _downloadNeoForge
-                      ? const Icon(Icons.check)
-                      : const CircularProgressIndicator(),
+                        ? const Icon(Icons.check)
+                        : const CircularProgressIndicator(),
                   ),
                   if (!_downloadNeoForge)
                     Padding(
@@ -1337,10 +1482,12 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
             Card(
               child: ListTile(
                 title: const Text('正在提取NeoForge安装器'),
-                subtitle: Text(_extractNeoForgeInstallerStatus ? '提取完成' : '提取中...'),
+                subtitle: Text(
+                  _extractNeoForgeInstallerStatus ? '提取完成' : '提取中...',
+                ),
                 trailing: _extractNeoForgeInstallerStatus
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1348,10 +1495,12 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
             Card(
               child: ListTile(
                 title: const Text('正在解析NeoForge安装配置'),
-                subtitle: Text(_parseNeoForgeInstallerJsonStatus ? '解析完成' : '解析中...'),
+                subtitle: Text(
+                  _parseNeoForgeInstallerJsonStatus ? '解析完成' : '解析中...',
+                ),
                 trailing: _parseNeoForgeInstallerJsonStatus
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1361,12 +1510,14 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 children: [
                   ListTile(
                     title: const Text('正在下载NeoForge库'),
-                    subtitle: Text(_downloadNeoForgeLibrary
-                      ? '下载完成'
-                      : '下载中... ${(_progress * 100).toStringAsFixed(1)}%'),
+                    subtitle: Text(
+                      _downloadNeoForgeLibrary
+                          ? '下载完成'
+                          : '下载中... ${(_progress * 100).toStringAsFixed(1)}%',
+                    ),
                     trailing: _downloadNeoForgeLibrary
-                      ? const Icon(Icons.check)
-                      : const CircularProgressIndicator(),
+                        ? const Icon(Icons.check)
+                        : const CircularProgressIndicator(),
                   ),
                   if (!_downloadNeoForgeLibrary)
                     Padding(
@@ -1383,8 +1534,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 title: const Text('正在安装NeoForge'),
                 subtitle: Text(_neoForgeInstalled ? '安装完成' : '安装中...'),
                 trailing: _neoForgeInstalled
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1394,8 +1545,8 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 title: const Text('正在复制整合包文件'),
                 subtitle: Text(_copyOverrides ? '复制完成' : '复制中...'),
                 trailing: _copyOverrides
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
@@ -1405,21 +1556,21 @@ class CurseforgeNeoForgeModpackPageState extends State<CurseforgeNeoForgeModpack
                 title: const Text('正在写入配置文件'),
                 subtitle: Text(_writeConfig ? '写入完成' : '写入中...'),
                 trailing: _writeConfig
-                  ? const Icon(Icons.check)
-                  : const CircularProgressIndicator(),
+                    ? const Icon(Icons.check)
+                    : const CircularProgressIndicator(),
               ),
             ),
           ],
         ],
       ),
       floatingActionButton: _writeConfig
-        ? FloatingActionButton(
-            onPressed: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
-            child: const Icon(Icons.check),
-          )
-        : null,
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
+              child: const Icon(Icons.check),
+            )
+          : null,
     );
   }
 }

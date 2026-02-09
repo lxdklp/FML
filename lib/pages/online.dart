@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:async';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:archive/archive.dart';
@@ -26,7 +26,6 @@ class OnlinePageState extends State<OnlinePage> {
   bool _coreUpdate = false;
   bool _macosError = false;
   double _downloadProgress = 0.0;
-  String _appVersion = "1.0.0";
   String _coreVersion = "未知";
   final TextEditingController _serverController = TextEditingController();
 
@@ -100,13 +99,8 @@ class OnlinePageState extends State<OnlinePage> {
   // 检查核心更新
   Future<void> _checkCoreUpdate() async {
     try {
-      Dio dio = Dio();
-      Options options = Options(
-        headers: {'User-Agent': 'FML-App/$_appVersion'},
-      );
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.github.com/repos/EasyTier/EasyTier/releases',
-        options: options,
       );
       if (response.statusCode == 200) {
         Map<String, dynamic> loaderData = response.data[0];
@@ -135,15 +129,6 @@ class OnlinePageState extends State<OnlinePage> {
     await _installCore();
     setState(() {
       _coreUpdate = false;
-    });
-  }
-
-  // 读取App版本
-  Future<void> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "1.0.0";
-    setState(() {
-      _appVersion = version;
     });
   }
 
@@ -232,12 +217,9 @@ class OnlinePageState extends State<OnlinePage> {
   // 安装核心
   Future<void> _installCore() async {
     String downloadUrl = '';
-    Dio dio = Dio();
-    Options options = Options(headers: {'User-Agent': 'FML-App/$_appVersion'});
     try {
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.github.com/repos/EasyTier/EasyTier/releases',
-        options: options,
       );
       if (response.statusCode == 200) {
         Map<String, dynamic> loaderData = response.data[0];
@@ -401,7 +383,6 @@ class OnlinePageState extends State<OnlinePage> {
   void initState() {
     super.initState();
     _checkCoreExists();
-    _loadAppVersion();
     _checkCoreVersion();
     _checkCoreUpdate();
   }

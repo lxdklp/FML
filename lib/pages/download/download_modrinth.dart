@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download/modrinth/info.dart';
@@ -14,11 +13,9 @@ class DownloadModrinth extends StatefulWidget {
 }
 
 class DownloadModrinthState extends State<DownloadModrinth> {
-  final Dio dio = Dio();
   List<dynamic> _projectsList = [];
   bool _isLoading = true;
   String? _error;
-  String _appVersion = '';
   String _count = '50';
   final ScrollController _scrollController = ScrollController();
   bool _showScrollToTop = false;
@@ -37,7 +34,7 @@ class DownloadModrinthState extends State<DownloadModrinth> {
   @override
   void initState() {
     super.initState();
-    _loadAppVersion();
+    _fetchProjects();
     _scrollController.addListener(() {
       setState(() {
         _showScrollToTop = _scrollController.offset > 200;
@@ -61,16 +58,6 @@ class DownloadModrinthState extends State<DownloadModrinth> {
     );
   }
 
-  // 读取App版本
-  Future<void> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "UnknownVersion";
-    setState(() {
-      _appVersion = version;
-    });
-    _fetchProjects();
-  }
-
   // 获取随机项目
   Future<void> _fetchProjects() async {
     try {
@@ -78,13 +65,9 @@ class DownloadModrinthState extends State<DownloadModrinth> {
         _isLoading = true;
         _error = null;
       });
-      final options = Options(
-        headers: {'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)'},
-      );
       LogUtil.log('开始请求Modrinth随机项目', level: 'INFO');
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.modrinth.com/v2/projects_random?count=$_count',
-        options: options,
       );
       if (response.statusCode == 200) {
         LogUtil.log('成功获取Modrinth项目', level: 'INFO');
@@ -126,17 +109,13 @@ class DownloadModrinthState extends State<DownloadModrinth> {
       if (_selectedProjectType != null) {
         queryParams['facets'] = '[["project_type:$_selectedProjectType"]]';
       }
-      final options = Options(
-        headers: {'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)'},
-      );
       LogUtil.log(
         '搜索Modrinth项目: $query, 类型: $_selectedProjectType',
         level: 'INFO',
       );
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.modrinth.com/v2/search',
         queryParameters: queryParams,
-        options: options,
       );
       if (response.statusCode == 200) {
         LogUtil.log('成功获取搜索结果', level: 'INFO');

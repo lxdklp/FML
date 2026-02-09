@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
+import 'package:fml/function/dio_client.dart';
 
 import 'package:fml/function/log.dart';
 import 'package:fml/function/slide_page_route.dart';
@@ -16,7 +16,6 @@ class ModpackPage extends StatefulWidget {
 }
 
 class ModpackPageState extends State<ModpackPage> {
-  final Dio dio = Dio();
   bool isLoading = true;
   String? error;
   List<dynamic> versionsList = [];
@@ -42,7 +41,7 @@ class ModpackPageState extends State<ModpackPage> {
         isLoading = true;
         error = null;
       });
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.modrinth.com/v2/project/${widget.projectId}/version',
       );
       if (response.statusCode == 200) {

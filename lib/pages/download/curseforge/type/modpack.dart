@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download/curseforge/type/download_modpack/download_info.dart';
@@ -23,7 +23,6 @@ class CurseforgeModpackPage extends StatefulWidget {
 }
 
 class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
-  final Dio dio = Dio();
   bool _isLoading = true;
   String? _error;
   List<dynamic> _filesList = [];
@@ -33,22 +32,11 @@ class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
   String? _selectedLoader;
   Set<String> _availableGameVersions = {};
   String? _selectedGameVersion;
-  String _appVersion = '';
 
   @override
   void initState() {
     super.initState();
     LogUtil.log('加载CurseForge模组ID: ${widget.modId}', level: 'INFO');
-    _loadAppVersion();
-  }
-
-  // 加载版本信息
-  Future<void> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "UnknownVersion";
-    setState(() {
-      _appVersion = version;
-    });
     _fetchFiles();
   }
 
@@ -59,15 +47,10 @@ class CurseforgeModpackPageState extends State<CurseforgeModpackPage> {
         _isLoading = true;
         _error = null;
       });
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://api.curseforge.com/v1/mods/${widget.modId}/files',
         queryParameters: {'pageSize': 50},
-        options: Options(
-          headers: {
-            'x-api-key': widget.apiKey,
-            'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-          },
-        ),
+        options: Options(headers: {'x-api-key': widget.apiKey}),
       );
       if (response.statusCode == 200) {
         final allFiles = response.data['data'] as List;

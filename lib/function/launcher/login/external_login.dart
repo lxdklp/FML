@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:dio/dio.dart';
 import 'package:crypto/crypto.dart';
 import 'package:fml/function/log.dart';
@@ -8,23 +8,17 @@ import 'package:fml/function/crypto_util.dart';
 
 // 检查authlib-injector
 Future<bool> checkAuthlibInjector(String gamePath) async {
-  File authlibFile = File('$gamePath${Platform.pathSeparator}authlib-injector.jar');
+  File authlibFile = File(
+    '$gamePath${Platform.pathSeparator}authlib-injector.jar',
+  );
   if (authlibFile.existsSync()) {
     LogUtil.log('authlib-injector 已存在', level: 'INFO');
     final stream = authlibFile.openRead();
     final hash = await sha256.bind(stream).first;
     final hashString = hash.toString();
-    final Dio dio = Dio();
-    final String appVersion = await _loadAppVersion();
-    final options = Options(
-      headers: {
-        'User-Agent': 'FML/$appVersion',
-      },
-    );
     try {
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://bmclapi2.bangbang93.com/mirrors/authlib-injector/artifact/latest.json',
-        options: options,
       );
       if (response.statusCode == 200 && response.data.isNotEmpty) {
         final String? expectedHash = response.data['checksums']['sha256'];
@@ -43,33 +37,17 @@ Future<bool> checkAuthlibInjector(String gamePath) async {
       return false;
     }
     return true;
-  }
-  else {
+  } else {
     return false;
   }
-}
-
-  // 读取App版本
-  Future<String> _loadAppVersion() async {
-  final prefs = await SharedPreferences.getInstance();
-  final version = prefs.getString('version') ?? "1.0.0";
-  return version;
 }
 
 // 下载authlib-injector
 Future<void> downloadAuthlibInjector(String gamePath) async {
   LogUtil.log('加载authlib-injector版本', level: 'INFO');
-  final Dio dio = Dio();
-  final String appVersion = await _loadAppVersion();
-  final options = Options(
-    headers: {
-      'User-Agent': 'FML/$appVersion',
-    },
-  );
   try {
-    final response = await dio.get(
+    final response = await DioClient().dio.get(
       'https://bmclapi2.bangbang93.com/mirrors/authlib-injector/artifact/latest.json',
-      options: options,
     );
     if (response.statusCode == 200 && response.data.isNotEmpty) {
       final String? downloadUrl = response.data['download_url'];
@@ -90,7 +68,7 @@ Future<void> downloadAuthlibInjector(String gamePath) async {
           },
           onCancel: () {
             LogUtil.log('AuthlibInjector 下载已取消', level: 'WARNING');
-          }
+          },
         );
       } else {
         throw '无法获取 authlib-injector 下载链接';
@@ -106,27 +84,20 @@ Future<void> downloadAuthlibInjector(String gamePath) async {
 
 // 外置登录令牌检查（传入的是加密的令牌）
 Future<bool> checkToken(
-    String url,
-    String encryptedAccessToken,
-    String encryptedClientToken
-  ) async {
+  String url,
+  String encryptedAccessToken,
+  String encryptedClientToken,
+) async {
   LogUtil.log('检查令牌有效性', level: 'INFO');
-  final Dio dio = Dio();
-  final String appVersion = await _loadAppVersion();
   String accessToken = await CryptoUtil.decrypt(encryptedAccessToken);
   String clientToken = await CryptoUtil.decrypt(encryptedClientToken);
-  final options = Options(
-    headers: {
-      'User-Agent': 'FML/$appVersion',
-      'Content-Type': 'application/json'
-    },
-  );
+  final options = Options(headers: {'Content-Type': 'application/json'});
   try {
     Map<String, dynamic> data = {
       'accessToken': accessToken,
-      'clientToken': clientToken
+      'clientToken': clientToken,
     };
-    final response = await dio.post(
+    final response = await DioClient().dio.post(
       '$url/authserver/validate',
       data: data,
       options: options,
@@ -137,13 +108,11 @@ Future<bool> checkToken(
     } else if (response.statusCode == 403) {
       LogUtil.log('令牌无效', level: 'WARNING');
       return false;
-    }
-    else {
+    } else {
       LogUtil.log('令牌检查失败，状态码: ${response.statusCode}', level: 'WARNING');
       return false;
     }
-  }
-  catch (e) {
+  } catch (e) {
     LogUtil.log('$url/authserver/validate令牌检查失败: $e', level: 'ERROR');
     return false;
   }
@@ -151,33 +120,23 @@ Future<bool> checkToken(
 
 // 刷新外置登录令牌（传入的是加密的令牌，返回加密的新令牌）
 Future<String> refreshToken(
-    String url,
-    String encryptedAccessToken,
-    String encryptedClientToken,
-    String name,
-    String uuid
-  ) async {
+  String url,
+  String encryptedAccessToken,
+  String encryptedClientToken,
+  String name,
+  String uuid,
+) async {
   LogUtil.log('正在刷新令牌', level: 'INFO');
-  final Dio dio = Dio();
-  final String appVersion = await _loadAppVersion();
   String accessToken = await CryptoUtil.decrypt(encryptedAccessToken);
   String clientToken = await CryptoUtil.decrypt(encryptedClientToken);
-  final options = Options(
-    headers: {
-      'User-Agent': 'FML/$appVersion',
-      'Content-Type': 'application/json'
-    },
-  );
+  final options = Options(headers: {'Content-Type': 'application/json'});
   try {
     Map<String, dynamic> data = {
       'accessToken': accessToken,
       'clientToken': clientToken,
-      "selectedProfile":{
-        'name': name,
-        'id': uuid
-      },
+      "selectedProfile": {'name': name, 'id': uuid},
     };
-    final response = await dio.post(
+    final response = await DioClient().dio.post(
       '$url/authserver/refresh',
       data: data,
       options: options,
@@ -190,8 +149,7 @@ Future<String> refreshToken(
       LogUtil.log('令牌刷新失败，状态码: ${response.statusCode}', level: 'WARNING');
       return encryptedAccessToken;
     }
-  }
-  catch (e) {
+  } catch (e) {
     LogUtil.log('令牌刷新失败: $e', level: 'ERROR');
     return encryptedAccessToken;
   }

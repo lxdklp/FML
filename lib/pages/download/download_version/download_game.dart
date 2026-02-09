@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:dio/dio.dart';
 import 'dart:math';
 
 import 'package:fml/function/log.dart';
@@ -26,7 +26,6 @@ class DownloadGamePage extends StatefulWidget {
 }
 
 class DownloadGamePageState extends State<DownloadGamePage> {
-  final Dio dio = Dio();
   String _selectedLoader = 'Vanilla';
   late final TextEditingController _gameNameController;
   String _gameName = '';
@@ -34,7 +33,6 @@ class DownloadGamePageState extends State<DownloadGamePage> {
   List<String> _fabricVersionList = [];
   final List<bool> _fabricStableList = [];
   List<dynamic> _fabricJson = [];
-  String _appVersion = "unknown";
   bool _showUnstable = false;
   String _selectedFabricVersion = '';
   Map<String, dynamic>? _selectedFabricLoader;
@@ -68,25 +66,14 @@ class DownloadGamePageState extends State<DownloadGamePage> {
     });
   }
 
-  // 读取App版本
-  Future<void> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "1.0.0";
-    setState(() {
-      _appVersion = version;
-    });
-  }
-
   // 读取Fabric版本列表
   Future<void> _loadFabricList() async {
     LogUtil.log('加载${widget.version}Fabric版本列表', level: 'INFO');
-    await _loadAppVersion();
+
     try {
-      final options = Options(headers: {'User-Agent': 'FML/$_appVersion'});
-      // FML UA请求BMCLAPI Fabric
-      final response = await dio.get(
+      // 请求BMCLAPI Fabric
+      final response = await DioClient().dio.get(
         'https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader/${widget.version}',
-        options: options,
       );
       if (response.statusCode == 200) {
         List<dynamic> loaderData = response.data;
@@ -111,12 +98,10 @@ class DownloadGamePageState extends State<DownloadGamePage> {
   // 加载NeoForge
   Future<void> _loadNeoForgeList() async {
     LogUtil.log('加载${widget.version}NeoForge版本列表', level: 'INFO');
-    await _loadAppVersion();
+
     try {
-      final options = Options(headers: {'User-Agent': 'FML/$_appVersion'});
-      final response = await dio.get(
+      final response = await DioClient().dio.get(
         'https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge/maven-metadata.xml',
-        options: options,
       );
       if (response.statusCode == 200) {
         // 解析XML数据
