@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
-import 'package:fml/function/slide_page_route.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:share_plus/share_plus.dart';
@@ -46,7 +45,7 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
   @override
   void initState() {
     super.initState();
-    _loadAppVersion();
+    _fetchProjectDetails();
   }
 
   // 获取格式化的标题
@@ -58,11 +57,6 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
       return '[${classIdNames[classId]}] $title';
     }
     return title;
-  }
-
-  // 读取App版本
-  Future<void> _loadAppVersion() async {
-    _fetchProjectDetails();
   }
 
   // 获取请求选项

@@ -107,11 +107,12 @@ class CurseforgeFabricModpackPageState
             appUserModelId: 'lxdklp.fml',
             guid: '11451419-0721-0721-0721-114514191981',
           );
-      const InitializationSettings initializationSettings = InitializationSettings(
-        macOS: initializationSettingsDarwin,
-        linux: initializationSettingsLinux,
-        windows: initializationSettingsWindows,
-      );
+      const InitializationSettings initializationSettings =
+          InitializationSettings(
+            macOS: initializationSettingsDarwin,
+            linux: initializationSettingsLinux,
+            windows: initializationSettingsWindows,
+          );
       await flutterLocalNotificationsPlugin.initialize(
         settings: initializationSettings,
       );
@@ -135,15 +136,6 @@ class CurseforgeFabricModpackPageState
         notificationDetails: platformChannelSpecifics,
       );
     }
-  }
-
-  // 读取App版本
-  Future<void> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "1.0.0";
-    setState(() {
-      _appVersion = version;
-    });
   }
 
   // 文件夹创建
