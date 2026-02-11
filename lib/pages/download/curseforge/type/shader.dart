@@ -34,23 +34,12 @@ class CurseforgeShaderPageState extends State<CurseforgeShaderPage> {
   Set<String> _availableGameVersions = {};
   String? _selectedGameVersion;
   String _savePath = '';
-  String _appVersion = '';
   bool _customLocation = false;
 
   @override
   void initState() {
     super.initState();
     LogUtil.log('加载CurseForge光影ID: ${widget.modId}', level: 'INFO');
-    _loadAppVersion();
-  }
-
-  // 加载设置
-  Future<void> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "UnknownVersion";
-    setState(() {
-      _appVersion = version;
-    });
     _fetchFiles();
   }
 

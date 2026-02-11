@@ -51,7 +51,6 @@ class FabricModpackPageState extends State<FabricModpackPage> {
 
   String _fabricVersion = '';
   String _minecraftVersion = '';
-  String _appVersion = "unknown";
   List<dynamic> _fabricFullJson = [];
   Map<String, dynamic> _fabricJson = {};
 

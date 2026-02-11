@@ -52,7 +52,6 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
 
   String _neoforgeVersion = '';
   String _minecraftVersion = '';
-  String _appVersion = "unknown";
   String _installerJson = '';
   String _name = '';
   String _neoForgeURL = '';
