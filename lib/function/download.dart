@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/material.dart';
-import 'package:fml/function/dio_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:fml/function/log.dart';
@@ -74,6 +75,40 @@ class _ProgressUpdater {
 class DownloadUtils {
   static const int _maxRetries = 5;
   static const int _concurrentDownloads = 64;
+  static Dio? _sharedDio;
+  static String? _cachedUserAgent;
+  static Future<Dio> _getSharedDio() async {
+    if (_sharedDio == null) {
+      _sharedDio = Dio();
+      // 配置 HttpClient
+      (_sharedDio!.httpClientAdapter as IOHttpClientAdapter).createHttpClient =
+          () {
+            final client = HttpClient();
+            client.maxConnectionsPerHost = _concurrentDownloads;
+            client.idleTimeout = const Duration(seconds: 30);
+            client.connectionTimeout = const Duration(seconds: 15);
+            return client;
+          };
+      _sharedDio!.options.connectTimeout = const Duration(seconds: 15);
+      _sharedDio!.options.receiveTimeout = const Duration(minutes: 5);
+      _sharedDio!.options.sendTimeout = const Duration(seconds: 30);
+    }
+    if (_cachedUserAgent == null) {
+      final prefs = await SharedPreferences.getInstance();
+      final appVersion = prefs.getString('version') ?? 'unknown';
+      _cachedUserAgent = 'FML/$appVersion';
+    }
+    return _sharedDio!;
+  }
+
+  /// 获取对应 URL 的 User-Agent
+  static String _getUserAgent(String url) {
+    if (url.contains('bmclapi2.bangbang93.com')) {
+      return _cachedUserAgent ?? 'FML/unknown';
+    } else {
+      return 'lxdklp/${_cachedUserAgent ?? 'FML/unknown'} (fml.lxdklp.top)';
+    }
+  }
 
   /// 下载单个文件
   /// [url] 下载地址
@@ -90,8 +125,9 @@ class DownloadUtils {
     Function(String error)? onError,
     VoidCallback? onCancel,
   }) async {
-    final dio = DioClient().dio;
+    final dio = await _getSharedDio();
     final CancelToken cancelToken = CancelToken();
+    final userAgent = _getUserAgent(url);
     const int maxRetries = 5;
     for (int retry = 0; retry <= maxRetries; retry++) {
       try {
@@ -101,7 +137,10 @@ class DownloadUtils {
         if (!directory.existsSync()) {
           directory.createSync(recursive: true);
         }
-        final options = Options(responseType: ResponseType.stream);
+        final options = Options(
+          headers: {'User-Agent': userAgent},
+          responseType: ResponseType.stream,
+        );
         await dio.download(
           url,
           savePath,
