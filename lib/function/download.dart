@@ -74,16 +74,6 @@ class _ProgressUpdater {
 class DownloadUtils {
   static const int _maxRetries = 5;
   static const int _concurrentDownloads = 64;
-  static String? _cachedUserAgent;
-
-  /// 获取对应 URL 的 User-Agent
-  static String _getUserAgent(String url) {
-    if (url.contains('bmclapi2.bangbang93.com')) {
-      return _cachedUserAgent ?? 'FML/unknown';
-    } else {
-      return 'lxdklp/${_cachedUserAgent ?? 'FML/unknown'} (fml.lxdklp.top)';
-    }
-  }
 
   /// 下载单个文件
   /// [url] 下载地址
@@ -102,7 +92,6 @@ class DownloadUtils {
   }) async {
     final dio = DioClient().dio;
     final CancelToken cancelToken = CancelToken();
-    final userAgent = _getUserAgent(url);
     const int maxRetries = 5;
     for (int retry = 0; retry <= maxRetries; retry++) {
       try {
@@ -112,10 +101,7 @@ class DownloadUtils {
         if (!directory.existsSync()) {
           directory.createSync(recursive: true);
         }
-        final options = Options(
-          headers: {'User-Agent': userAgent},
-          responseType: ResponseType.stream,
-        );
+        final options = Options(responseType: ResponseType.stream);
         await dio.download(
           url,
           savePath,
