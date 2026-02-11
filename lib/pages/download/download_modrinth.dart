@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
+import 'package:fml/function/slide_page_route.dart';
 
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download/modrinth/info.dart';

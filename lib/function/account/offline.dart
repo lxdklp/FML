@@ -7,7 +7,7 @@ import 'package:fml/function/log.dart';
 Future<void> saveOffineAccount(BuildContext context,String name) async {
   String uuid = md5.convert(utf8.encode('OfflinePlayer:$name')).toString();
   final prefs = await SharedPreferences.getInstance();
-  List<String> accounts = prefs.getStringList('offline_accountsList') ?? [];
+  List<String> accounts = prefs.getStringList('offline_accounts_list') ?? [];
   if (accounts.contains(name)) {
     LogUtil.log('账号 $name 已存在', level: 'ERROR');
     return;

@@ -16,6 +16,12 @@ class DownloadGamePage extends StatefulWidget {
     required this.version,
     required this.url,
   });
+  const DownloadGamePage({
+    super.key,
+    required this.type,
+    required this.version,
+    required this.url,
+  });
 
   final String type;
   final String version;

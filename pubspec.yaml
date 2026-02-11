@@ -1,7 +1,7 @@
 name: fml
 description: "Flutter Minecraft Launcher"
 publish_to: 'none'
-version: 1.7.0+10
+version: 1.8.0+11
 
 environment:
   sdk: ^3.8.1
@@ -16,16 +16,16 @@ dependencies:
   crypto: ^3.0.6
   file_selector: ^1.0.3
   system_info2: ^4.0.0
-  file_picker: ^10.2.4
+  file_picker: ^10.3.10
   flutter_launcher_icons: ^0.14.4
   dio: ^5.9.0
   path_provider: ^2.1.5
   url_launcher: ^6.3.2
-  flutter_local_notifications: ^19.4.0
+  flutter_local_notifications: ^20.0.0
   synchronized: ^3.4.0
   archive: ^4.0.7
   package_info_plus: ^9.0.0
-  flutter_markdown: ^0.7.7+1
+  flutter_markdown_plus: ^1.0.7
   html: ^0.15.5
   uuid: ^4.5.1
   flutter_gbk2utf8: ^1.0.1

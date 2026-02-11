@@ -95,7 +95,9 @@ class DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
         linux: initializationSettingsLinux,
         windows: initializationSettingsWindows,
       );
-      await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+      await flutterLocalNotificationsPlugin.initialize(
+        settings: initializationSettings,
+      );
     }
   }
 
@@ -109,7 +111,10 @@ class DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
         linux: linuxDetails,
       );
       await flutterLocalNotificationsPlugin.show(
-        0, title, body, platformChannelSpecifics,
+        id: 0,
+        title: title,
+        body: body,
+        notificationDetails: platformChannelSpecifics,
       );
     }
   }

@@ -107,13 +107,14 @@ class CurseforgeFabricModpackPageState
             appUserModelId: 'lxdklp.fml',
             guid: '11451419-0721-0721-0721-114514191981',
           );
-      const InitializationSettings initializationSettings =
-          InitializationSettings(
-            macOS: initializationSettingsDarwin,
-            linux: initializationSettingsLinux,
-            windows: initializationSettingsWindows,
-          );
-      await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+      const InitializationSettings initializationSettings = InitializationSettings(
+        macOS: initializationSettingsDarwin,
+        linux: initializationSettingsLinux,
+        windows: initializationSettingsWindows,
+      );
+      await flutterLocalNotificationsPlugin.initialize(
+        settings: initializationSettings,
+      );
     }
   }
 
@@ -128,12 +129,21 @@ class CurseforgeFabricModpackPageState
         linux: linuxDetails,
       );
       await flutterLocalNotificationsPlugin.show(
-        0,
-        title,
-        body,
-        platformChannelSpecifics,
+        id: 0,
+        title: title,
+        body: body,
+        notificationDetails: platformChannelSpecifics,
       );
     }
+  }
+
+  // 读取App版本
+  Future<void> _loadAppVersion() async {
+    final prefs = await SharedPreferences.getInstance();
+    final version = prefs.getString('version') ?? "1.0.0";
+    setState(() {
+      _appVersion = version;
+    });
   }
 
   // 文件夹创建
@@ -1066,7 +1076,7 @@ class CurseforgeFabricModpackPageState
     if (bytes > (1024 * 1024 * 1024 * 1024) && bytes % 16384 == 0) {
       bytes = bytes ~/ 16384;
     }
-    final physicalMemory = bytes ~/ (1024 * 1024 * 1024);
+    final physicalMemory = bytes ~/ (1024 * 1024);
     setState(() {
       _mem = physicalMemory;
     });

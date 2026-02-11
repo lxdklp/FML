@@ -109,13 +109,14 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
             appUserModelId: 'lxdklp.fml',
             guid: '11451419-0721-0721-0721-114514191981',
           );
-      const InitializationSettings initializationSettings =
-          InitializationSettings(
-            macOS: initializationSettingsDarwin,
-            linux: initializationSettingsLinux,
-            windows: initializationSettingsWindows,
-          );
-      await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+      const InitializationSettings initializationSettings = InitializationSettings(
+        macOS: initializationSettingsDarwin,
+        linux: initializationSettingsLinux,
+        windows: initializationSettingsWindows,
+      );
+      await flutterLocalNotificationsPlugin.initialize(
+        settings: initializationSettings,
+      );
     }
   }
 
@@ -130,10 +131,10 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
         linux: linuxDetails,
       );
       await flutterLocalNotificationsPlugin.show(
-        0,
-        title,
-        body,
-        platformChannelSpecifics,
+        id: 0,
+        title: title,
+        body: body,
+        notificationDetails: platformChannelSpecifics,
       );
     }
   }
@@ -1051,7 +1052,7 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
     if (bytes > (1024 * 1024 * 1024 * 1024) && bytes % 16384 == 0) {
       bytes = bytes ~/ 16384;
     }
-    final physicalMemory = bytes ~/ (1024 * 1024 * 1024);
+    final physicalMemory = bytes ~/ (1024 * 1024);
     setState(() {
       _mem = physicalMemory;
     });

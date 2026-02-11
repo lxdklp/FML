@@ -3,11 +3,15 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fml/function/slide_page_route.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:fml/function/dio_client.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:dio/dio.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import 'package:fml/constants.dart';
 import 'package:fml/function/log.dart';
@@ -45,6 +49,10 @@ Future<void> initLogs() async {
     await LogUtil.clearLogs();
   }
   if (kDebugMode) {
+    await LogUtil.log(
+      '启动FML,平台:${Platform.operatingSystem},版本: $appVersion,构建号: $buildNumber,debug模式',
+      level: 'INFO',
+    );
     await LogUtil.log(
       '启动FML,平台:${Platform.operatingSystem},版本: $appVersion,构建号: $buildNumber,debug模式',
       level: 'INFO',
@@ -340,6 +348,7 @@ class MyHomePageState extends State<MyHomePage> {
   }
 
   // 获取更新日志
+  Future<List<String>> _getUpdateInfo() async {
   Future<List<String>> _getUpdateInfo() async {
     try {
       final response = await DioClient().dio.get(AppUrls.githubReleasesApi);
