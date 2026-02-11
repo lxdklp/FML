@@ -246,7 +246,7 @@ class AboutPageState extends State<AboutPage> {
                   onTap: () => _launchURL('https://github.com/HMCL-dev/HMCL'),
                 ),
                 const ListTile(
-                  title: Text('Github的各位'),
+                  title: Text('GitHub的各位'),
                   subtitle: Text('谢谢大家'),
                 ),
               ],

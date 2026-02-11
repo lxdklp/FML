@@ -386,7 +386,7 @@ class MyHomePageState extends State<MyHomePage> {
             onPressed: () async {
               _launchURL(AppUrls.githubLatestRelease);
             },
-            child: const Text('前往Gtihub下载'),
+            child: const Text('前往GtiHub下载'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
