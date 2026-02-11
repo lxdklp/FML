@@ -54,10 +54,13 @@ class DioClient {
   InterceptorsWrapper _getUserAgentInterceptor() {
     return InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final userAgent =
-            '$kAppNameAbb/${Platform.operatingSystem}/$appVersion ${kDebugMode ? 'debug' : ''}';
-
-        options.headers['User-Agent'] = userAgent;
+        final existingUserAgent = options.headers['User-Agent'];
+        if (existingUserAgent == null ||
+            (existingUserAgent is String && existingUserAgent.isEmpty)) {
+          final userAgent =
+              '$kAppNameAbb/${Platform.operatingSystem}/$appVersion ${kDebugMode ? 'debug' : ''}';
+          options.headers['User-Agent'] = userAgent;
+        }
         return handler.next(options);
       },
     );

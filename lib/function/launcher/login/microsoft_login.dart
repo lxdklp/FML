@@ -176,8 +176,6 @@ Future<String> _getXboxLiveToken(msToken) async {
 
 // 获取 XSTS 令牌
 Future<List<String>> _getXSTSToken(xblToken) async {
-  final prefs = await SharedPreferences.getInstance();
-  final appVersion = prefs.getString('version') ?? 'unknown';
   try {
     final response = await DioClient().dio.post(
       'https://xsts.auth.xboxlive.com/xsts/authorize',
@@ -185,7 +183,6 @@ Future<List<String>> _getXSTSToken(xblToken) async {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'FML/$appVersion',
         },
       ),
       data: {

@@ -354,10 +354,7 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
 
   // 获取游戏 Json
   Future<void> _saveMinecraftJson(String versionPath) async {
-    final options = Options(
-      headers: {'User-Agent': 'FML/$_appVersion'},
-      responseType: ResponseType.plain,
-    );
+    final options = Options(responseType: ResponseType.plain);
     int retry = 0;
     while (true) {
       try {

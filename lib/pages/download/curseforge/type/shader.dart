@@ -64,12 +64,7 @@ class CurseforgeShaderPageState extends State<CurseforgeShaderPage> {
       final response = await DioClient().dio.get(
         'https://api.curseforge.com/v1/mods/${widget.modId}/files',
         queryParameters: {'pageSize': 50},
-        options: Options(
-          headers: {
-            'x-api-key': widget.apiKey,
-            'User-Agent': 'lxdklp/FML/$_appVersion (fml.lxdklp.top)',
-          },
-        ),
+        options: Options(headers: {'x-api-key': widget.apiKey}),
       );
       if (response.statusCode == 200) {
         final allFiles = response.data['data'] as List;
