@@ -44,21 +44,11 @@ Future<void> initLogs() async {
   if (autoClearLog) {
     await LogUtil.clearLogs();
   }
-  if (kDebugMode) {
-    await LogUtil.log(
-      '启动FML,平台:${Platform.operatingSystem},版本: $appVersion,构建号: $buildNumber,debug模式',
-      level: 'INFO',
-    );
-    await LogUtil.log(
-      '启动FML,平台:${Platform.operatingSystem},版本: $appVersion,构建号: $buildNumber,debug模式',
-      level: 'INFO',
-    );
-  } else {
-    await LogUtil.log(
-      '启动FML,平台:${Platform.operatingSystem},版本: $appVersion,构建号: $buildNumber',
-      level: 'INFO',
-    );
-  }
+
+  await LogUtil.log(
+    '启动FML, 平台:${Platform.operatingSystem}, 版本: $appVersion, 构建号: $buildNumber${kDebugMode ? ", debug模式" : ""}',
+    level: 'INFO',
+  );
 }
 
 class FMLBaseApp extends StatefulWidget {

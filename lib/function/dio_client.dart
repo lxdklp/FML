@@ -9,6 +9,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 ///
 /// 一个自带默认配置的Dio单例
 ///
+/// TODO: 分离下载任务与常规任务的Dio实例，避免无限等待
+///
 class DioClient {
   // 静态实例保证 DioClient 只有一个实例
   static final DioClient _instance = DioClient._internal();
