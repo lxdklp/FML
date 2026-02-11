@@ -109,27 +109,27 @@ class AboutPageState extends State<AboutPage> {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
               title: const Text('官网'),
-              subtitle: const Text('https://fml.lxdklp.top'),
+              subtitle: const Text(AppUrls.officialWebsite),
               trailing: const Icon(Icons.open_in_new),
-              onTap: () => _launchURL('https://fml.lxdklp.top'),
+              onTap: () => _launchURL(AppUrls.officialWebsite),
             ),
           ),
           Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
               title: const Text('Github'),
-              subtitle: const Text('https://github.com/lxdklp/FML'),
+              subtitle: const Text(AppUrls.githubProject),
               trailing: const Icon(Icons.open_in_new),
-              onTap: () => _launchURL('https://github.com/lxdklp/FML'),
+              onTap: () => _launchURL(AppUrls.githubProject),
             ),
           ),
           Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
               title: const Text('BUG反馈与建议'),
-              subtitle: const Text('https://github.com/lxdklp/FML/issues'),
+              subtitle: const Text('${AppUrls.githubProject}/issues'),
               trailing: const Icon(Icons.open_in_new),
-              onTap: () => _launchURL('https://github.com/lxdklp/FML/issues'),
+              onTap: () => _launchURL('${AppUrls.githubProject}/issues'),
             ),
           ),
           Card(

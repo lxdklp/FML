@@ -26,7 +26,8 @@ class AppUrls {
       'https://api.github.com/repos/lxdklp/FML/releases';
   static const String githubProject = 'https://github.com/lxdklp/FML';
   static const String githubLatestRelease =
-      'https://github.com/lxdklp/FML/releases/latest';
+      '${AppUrls.githubProject}/releases/latest';
+  static const String officialWebsite = 'https://fml.lxdklp.top';
 }
 
 //
