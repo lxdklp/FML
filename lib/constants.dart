@@ -5,6 +5,13 @@ const kAppName = 'Flutter Minecraft Launcher';
 const kAppNameAbb = 'FML';
 
 ///
+/// 启动时获取的常量
+///
+late final String gAppVersion;
+late final String gAppUserAgent;
+late final int gAppBuildNumber;
+
+///
 /// 字体字重
 ///
 class AppFontWeights {

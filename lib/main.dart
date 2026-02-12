@@ -20,21 +20,24 @@ import 'package:fml/pages/setting.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await initVersionInfo();
   await initLogs();
+
   runApp(const FMLBaseApp());
 }
 
 // 软件版本
-late String appVersion;
-late int buildNumber;
 Future<void> initVersionInfo() async {
-  final PackageInfo packageInfo = await PackageInfo.fromPlatform();
-  appVersion = packageInfo.version;
-  buildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
+  final packageInfo = await PackageInfo.fromPlatform();
+
+  gAppVersion = packageInfo.version;
+  gAppUserAgent = 'FML/$gAppVersion';
+  gAppBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
+
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('version', appVersion);
-  await prefs.setInt('build', buildNumber);
+  await prefs.setString('version', gAppVersion);
+  await prefs.setInt('build', gAppBuildNumber);
 }
 
 // 日志
@@ -46,7 +49,7 @@ Future<void> initLogs() async {
   }
 
   await LogUtil.log(
-    '启动FML, 平台:${Platform.operatingSystem}, 版本: $appVersion, 构建号: $buildNumber${kDebugMode ? ", debug模式" : ""}',
+    '启动FML, 平台:${Platform.operatingSystem}, 版本: $gAppVersion, 构建号: $gAppBuildNumber${kDebugMode ? ", debug模式" : ""}',
     level: 'INFO',
   );
 }
@@ -223,16 +226,8 @@ class MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    _writeVersionInfo();
     _checkJavaInstalled();
     _checkUpdate();
-  }
-
-  // 写入版本信息
-  Future<void> _writeVersionInfo() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('version', appVersion);
-    await prefs.setInt('build', buildNumber);
   }
 
   // 构建页面
@@ -321,10 +316,10 @@ class MyHomePageState extends State<MyHomePage> {
             .replaceAll("[", "")
             .replaceAll("]", "");
         final int latestVersion =
-            int.tryParse(cleanedVersionString) ?? buildNumber;
+            int.tryParse(cleanedVersionString) ?? gAppBuildNumber;
         LogUtil.log('最新版本: $latestVersion');
 
-        if (latestVersion > buildNumber && mounted) {
+        if (latestVersion > gAppBuildNumber && mounted) {
           _showUpdateDialog(latestVersion.toString());
         }
       }

@@ -4,14 +4,19 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 import 'dart:async';
 import 'package:fml/function/log.dart';
-import 'package:fml/function/launcher/login/microsoft_login.dart' as microsoft_login;
-import 'package:fml/function/launcher/login/external_login.dart' as external_login;
+import 'package:fml/function/launcher/login/microsoft_login.dart'
+    as microsoft_login;
+import 'package:fml/function/launcher/login/external_login.dart'
+    as external_login;
 
 typedef ProgressCallback = void Function(String message);
 typedef ErrorCallback = void Function(String error);
 
 // library获取
-Future<Set<String>> loadLibraryArtifactPaths(String versionJsonPath, String gamePath) async {
+Future<Set<String>> loadLibraryArtifactPaths(
+  String versionJsonPath,
+  String gamePath,
+) async {
   final file = File(versionJsonPath);
   if (!await file.exists()) return {};
   late final dynamic root;
@@ -32,7 +37,9 @@ Future<Set<String>> loadLibraryArtifactPaths(String versionJsonPath, String game
     if (artifact is! Map) continue;
     final path = artifact['path'];
     if (path is String && path.isNotEmpty) {
-      final fullPath = normalizePath('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$path');
+      final fullPath = normalizePath(
+        '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$path',
+      );
       result.add(fullPath);
     }
   }
@@ -44,7 +51,10 @@ String normalizePath(String path) {
 }
 
 // 直接从库名称构建路径
-Set<String> buildLibraryPaths(List<Map<String, dynamic>> libraries, String gamePath) {
+Set<String> buildLibraryPaths(
+  List<Map<String, dynamic>> libraries,
+  String gamePath,
+) {
   final Set<String> result = {};
   for (final lib in libraries) {
     final name = lib['name'];
@@ -59,7 +69,9 @@ Set<String> buildLibraryPaths(List<Map<String, dynamic>> libraries, String gameP
       classifier = parts.length > 3 ? '-${parts[3]}' : '';
     }
     // 构建jar路径
-    final path = normalizePath('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$group${Platform.pathSeparator}$artifact${Platform.pathSeparator}$version${Platform.pathSeparator}$artifact-$version$classifier.jar');
+    final path = normalizePath(
+      '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$group${Platform.pathSeparator}$artifact${Platform.pathSeparator}$version${Platform.pathSeparator}$artifact-$version$classifier.jar',
+    );
     if (File(path).existsSync()) {
       result.add(path);
     }
@@ -104,7 +116,9 @@ String extractLibraryIdentifier(String jarPath) {
   final libIndex = pathParts.indexOf('libraries');
   if (libIndex >= 0 && libIndex + 4 <= pathParts.length) {
     // groupId
-    final groupPath = pathParts.sublist(libIndex + 1, pathParts.length - 3).join('.');
+    final groupPath = pathParts
+        .sublist(libIndex + 1, pathParts.length - 3)
+        .join('.');
     // artifactId
     final artifact = pathParts[pathParts.length - 3];
     // version
@@ -116,8 +130,12 @@ String extractLibraryIdentifier(String jarPath) {
 }
 
 // 加载NeoForge配置文件
-Future<Map<String, dynamic>?> loadNeoForgeConfig(String gamePath, String game) async {
-  final neoForgeJsonPath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}NeoForge.json';
+Future<Map<String, dynamic>?> loadNeoForgeConfig(
+  String gamePath,
+  String game,
+) async {
+  final neoForgeJsonPath =
+      '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}NeoForge.json';
   final file = File(neoForgeJsonPath);
   if (!await file.exists()) {
     LogUtil.log('找不到NeoForge配置: $neoForgeJsonPath', level: 'ERROR');
@@ -145,18 +163,22 @@ String replaceConfigVariables(String input, Map<String, String> variables) {
 // 登录模式
 String _getLoginMode(String loginMode) {
   switch (loginMode) {
-    case '0': return 'offline';
-    case '1': return 'online';
-    case '2': return 'external';
-    default: return 'unknown';
+    case '0':
+      return 'offline';
+    case '1':
+      return 'online';
+    case '2':
+      return 'external';
+    default:
+      return 'unknown';
   }
 }
 
 // 启动NeoForge
 Future<void> neoforgeLauncher({
-    ProgressCallback? onProgress,
-    ErrorCallback? onError,
-  }) async {
+  ProgressCallback? onProgress,
+  ErrorCallback? onError,
+}) async {
   onProgress?.call('正在准备启动');
   final prefs = await SharedPreferences.getInstance();
   // 游戏参数
@@ -164,12 +186,17 @@ Future<void> neoforgeLauncher({
   final selectedPath = prefs.getString('SelectedPath') ?? '';
   final gamePath = prefs.getString('Path_$selectedPath') ?? '';
   final game = prefs.getString('SelectedGame') ?? '';
-  final nativesPath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}natives';
+  final nativesPath =
+      '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}natives';
   final version = prefs.getString('version') ?? '';
   final cfg = prefs.getStringList('Config_${selectedPath}_$game') ?? [];
-  final jsonPath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}$game.json';
+  final jsonPath =
+      '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}$game.json';
   final neoForgeConfig = await loadNeoForgeConfig(gamePath, game);
-  LogUtil.log('NeoForge配置加载${neoForgeConfig != null ? "成功" : "失败"}', level: 'INFO');
+  LogUtil.log(
+    'NeoForge配置加载${neoForgeConfig != null ? "成功" : "失败"}',
+    level: 'INFO',
+  );
   final variables = {
     'library_directory': '$gamePath${Platform.pathSeparator}libraries',
     'classpath_separator': Platform.isWindows ? ';' : ':',
@@ -187,7 +214,9 @@ Future<void> neoforgeLauncher({
       if (artifact is! Map) continue;
       final path = artifact['path'];
       if (path is String && path.isNotEmpty) {
-        final fullPath = normalizePath('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$path');
+        final fullPath = normalizePath(
+          '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$path',
+        );
         final identifier = extractLibraryIdentifier(fullPath);
         librariesMap[identifier] = fullPath;
       }
@@ -202,17 +231,25 @@ Future<void> neoforgeLauncher({
   }
   final libraries = librariesMap.values.toSet();
   final separator = Platform.isWindows ? ';' : ':';
-  final gameJar = normalizePath('$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}$game.jar');
+  final gameJar = normalizePath(
+    '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}$game.jar',
+  );
   final sortedLibraries = libraries.toList()..sort();
   final classPath = sortedLibraries.join(separator);
   final cp = '$classPath$separator$gameJar';
-  String mainClass = neoForgeConfig?['mainClass'] as String? ?? 'net.neoforged.fancymodloader.bootstraplauncher.BootstrapLauncher';
+  String mainClass =
+      neoForgeConfig?['mainClass'] as String? ??
+      'net.neoforged.fancymodloader.bootstraplauncher.BootstrapLauncher';
   LogUtil.log('使用mainClass: $mainClass', level: 'INFO');
   LogUtil.log('类路径库数量: ${libraries.length}', level: 'INFO');
   // 账号信息
   final accountName = prefs.getString('SelectedAccountName') ?? '';
   final accountType = prefs.getString('SelectedAccountType') ?? '';
-  final accountInfo = prefs.getStringList('${_getLoginMode(accountType)}_account_$accountName') ?? [];
+  final accountInfo =
+      prefs.getStringList(
+        '${_getLoginMode(accountType)}_account_$accountName',
+      ) ??
+      [];
   final assetIndex = await getAssetIndex(jsonPath) ?? '';
   // 基础JVM参数
   final jvmArgs = <String>[
@@ -225,7 +262,8 @@ Future<void> neoforgeLauncher({
     '-Dfml.ignorePatchDiscrepancies=true',
     '-Dminecraft.launcher.brand=FML',
     if (Platform.isMacOS) '-XstartOnFirstThread',
-    if (accountInfo[0] == '2') '-javaagent:$gamePath${Platform.pathSeparator}authlib-injector.jar=${accountInfo[2]}',
+    if (accountInfo[0] == '2')
+      '-javaagent:$gamePath${Platform.pathSeparator}authlib-injector.jar=${accountInfo[2]}',
     '-Djava.library.path=$nativesPath',
     '-Djna.tmpdir=$nativesPath',
   ];
@@ -242,7 +280,10 @@ Future<void> neoforgeLauncher({
         jvmArgs.add(processedArg);
       }
     }
-    LogUtil.log('添加了 ${jvmArgsList.length} 个来自NeoForge.json的JVM参数', level: 'INFO');
+    LogUtil.log(
+      '添加了 ${jvmArgsList.length} 个来自NeoForge.json的JVM参数',
+      level: 'INFO',
+    );
   }
   String uuid = '';
   String token = '';
@@ -261,14 +302,17 @@ Future<void> neoforgeLauncher({
   if (accountInfo[0] == '2') {
     if (await external_login.checkAuthlibInjector(gamePath)) {
       onProgress?.call('AuthlibInjector已存在');
-    }
-    else {
+    } else {
       onProgress?.call('正在下载AuthlibInjector');
       await external_login.downloadAuthlibInjector(gamePath);
     }
     uuid = accountInfo[1];
     onProgress?.call('正在检查令牌');
-    if (await external_login.checkToken(accountInfo[2], accountInfo[5], accountInfo[6])) {
+    if (await external_login.checkToken(
+      accountInfo[2],
+      accountInfo[5],
+      accountInfo[6],
+    )) {
       token = accountInfo[5];
     } else {
       token = await external_login.refreshToken(
@@ -276,28 +320,42 @@ Future<void> neoforgeLauncher({
         accountInfo[5],
         accountInfo[6],
         accountName,
-        uuid
+        uuid,
       );
     }
   }
   jvmArgs.addAll(['-cp', cp]);
   onProgress?.call('正在准备启动参数');
   final gameArgs = <String>[
-    '--username', accountName,
-    '--version', game,
-    '--gameDir', '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
-    '--assetsDir', '$gamePath${Platform.pathSeparator}assets',
-    '--assetIndex', assetIndex,
-    '--uuid', uuid,
-    if (accountInfo[0] == '0') '--accessToken', accountInfo[0],
-    if (accountInfo[0] == '0') '--clientId', '"\${clientid}"',
-    if (accountInfo[0] == '1' || accountInfo[0] == '2') '--accessToken', token,
-    if (accountInfo[0] == '1' || accountInfo[0] == '2') '--userType', 'mojang',
-    if (accountInfo[0] == '2') '--clientId', token,
-    '--versionType', '"FML $version"',
-    '--width', cfg[2],
-    '--height', cfg[3],
-    if (cfg[1] == '1') '--fullscreen'
+    '--username',
+    accountName,
+    '--version',
+    game,
+    '--gameDir',
+    '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
+    '--assetsDir',
+    '$gamePath${Platform.pathSeparator}assets',
+    '--assetIndex',
+    assetIndex,
+    '--uuid',
+    uuid,
+    if (accountInfo[0] == '0') '--accessToken',
+    accountInfo[0],
+    if (accountInfo[0] == '0') '--clientId',
+    '"\${clientid}"',
+    if (accountInfo[0] == '1' || accountInfo[0] == '2') '--accessToken',
+    token,
+    if (accountInfo[0] == '1' || accountInfo[0] == '2') '--userType',
+    'mojang',
+    if (accountInfo[0] == '2') '--clientId',
+    token,
+    '--versionType',
+    '"FML $version"',
+    '--width',
+    cfg[2],
+    '--height',
+    cfg[3],
+    if (cfg[1] == '1') '--fullscreen',
   ];
   // 添加NeoForge.json中定义的游戏参数
   if (neoForgeConfig != null &&
@@ -319,7 +377,8 @@ Future<void> neoforgeLauncher({
     final out = await Process.start(
       java,
       args,
-      workingDirectory: '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
+      workingDirectory:
+          '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
     );
     out.stdout.listen((_) {});
     out.stderr.listen((_) {});

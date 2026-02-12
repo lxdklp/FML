@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/constants.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:fml/function/log.dart';
@@ -76,7 +76,7 @@ class DownloadUtils {
   static const int _maxRetries = 5;
   static const int _concurrentDownloads = 64;
   static Dio? _sharedDio;
-  static String? _cachedUserAgent;
+
   static Future<Dio> _getSharedDio() async {
     if (_sharedDio == null) {
       _sharedDio = Dio();
@@ -93,20 +93,15 @@ class DownloadUtils {
       _sharedDio!.options.receiveTimeout = const Duration(minutes: 5);
       _sharedDio!.options.sendTimeout = const Duration(seconds: 30);
     }
-    if (_cachedUserAgent == null) {
-      final prefs = await SharedPreferences.getInstance();
-      final appVersion = prefs.getString('version') ?? 'unknown';
-      _cachedUserAgent = 'FML/$appVersion';
-    }
     return _sharedDio!;
   }
 
   /// 获取对应 URL 的 User-Agent
   static String _getUserAgent(String url) {
     if (url.contains('bmclapi2.bangbang93.com')) {
-      return _cachedUserAgent ?? 'FML/unknown';
+      return gAppUserAgent;
     } else {
-      return 'lxdklp/${_cachedUserAgent ?? 'FML/unknown'} (fml.lxdklp.top)';
+      return 'lxdklp/$gAppUserAgent (fml.lxdklp.top)';
     }
   }
 
