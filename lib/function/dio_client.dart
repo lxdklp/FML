@@ -1,10 +1,13 @@
 import 'package:dio/dio.dart';
+import 'package:fml/function/download.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:fml/constants.dart';
 
 ///
 /// 一个自带默认配置的Dio单例
+///
+/// 对于下载调用请使用[DownloadUtils]
 ///
 class DioClient {
   // 静态实例保证 DioClient 只有一个实例
@@ -19,9 +22,8 @@ class DioClient {
     dio = Dio(
       BaseOptions(
         // 固定超时时长
-        connectTimeout: const Duration(seconds: 30),
-        // 不限制接受超时，避免大文件下载过慢
-        receiveTimeout: null,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
       ),
     );
 
@@ -32,12 +34,12 @@ class DioClient {
     // UA拦截器
     dio.interceptors.add(_getUserAgentInterceptor());
 
-    // 添加日志输出
+    // 在Debug模式添加日志输出
     if (kDebugMode) {
       dio.interceptors.add(
         LogInterceptor(
           request: false,
-          requestHeader: true,
+          requestHeader: false,
           requestBody: false,
           responseHeader: false,
           error: true,
