@@ -117,7 +117,7 @@ class AboutPageState extends State<AboutPage> {
           Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListTile(
-              title: const Text('Github'),
+              title: const Text('GitHub'),
               subtitle: const Text(AppUrls.githubProject),
               trailing: const Icon(Icons.open_in_new),
               onTap: () => _launchURL(AppUrls.githubProject),
