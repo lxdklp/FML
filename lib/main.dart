@@ -371,7 +371,7 @@ class MainStartPageState extends State<MainStartPage> {
             onPressed: () async {
               _launchURL(AppUrls.githubLatestRelease);
             },
-            child: const Text('前往GtiHub下载'),
+            child: const Text('前往GitHub下载'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
