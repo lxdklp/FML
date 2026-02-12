@@ -198,7 +198,7 @@ class FMLBaseAppState extends State<FMLBaseApp> {
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: _themeMode,
-      home: const MyHomePage(),
+      home: const MainStartPage(),
       onGenerateRoute: (settings) {
         if (settings.name == kOnlineOwnerRoute) {
           final int port = settings.arguments as int;
@@ -213,13 +213,13 @@ class FMLBaseAppState extends State<FMLBaseApp> {
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+class MainStartPage extends StatefulWidget {
+  const MainStartPage({super.key});
   @override
-  MyHomePageState createState() => MyHomePageState();
+  MainStartPageState createState() => MainStartPageState();
 }
 
-class MyHomePageState extends State<MyHomePage> {
+class MainStartPageState extends State<MainStartPage> {
   int _selectedIndex = 0;
   bool? _javaInstalled;
 

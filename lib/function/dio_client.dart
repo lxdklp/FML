@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -14,8 +12,6 @@ class DioClient {
 
   // 公开的Dio实例
   late Dio dio;
-
-  late String _appVersion;
 
   factory DioClient() => _instance;
 
