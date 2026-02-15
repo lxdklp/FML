@@ -1,0 +1,6 @@
+* text=auto
+
+# Ignore Flutter's auto-generated native platform host folders
+windows/** linguist-generated
+linux/** linguist-generated
+macos/** linguist-generated
