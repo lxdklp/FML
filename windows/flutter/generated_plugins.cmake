@@ -5,8 +5,10 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   desktop_drop
   file_selector_windows
+  screen_retriever_windows
   share_plus
   url_launcher_windows
+  window_manager
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

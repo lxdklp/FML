@@ -17,11 +17,28 @@ import 'package:fml/pages/home.dart';
 import 'package:fml/pages/online.dart';
 import 'package:fml/pages/online/owner.dart';
 import 'package:fml/pages/setting.dart';
+import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await windowManager.ensureInitialized();
+
   await initVersionInfo();
+
+  // 设置窗口标题
+  // e.g. Flutter Minecraft Launcher v1.8.0 (11)
+  // Windows下窗口标题的+疑似有渲染问题（后面会有空隙），故用了括号包裹buildNumber
+  WindowOptions windowOptions = WindowOptions(
+    center: true,
+    title: "$kAppName v$gAppVersion ($gAppBuildNumber)",
+  );
+
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
+
   await initLogs();
 
   runApp(const FMLBaseApp());
