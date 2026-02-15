@@ -70,7 +70,7 @@ class AboutPageState extends State<AboutPage> {
                       children: [
                         Flexible(
                           child: Image.asset(
-                            'assets/img/icon/icon.png',
+                            'assets/img/icon/logo_transparent.png',
                             height: 150,
                           ),
                         ),
@@ -145,10 +145,7 @@ class AboutPageState extends State<AboutPage> {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Column(
               children: [
-                const ListTile(
-                  title: Text('鸣谢'),
-                  subtitle: Text('排名不分先后顺序'),
-                ),
+                const ListTile(title: Text('鸣谢'), subtitle: Text('排名不分先后顺序')),
                 ListTile(
                   title: const Text('bangbang93'),
                   subtitle: const Text(
@@ -247,9 +244,7 @@ class AboutPageState extends State<AboutPage> {
                 ),
                 ListTile(
                   title: const Text('futurw4v'),
-                  subtitle: const Text(
-                    '贡献者\nhttps://github.com/futurw4v',
-                  ),
+                  subtitle: const Text('贡献者\nhttps://github.com/futurw4v'),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () => _launchURL('https://github.com/futurw4v'),
                 ),
