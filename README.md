@@ -1,4 +1,4 @@
-<p align="center"><img src="./assets/img/icon/icon.png"  width="20%" /><img src="./assets/img/logo/flutter.png"  width="25%" /></p>
+<p align="center"><img src="./assets/img/icon/logo_rounded.png"  width="20%" /><img src="./assets/img/logo/flutter.png"  width="25%" /></p>
 
 # Flutter Minecraft Launcher
 
@@ -6,7 +6,7 @@
 
 ***需要更多Windows ARM64、macOS x86、 Linux的反馈!***
 
-# shared_preferences
+# Shared Preferences
 软件配置
 | 键 | 值 | 类型 |
 | -- | -- |-- |
@@ -63,4 +63,4 @@
 | 3 | 游戏高度 |
 | 4 | 模组加载器 |
 
-###### flutter logo : [Sawaratsuki](https://github.com/SAWARATSUKI)
+###### Flutter logo : [Sawaratsuki](https://github.com/SAWARATSUKI)
