@@ -3,6 +3,7 @@
 ///
 const kAppName = 'Flutter Minecraft Launcher';
 const kAppNameAbb = 'FML';
+const kDefaultPadding = 16.0;
 
 ///
 /// 启动时获取的常量
