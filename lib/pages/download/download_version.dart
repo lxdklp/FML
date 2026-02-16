@@ -206,14 +206,19 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
                     title: SizedBox(
                       // 使SegmentedButton占满宽度并居中
                       width: double.infinity,
-                      child: SegmentedButton<VersionType>(
-                        segments: segments,
-                        selected: _versionTypeSelection,
-                        onSelectionChanged: (Set<VersionType> newSelection) {
-                          setState(() {
-                            _versionTypeSelection = newSelection;
-                          });
-                        },
+
+                      // 避免缩小时溢出，用Shift+滚轮可滚动
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SegmentedButton<VersionType>(
+                          segments: segments,
+                          selected: _versionTypeSelection,
+                          onSelectionChanged: (Set<VersionType> newSelection) {
+                            setState(() {
+                              _versionTypeSelection = newSelection;
+                            });
+                          },
+                        ),
                       ),
                     ),
                     elevation: 4,
