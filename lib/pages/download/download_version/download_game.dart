@@ -188,42 +188,57 @@ class DownloadGamePageState extends State<DownloadGamePage> {
         padding: const EdgeInsets.all(kDefaultPadding),
         child: ListView(
           children: [
-            TextField(
-              controller: _gameNameController,
-              decoration: InputDecoration(
-                labelText: '游戏文件夹名称',
-                border: OutlineInputBorder(),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: kDefaultPadding / 2,
+                horizontal: kDefaultPadding,
               ),
-              onChanged: (value) => setState(() {
-                _gameFolderName = value;
-              }),
+              child: TextField(
+                controller: _gameNameController,
+                decoration: InputDecoration(
+                  labelText: '游戏文件夹名称',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (value) => setState(() {
+                  _gameFolderName = value;
+                }),
+              ),
             ),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('模组加载器'),
-                DropdownButton<String>(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: kDefaultPadding,
-                  ), // 添加左右内边距
-                  underline: const SizedBox(), // 去除底部下划线
-                  value: _selectedLoader,
-                  hint: const Text('选择模组加载器'),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: kDefaultPadding / 2,
+                horizontal: kDefaultPadding,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('模组加载器'),
+                  DropdownButton<String>(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: kDefaultPadding,
+                    ), // 添加左右内边距
+                    underline: const SizedBox(), // 去除底部下划线
+                    value: _selectedLoader,
+                    hint: const Text('选择模组加载器'),
 
-                  items: modLoadersDropdownMenuItem,
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedLoader = value!;
-                    });
-                  },
-                ),
-              ],
+                    items: modLoadersDropdownMenuItem,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedLoader = value!;
+                      });
+                    },
+                  ),
+                ],
+              ),
             ),
 
             if (_selectedLoader == 'Fabric') ...[
               SwitchListTile(
-                title: const Text('显示不稳定版本'),
+                title: Text(
+                  '显示不稳定版本',
+                  style: Theme.of(context).textTheme.bodyMedium, // 统一字体
+                ),
                 value: _showUnstable,
                 onChanged: (value) {
                   setState(() {
@@ -231,6 +246,16 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                   });
                 },
               ),
+
+              if (_showUnstable)
+                // 分割线
+                const Padding(
+                  padding: EdgeInsetsGeometry.symmetric(
+                    vertical: kDefaultPadding / 2,
+                  ),
+                  child: Divider(height: 1),
+                ),
+
               ..._fabricVersionList
                   .where(
                     (version) =>
@@ -264,7 +289,10 @@ class DownloadGamePageState extends State<DownloadGamePage> {
             ],
             if (_selectedLoader == 'NeoForge') ...[
               SwitchListTile(
-                title: const Text('显示测试版'),
+                title: Text(
+                  '显示测试版',
+                  style: Theme.of(context).textTheme.bodyMedium, // 统一字体
+                ),
                 value: _showNeoForgeUnstable,
                 onChanged: (value) {
                   setState(() {
@@ -272,6 +300,15 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                   });
                 },
               ),
+
+              if (_showNeoForgeUnstable)
+                // 分割线
+                const Padding(
+                  padding: EdgeInsetsGeometry.symmetric(
+                    vertical: kDefaultPadding / 2,
+                  ),
+                  child: Divider(height: 1),
+                ),
 
               ..._neoForgeStableVersions.map(
                 (version) => Card(
