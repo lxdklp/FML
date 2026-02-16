@@ -39,8 +39,8 @@ class DownloadPageState extends State<DownloadPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          //const VerticalDivider(),
-          //I want to add a VerticalDivider, but it will cause meaningless spacing so i use a Container.
+          // const VerticalDivider(),
+          // 添加VerticalDivider会导致一个意外的间距，所以这里使用了一个Container
           Container(
             decoration: BoxDecoration(
               border: Border(
@@ -52,7 +52,7 @@ class DownloadPageState extends State<DownloadPage> {
               selectedIndex: _selectedIndex,
               onDestinationSelected: (index) {
                 if (_selectedIndex == index) return;
-                //Removes all focus in the current context
+                // 移除当前上下文中的所有焦点，避免视觉残留
                 FocusScope.of(context).unfocus();
 
                 setState(() {
@@ -62,7 +62,7 @@ class DownloadPageState extends State<DownloadPage> {
 
               children: [
                 Padding(
-                  //Align Text with Destination
+                  // 将文字与Destination对齐
                   padding: const EdgeInsets.fromLTRB(
                     kDefaultPadding * 1.5,
                     kDefaultPadding,
@@ -72,13 +72,13 @@ class DownloadPageState extends State<DownloadPage> {
                   child: Text('下载', style: theme.textTheme.headlineMedium),
                 ),
 
-                //Destinations
+                // Destinations
                 for (var item in downloadPageItems) item.destination,
               ],
             ),
           ),
 
-          //Display current page
+          // 显示当前选择的页面
           Expanded(
             child: IndexedStack(
               index: _selectedIndex,

@@ -12,11 +12,11 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import 'package:fml/constants.dart';
 import 'package:fml/function/log.dart';
-import 'package:fml/pages/download.dart';
-import 'package:fml/pages/home.dart';
-import 'package:fml/pages/online.dart';
+import 'package:fml/pages/download_page.dart';
+import 'package:fml/pages/home_page.dart';
+import 'package:fml/pages/online_page.dart';
 import 'package:fml/pages/online/owner.dart';
-import 'package:fml/pages/setting.dart';
+import 'package:fml/pages/setting_page.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() async {
