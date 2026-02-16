@@ -11,14 +11,14 @@ import 'package:fml/pages/download/download_version/download_game.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fml/function/log.dart';
 
-class DownloadVersion extends StatefulWidget {
-  const DownloadVersion({super.key});
+class DownloadVersionPage extends StatefulWidget {
+  const DownloadVersionPage({super.key});
 
   @override
-  DownloadVersionState createState() => DownloadVersionState();
+  DownloadVersionPageState createState() => DownloadVersionPageState();
 }
 
-class DownloadVersionState extends State<DownloadVersion> {
+class DownloadVersionPageState extends State<DownloadVersionPage> {
   ///
   /// 当前选择的版本，默认为正式版
   ///
@@ -112,26 +112,6 @@ class DownloadVersionState extends State<DownloadVersion> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
-    }
-  }
-
-  // 检查选择目录
-  Future<void> _checkSelectedPath(id, url, type) async {
-    final prefs = await SharedPreferences.getInstance();
-    final selectedDir = prefs.getString('SelectedPath');
-    if (!mounted) return;
-    if (selectedDir == null || selectedDir.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请先选择下载目录')));
-    } else {
-      LogUtil.log('选择了版本: $id - URL: $url', level: 'INFO');
-      Navigator.push(
-        context,
-        SlidePageRoute(
-          page: DownloadGamePage(type: type, version: id, url: url),
-        ),
-      );
     }
   }
 
@@ -278,6 +258,7 @@ class DownloadVersionState extends State<DownloadVersion> {
 
                           if (!mounted) return;
 
+                          // 检查下载路径是否存在
                           if (selectedDir == null || selectedDir.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('请先选择下载目录')),

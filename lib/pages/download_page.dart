@@ -18,7 +18,7 @@ class DownloadPageState extends State<DownloadPage> {
   Widget build(BuildContext context) {
     final List<NavigationDrawerItem> downloadPageItems = [
       NavigationDrawerItem(
-        page: const DownloadVersion(),
+        page: const DownloadVersionPage(),
         destination: NavigationDrawerDestination(
           icon: const Icon(Icons.code, fill: 1),
           label: Text('游戏'),
