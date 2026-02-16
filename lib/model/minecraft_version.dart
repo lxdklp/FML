@@ -71,7 +71,7 @@ enum VersionType {
   }
 
   ///
-  ///确保输出的字符串与Mojang API返回的格式匹配
+  /// 确保输出的字符串与Mojang API返回的格式匹配
   ///
   @override
   String toString() {
@@ -82,6 +82,22 @@ enum VersionType {
         return 'old_alpha';
       default:
         return name;
+    }
+  }
+
+  ///
+  /// 用于UI上的标签
+  ///
+  String getVersionTypeLabel() {
+    switch (this) {
+      case VersionType.release:
+        return '正式版';
+      case VersionType.snapshot:
+        return '快照版';
+      case VersionType.oldBeta:
+        return '远古Beta版';
+      case VersionType.oldAlpha:
+        return '远古Alpha版';
     }
   }
 }

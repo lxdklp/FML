@@ -121,19 +121,19 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
     final segments = <ButtonSegment<VersionType>>[
       ButtonSegment<VersionType>(
         value: VersionType.release,
-        label: Text('正式版'),
+        label: Text(VersionType.release.getVersionTypeLabel()),
       ),
       ButtonSegment<VersionType>(
         value: VersionType.snapshot,
-        label: Text('快照版'),
+        label: Text(VersionType.snapshot.getVersionTypeLabel()),
       ),
       ButtonSegment<VersionType>(
         value: VersionType.oldBeta,
-        label: Text('远古Beta版'),
+        label: Text(VersionType.oldBeta.getVersionTypeLabel()),
       ),
       ButtonSegment<VersionType>(
         value: VersionType.oldAlpha,
-        label: Text('远古Alpha版'),
+        label: Text(VersionType.oldAlpha.getVersionTypeLabel()),
       ),
     ];
 
@@ -271,11 +271,7 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
                             Navigator.push(
                               context,
                               SlidePageRoute(
-                                page: DownloadGamePage(
-                                  type: version.type,
-                                  version: version.id,
-                                  url: version.url,
-                                ),
+                                page: DownloadGamePage(version: version),
                               ),
                             );
                           }
