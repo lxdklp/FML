@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:fml/constants.dart';
 import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
+import 'package:fml/model/minecraft_version.dart';
+import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fml/pages/download/download_version/download_game.dart';
@@ -16,96 +19,76 @@ class DownloadVersion extends StatefulWidget {
 }
 
 class DownloadVersionState extends State<DownloadVersion> {
-  int retry = 3;
-  List<dynamic> _versionList = [];
-  bool _isLoading = true;
-  String? _error;
-  bool _showSnapshots = false;
-  bool _showOld = false;
+  ///
+  /// 当前选择的版本，默认为正式版
+  ///
+  Set<VersionType> _versionTypeSelection = <VersionType>{VersionType.release};
+
+  late Future<List<MinecraftVersion>> _versionsFuture;
 
   @override
   void initState() {
     super.initState();
-    fetchVersionManifest();
+    _versionsFuture = _fetchAndParseVersionManifest();
   }
 
-  // 获取版本清单
-  Future<void> fetchVersionManifest() async {
+  ///
+  /// 获取版本清单并解析（BMCL API）
+  ///
+  Future<List<MinecraftVersion>> _fetchAndParseVersionManifest() async {
     try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
       final options = Options(responseType: ResponseType.plain);
+
       LogUtil.log('开始请求版本清单', level: 'INFO');
+
       final response = await DioClient().dio.get(
         'https://bmclapi2.bangbang93.com/mc/game/version_manifest.json',
         options: options,
       );
+
       if (response.statusCode == 200) {
-        LogUtil.log('成功获取版本清单', level: 'INFO');
-        try {
-          final rawData = response.data;
-          dynamic parsedData;
-          if (rawData is String) {
-            try {
-              parsedData = jsonDecode(rawData);
-            } catch (jsonError) {
-              LogUtil.log('JSON解析失败: $jsonError', level: 'ERROR');
-              throw Exception('JSON解析失败: $jsonError');
+        dynamic responseData = response.data;
+
+        /* 
+         * responseData示例
+         * 
+         *  {
+            "latest": {...},
+            "versions": [...]
             }
-          } else if (rawData is Map) {
-            parsedData = rawData;
-          } else {
-            LogUtil.log('意外的数据类型: ${rawData.runtimeType}', level: 'ERROR');
-            throw Exception('意外的响应数据类型: ${rawData.runtimeType}');
+         */
+
+        // 如果响应数据是字符串的话就先解析(BMCL API有时会返回JSON String)
+        if (responseData is String) {
+          LogUtil.log("正在尝试将JSON String解析为JSON", level: 'INFO');
+          try {
+            responseData = jsonDecode(responseData);
+          } catch (e) {
+            LogUtil.log("JSON解析失败: $responseData\nerror: $e", level: 'ERROR');
+            throw FormatException('无效的JSON格式: $responseData');
           }
-          if (parsedData == null) {
-            throw Exception('解析后的数据为空');
-          }
-          if (!parsedData.containsKey('versions')) {
-            LogUtil.log('数据缺少versions字段', level: 'ERROR');
-            throw Exception('返回数据中缺少versions字段');
-          }
-          final versions = parsedData['versions'];
-          if (versions is! List) {
-            LogUtil.log(
-              'versions不是列表类型: ${versions.runtimeType}',
-              level: 'ERROR',
-            );
-            throw Exception('versions字段格式错误');
-          }
-          LogUtil.log('成功解析版本数据，共${versions.length}个版本', level: 'INFO');
-          setState(() {
-            _versionList = versions;
-            _isLoading = false;
-          });
-        } catch (parseError) {
-          LogUtil.log('解析版本清单时出错: $parseError', level: 'ERROR');
-          setState(() {
-            _error = '无法解析版本数据: $parseError 可能是网络或者服务器问题,请稍后再试';
-            _isLoading = false;
-          });
         }
+
+        final List<dynamic> rawList = responseData['versions'] as List;
+
+        // 将JSON转换为Dart Model
+        final List<MinecraftVersion> versions = rawList
+            .map((json) => MinecraftVersion.fromJson(json))
+            .toList();
+
+        LogUtil.log('成功解析版本数据，共${versions.length}个版本', level: 'INFO');
+
+        return versions;
       } else {
-        LogUtil.log('请求失败：状态码 ${response.statusCode}', level: 'ERROR');
-        setState(() {
-          _error = '请求失败：状态码 ${response.statusCode} 可能是网络或者服务器问题,请稍后再试';
-          _isLoading = false;
-        });
+        LogUtil.log(
+          '拉取版本时出错: ${response.statusMessage}, 状态码" ${response.statusCode}',
+        );
+
+        throw Exception('错误: ${response.statusMessage}');
       }
     } catch (e) {
-      if (!mounted) return;
-      LogUtil.log('请求出错: $e', level: 'ERROR');
-      setState(() {
-        _error = '网络请求失败: $e 可能是网络或者服务器问题,请稍后再试';
-        _isLoading = false;
-        retry -= 1;
-      });
-      if (retry > 0) {
-        LogUtil.log('正在重试请求，剩余重试次数: $retry', level: 'INFO');
-        await fetchVersionManifest();
-      }
+      LogUtil.log('拉取版本时出错, $e');
+      rethrow;
     }
   }
 
@@ -113,16 +96,19 @@ class DownloadVersionState extends State<DownloadVersion> {
   Future<void> _launchURL(String url) async {
     try {
       final Uri uri = Uri.parse(url);
+
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (!mounted) return;
+
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
       }
     } catch (e) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
@@ -151,104 +137,205 @@ class DownloadVersionState extends State<DownloadVersion> {
 
   @override
   Widget build(BuildContext context) {
+    // 顶部ButtonSegment
+    final segments = <ButtonSegment<VersionType>>[
+      ButtonSegment<VersionType>(
+        value: VersionType.release,
+        label: Text('正式版'),
+      ),
+      ButtonSegment<VersionType>(
+        value: VersionType.snapshot,
+        label: Text('快照版'),
+      ),
+      ButtonSegment<VersionType>(
+        value: VersionType.oldBeta,
+        label: Text('远古Beta版'),
+      ),
+      ButtonSegment<VersionType>(
+        value: VersionType.oldAlpha,
+        label: Text('远古Alpha版'),
+      ),
+    ];
+
     return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Column(
+      body: Center(
+        child: FutureBuilder(
+          future: _versionsFuture,
+          builder: (context, snapshot) {
+            // 加载时显示CircularProgressIndicator
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const CircularProgressIndicator();
+            }
+
+            // 错误处理
+            if (snapshot.hasError || snapshot.data == null) {
+              // 返回错误信息和重试按钮
+              return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(_error!),
-                  const SizedBox(height: 20),
+                  Icon(Icons.error_outline, fill: 1, size: 48),
+                  const SizedBox(height: kDefaultPadding),
+                  Text('Loading failed'),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: kDefaultPadding / 2,
+                      horizontal: kDefaultPadding * 2,
+                    ),
+                    child: Text(
+                      snapshot.error?.toString() ?? '数据为空',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+
+                  // 重试按钮
                   ElevatedButton(
                     onPressed: () {
+                      if (!mounted) return;
                       setState(() {
-                        _isLoading = true;
-                        _error = null;
+                        LogUtil.log('正在尝试重新拉取版本');
+                        _versionsFuture = _fetchAndParseVersionManifest();
                       });
-                      fetchVersionManifest();
                     },
                     child: const Text('重试'),
                   ),
                 ],
-              ),
-            )
-          : ListView(
-              children: [
-                Card(
-                  child: ListTile(
-                    title: const Text('下载由 BMCLAPI 提供'),
-                    subtitle: const Text('赞助 BMCLAPI 喵~ 赞助 BMCLAPI 谢谢喵~ '),
-                    leading: const Icon(Icons.info),
-                    trailing: const Icon(Icons.open_in_new),
-                    onTap: () => _launchURL('https://bmclapi.bangbang93.com/'),
-                  ),
-                ),
-                Card(
-                  child: SwitchListTile(
-                    title: const Text('显示快照版本'),
-                    value: _showSnapshots,
-                    onChanged: (value) {
-                      setState(() {
-                        _showSnapshots = value;
-                      });
-                    },
-                  ),
-                ),
-                Card(
-                  child: SwitchListTile(
-                    title: const Text('显示远古版本'),
-                    value: _showOld,
-                    onChanged: (value) {
-                      setState(() {
-                        _showOld = value;
-                      });
-                    },
-                  ),
-                ),
-                ..._versionList
-                    .where(
-                      (dynamic version) =>
-                          _showSnapshots ||
-                          version['type'] != 'snapshot' &&
-                              (_showOld ||
-                                  (version['type'] != 'old_alpha' &&
-                                      version['type'] != 'old_beta')),
-                    )
-                    .map(
-                      (dynamic version) => Card(
-                        child: ListTile(
-                          title: Text(version['id']),
-                          subtitle: Text(
-                            '类型: ${version['type']} - 发布时间: ${_formatDate(version['releaseTime'])}',
-                          ),
-                          leading: Icon(
-                            version['type'] == 'release'
-                                ? Icons.check_circle
-                                : Icons.science,
-                          ),
-                          onTap: () {
-                            _checkSelectedPath(
-                              version['id'],
-                              version['url'],
-                              version['type'],
-                            );
-                          },
-                        ),
+              );
+            }
+
+            // 数据加载成功，显示版本列表
+            if (snapshot.connectionState == ConnectionState.done) {
+              // 强制转为Notnull
+              final List<MinecraftVersion> versions = snapshot.data!;
+
+              // 筛选当前选择的版本类型
+              final filteredVersions = versions
+                  .where(
+                    (version) => version.type == _versionTypeSelection.first,
+                  )
+                  .toList();
+
+              return CustomScrollView(
+                slivers: [
+                  // 粘滞行SegmentedButton
+                  SliverAppBar(
+                    pinned: true,
+                    floating: false,
+                    snap: false,
+
+                    title: SizedBox(
+                      // 使SegmentedButton占满宽度并居中
+                      width: double.infinity,
+                      child: SegmentedButton<VersionType>(
+                        segments: segments,
+                        selected: _versionTypeSelection,
+                        onSelectionChanged: (Set<VersionType> newSelection) {
+                          setState(() {
+                            _versionTypeSelection = newSelection;
+                          });
+                        },
                       ),
                     ),
-              ],
-            ),
+                    elevation: 4,
+                  ),
+
+                  // BMCL广告
+                  SliverToBoxAdapter(
+                    child: _buildTappableCard(
+                      child: ListTile(
+                        title: const Text('下载由 BMCLAPI 提供'),
+                        subtitle: const Text('赞助 BMCLAPI 喵~ 赞助 BMCLAPI 谢谢喵~ '),
+                        leading: const Icon(Icons.info),
+                        trailing: const Icon(Icons.open_in_new),
+                      ),
+                      onTap: () =>
+                          _launchURL('https://bmclapi2.bangbang93.com/'),
+                    ),
+                  ),
+
+                  // 版本列表
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final version = filteredVersions[index];
+
+                      return _buildTappableCard(
+                        child: ListTile(
+                          //dense: true,
+                          title: Text(
+                            version.id,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          subtitle: Text(
+                            '${'更新时间'}: ${DateFormat("yyyy-MM-dd HH:mm:ss").format(DateTime.parse(version.releaseTime).toLocal())}',
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                        ),
+
+                        onTap: () async {
+                          // 读取选择路径
+                          final prefs = await SharedPreferences.getInstance();
+                          final selectedDir = prefs.getString('SelectedPath');
+
+                          if (!mounted) return;
+
+                          if (selectedDir == null || selectedDir.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('请先选择下载目录')),
+                            );
+                          } else {
+                            LogUtil.log(
+                              '选择了版本: ${version.id} - URL: ${version.url}',
+                              level: 'INFO',
+                            );
+                            Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                page: DownloadGamePage(
+                                  type: version.type,
+                                  version: version.id,
+                                  url: version.url,
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                      );
+                    }, childCount: filteredVersions.length),
+                  ),
+                ],
+              );
+            }
+
+            // 显示CircularProgressIndicator打底
+            return CircularProgressIndicator();
+          },
+        ),
+      ),
     );
   }
 
-  String _formatDate(String isoDate) {
-    try {
-      final date = DateTime.parse(isoDate);
-      return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return isoDate;
-    }
+  ///
+  /// 构建一个带有InkWell的Card
+  ///
+  /// 带有默认的内边距，圆角，点击时触发[onTap]回调
+  ///
+  Card _buildTappableCard({
+    required Widget child,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(
+        vertical: kDefaultPadding / 2,
+        horizontal: kDefaultPadding / 2,
+      ),
+      child: InkWell(
+        onTap: onTap,
+
+        // 圆角
+        borderRadius: BorderRadius.circular(12.0),
+
+        child: child,
+      ),
+    );
   }
 }
