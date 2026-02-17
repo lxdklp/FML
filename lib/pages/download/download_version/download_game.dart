@@ -95,7 +95,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                     border: OutlineInputBorder(),
                   ),
 
-                  // 实时验证驶入内容
+                  // 实时验证输入内容
                   autovalidateMode: AutovalidateMode.onUserInteraction,
 
                   onChanged: (value) => setState(() {
