@@ -39,7 +39,7 @@ class MinecraftVersion {
 
   @override
   String toString() {
-    return 'MinecraftVersion(id: $id, type: $type, url: $url, time: $time releaseTime: $releaseTime)';
+    return 'MinecraftVersion(id: $id, type: $type, url: $url, time: $time, releaseTime: $releaseTime)';
   }
 }
 
