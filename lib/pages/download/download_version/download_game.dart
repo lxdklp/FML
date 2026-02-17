@@ -41,6 +41,13 @@ class DownloadGamePageState extends State<DownloadGamePage> {
   String _selectedNeoForgeVersion = '';
   bool _showNeoForgeUnstable = false;
 
+  static final List<DropdownMenuItem<String>> modLoadersDropdownMenuItem =
+      const [
+        DropdownMenuItem<String>(value: 'Vanilla', child: Text('不安装模组加载器')),
+        DropdownMenuItem<String>(value: 'Fabric', child: Text('Fabric')),
+        DropdownMenuItem<String>(value: 'NeoForge', child: Text('NeoForge')),
+      ];
+
   int _compareVersions(String versionA, String versionB) {
     String cleanA = versionA.replaceAll('-beta', '');
     String cleanB = versionB.replaceAll('-beta', '');
@@ -172,15 +179,6 @@ class DownloadGamePageState extends State<DownloadGamePage> {
 
   @override
   Widget build(BuildContext context) {
-    List<DropdownMenuItem<String>> modLoadersDropdownMenuItem = [
-      DropdownMenuItem<String>(value: 'Vanilla', child: const Text('不安装模组加载器')),
-      DropdownMenuItem<String>(value: 'Fabric', child: const Text('Fabric')),
-      DropdownMenuItem<String>(
-        value: 'NeoForge',
-        child: const Text('NeoForge'),
-      ),
-    ];
-
     return Scaffold(
       appBar: AppBar(title: Text('安装 ${widget.version.id}')),
 
