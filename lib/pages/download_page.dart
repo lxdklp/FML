@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fml/constants.dart';
 import 'package:fml/pages/download/download_resources.dart';
 import 'package:fml/pages/download/download_version.dart';
-import 'package:fml/model/page/navigation_drawer_item.dart';
+import 'package:fml/models/page/navigation_drawer_item.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({super.key});
