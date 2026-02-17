@@ -103,7 +103,7 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
         return versions;
       } else {
         LogUtil.log(
-          '拉取版本时出错: ${response.statusMessage}, 状态码" ${response.statusCode}',
+          '拉取版本时出错: ${response.statusMessage}, 状态码: ${response.statusCode}',
         );
 
         throw Exception('错误: ${response.statusMessage}');
@@ -247,7 +247,6 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
 
                       return _buildTappableCard(
                         child: ListTile(
-                          //dense: true,
                           title: Text(
                             version.id,
                             style: Theme.of(context).textTheme.titleMedium,
@@ -291,7 +290,7 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
             }
 
             // 显示CircularProgressIndicator打底
-            return CircularProgressIndicator();
+            return const CircularProgressIndicator();
           },
         ),
       ),
