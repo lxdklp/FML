@@ -18,14 +18,14 @@ class DownloadPageState extends State<DownloadPage> {
     NavigationDrawerItem(
       page: DownloadVersionPage(),
       destination: NavigationDrawerDestination(
-        icon: Icon(Icons.code, fill: 1),
+        icon: Icon(Icons.code),
         label: Text('游戏'),
       ),
     ),
     NavigationDrawerItem(
       page: DownloadResources(),
       destination: NavigationDrawerDestination(
-        icon: Icon(Icons.extension, fill: 1),
+        icon: Icon(Icons.extension),
         label: Text('资源'),
       ),
     ),
