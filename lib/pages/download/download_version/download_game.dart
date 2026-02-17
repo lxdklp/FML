@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:fml/constants.dart';
 import 'package:fml/function/dio_client.dart';
@@ -24,8 +26,12 @@ class DownloadGamePage extends StatefulWidget {
 /// TODO: Forge support
 ///
 class DownloadGamePageState extends State<DownloadGamePage> {
-  late final TextEditingController _gameNameController;
-  String _gameFolderName = '';
+  String _versionFolderName = '';
+  late final TextEditingController _versionFolderController;
+
+  final _formKey = GlobalKey<FormState>();
+  // 用于跟踪Form是否有效
+  bool _isFormValid = false;
 
   String _selectedLoader = 'Vanilla';
   List<String> _versionList = [];
@@ -41,131 +47,20 @@ class DownloadGamePageState extends State<DownloadGamePage> {
   String _selectedNeoForgeVersion = '';
   bool _showNeoForgeUnstable = false;
 
-  static final List<DropdownMenuItem<String>> modLoadersDropdownMenuItem =
-      const [
-        DropdownMenuItem<String>(value: 'Vanilla', child: Text('不安装模组加载器')),
-        DropdownMenuItem<String>(value: 'Fabric', child: Text('Fabric')),
-        DropdownMenuItem<String>(value: 'NeoForge', child: Text('NeoForge')),
-      ];
-
-  int _compareVersions(String versionA, String versionB) {
-    String cleanA = versionA.replaceAll('-beta', '');
-    String cleanB = versionB.replaceAll('-beta', '');
-    List<int> partsA = cleanA.split('.').map(int.parse).toList();
-    List<int> partsB = cleanB.split('.').map(int.parse).toList();
-    for (int i = 0; i < max(partsA.length, partsB.length); i++) {
-      int partA = i < partsA.length ? partsA[i] : 0;
-      int partB = i < partsB.length ? partsB[i] : 0;
-      if (partA != partB) {
-        return partA.compareTo(partB);
-      }
-    }
-    return 0;
-  }
-
-  // 读取版本列表
-  Future<void> _loadVersionList() async {
-    final prefs = await SharedPreferences.getInstance();
-    final selectedPath = prefs.getString('SelectedPath') ?? '';
-    final gameList = prefs.getStringList('Game_$selectedPath') ?? [];
-    setState(() {
-      _versionList = gameList;
-    });
-  }
-
-  // 读取Fabric版本列表
-  Future<void> _loadFabricList() async {
-    LogUtil.log('加载${widget.version.id} Fabric版本列表', level: 'INFO');
-
-    try {
-      // 请求BMCLAPI Fabric
-      final response = await DioClient().dio.get(
-        'https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader/${widget.version.id}',
-      );
-      if (response.statusCode == 200) {
-        List<dynamic> loaderData = response.data;
-        List<String> versions = [];
-        for (var loader in loaderData) {
-          if (loader['loader'] != null && loader['loader']['version'] != null) {
-            versions.add(loader['loader']['version']);
-            bool isStable = loader['loader']['stable'] ?? false;
-            _fabricStableList.add(isStable);
-          }
-        }
-        setState(() {
-          _fabricVersionList = versions;
-          _fabricJson = loaderData;
-        });
-      }
-    } catch (e) {
-      LogUtil.log('请求出错: $e', level: 'ERROR');
-    }
-  }
-
-  // 加载NeoForge
-  Future<void> _loadNeoForgeList() async {
-    LogUtil.log('加载${widget.version.id} NeoForge版本列表', level: 'INFO');
-
-    try {
-      final response = await DioClient().dio.get(
-        'https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge/maven-metadata.xml',
-      );
-      if (response.statusCode == 200) {
-        // 解析XML数据
-        final xmlString = response.data.toString();
-        List<String> stableVersions = [];
-        List<String> betaVersions = [];
-        RegExp versionRegExp = RegExp(r'<version>([^<]+)</version>');
-        final matches = versionRegExp.allMatches(xmlString);
-        for (var match in matches) {
-          String version = match.group(1) ?? '';
-          if (version.isNotEmpty) {
-            if (version.contains('-beta')) {
-              betaVersions.add(version);
-            } else {
-              stableVersions.add(version);
-            }
-          }
-        }
-        // 获取版本前缀
-        String mcVersionPrefix = '';
-        try {
-          if (widget.version.id.startsWith('1.')) {
-            String versionWithoutPrefix = widget.version.id.substring(2);
-            mcVersionPrefix = versionWithoutPrefix;
-          }
-        } catch (e) {
-          LogUtil.log('版本号解析错误: $e', level: 'ERROR');
-        }
-
-        // 过滤版本
-        if (mcVersionPrefix.isNotEmpty) {
-          stableVersions = stableVersions
-              .where((v) => v.startsWith(mcVersionPrefix))
-              .toList();
-          betaVersions = betaVersions
-              .where((v) => v.startsWith(mcVersionPrefix))
-              .toList();
-        }
-        // 按版本号排序
-        stableVersions.sort((a, b) => _compareVersions(b, a));
-        betaVersions.sort((a, b) => _compareVersions(b, a));
-        setState(() {
-          _neoForgeStableVersions = stableVersions;
-          _neoforgeBetaVersions = betaVersions;
-        });
-      }
-    } catch (e) {
-      LogUtil.log('请求出错: $e', level: 'ERROR');
-    }
-  }
-
   @override
   void initState() {
     super.initState();
-    _gameNameController = TextEditingController();
-    _gameNameController.text = widget.version.id;
-    _gameFolderName = widget.version.id;
+    _versionFolderController = TextEditingController();
+    _versionFolderController.text = widget.version.id;
+    _versionFolderName = widget.version.id;
+
+    //检查一次初始文本是否有效
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _isFormValid = _formKey.currentState?.validate() ?? false;
+      });
+    });
+
     _loadVersionList();
     _loadFabricList();
     _loadNeoForgeList();
@@ -173,7 +68,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
 
   @override
   void dispose() {
-    _gameNameController.dispose();
+    _versionFolderController.dispose();
     super.dispose();
   }
 
@@ -191,15 +86,45 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                 vertical: kDefaultPadding / 2,
                 horizontal: kDefaultPadding,
               ),
-              child: TextField(
-                controller: _gameNameController,
-                decoration: InputDecoration(
-                  labelText: '版本名称',
-                  border: OutlineInputBorder(),
+              child: Form(
+                key: _formKey,
+
+                child: TextFormField(
+                  autofocus: true,
+                  controller: _versionFolderController,
+                  decoration: InputDecoration(
+                    labelText: '版本名称',
+                    border: OutlineInputBorder(),
+                  ),
+
+                  //实时验证驶入内容
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+
+                  onChanged: (value) => setState(() {
+                    _versionFolderName = value;
+
+                    //更新状态变量
+                    _isFormValid = _formKey.currentState!.validate();
+                  }),
+
+                  //检测文本输入是否有效
+                  validator: (String? value) {
+                    //TODO:添加更多检测，包装一个检查路径的Util
+
+                    //判断是否为空
+                    if (value == null || value.isEmpty) {
+                      return '文件夹名称不能为空';
+                    }
+
+                    //判断是否已经存在
+                    if (_versionList.contains(_versionFolderName)) {
+                      return "已存在名为 '$value' 的文件夹！";
+                    }
+
+                    //所有检查通过
+                    return null;
+                  },
                 ),
-                onChanged: (value) => setState(() {
-                  _gameFolderName = value;
-                }),
               ),
             ),
 
@@ -345,17 +270,8 @@ class DownloadGamePageState extends State<DownloadGamePage> {
 
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          if (_gameFolderName.isEmpty) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('版本名称不能为空')));
-            return;
-          }
-
-          if (_versionList.contains(_gameFolderName)) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('该版本名称已存在，请换一个名称')));
+          // 表单检测无效时直接禁用点击
+          if (!_isFormValid) {
             return;
           }
 
@@ -367,7 +283,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                   page: DownloadVanillaPage(
                     version: widget.version.id,
                     url: widget.version.url,
-                    name: _gameFolderName,
+                    name: _versionFolderName,
                   ),
                 ),
               );
@@ -386,7 +302,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                   page: DownloadFabricPage(
                     version: widget.version.id,
                     url: widget.version.url,
-                    name: _gameFolderName,
+                    name: _versionFolderName,
                     fabricVersion: _selectedFabricVersion,
                     fabricLoader: _selectedFabricLoader,
                   ),
@@ -407,7 +323,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                   page: DownloadNeoForgePage(
                     version: widget.version.id,
                     url: widget.version.url,
-                    name: _gameFolderName,
+                    name: _versionFolderName,
                     neoforgeVersion: _selectedNeoForgeVersion,
                   ),
                 ),
@@ -417,5 +333,124 @@ class DownloadGamePageState extends State<DownloadGamePage> {
         child: const Icon(Icons.download),
       ),
     );
+  }
+
+  static final List<DropdownMenuItem<String>> modLoadersDropdownMenuItem =
+      const [
+        DropdownMenuItem<String>(value: 'Vanilla', child: Text('不安装模组加载器')),
+        DropdownMenuItem<String>(value: 'Fabric', child: Text('Fabric')),
+        DropdownMenuItem<String>(value: 'NeoForge', child: Text('NeoForge')),
+      ];
+
+  int _compareVersions(String versionA, String versionB) {
+    String cleanA = versionA.replaceAll('-beta', '');
+    String cleanB = versionB.replaceAll('-beta', '');
+    List<int> partsA = cleanA.split('.').map(int.parse).toList();
+    List<int> partsB = cleanB.split('.').map(int.parse).toList();
+    for (int i = 0; i < max(partsA.length, partsB.length); i++) {
+      int partA = i < partsA.length ? partsA[i] : 0;
+      int partB = i < partsB.length ? partsB[i] : 0;
+      if (partA != partB) {
+        return partA.compareTo(partB);
+      }
+    }
+    return 0;
+  }
+
+  // 读取版本列表
+  Future<void> _loadVersionList() async {
+    final prefs = await SharedPreferences.getInstance();
+    final selectedPath = prefs.getString('SelectedPath') ?? '';
+    final gameList = prefs.getStringList('Game_$selectedPath') ?? [];
+    setState(() {
+      _versionList = gameList;
+    });
+  }
+
+  // 读取Fabric版本列表
+  Future<void> _loadFabricList() async {
+    LogUtil.log('加载${widget.version.id} Fabric版本列表', level: 'INFO');
+
+    try {
+      // 请求BMCLAPI Fabric
+      final response = await DioClient().dio.get(
+        'https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader/${widget.version.id}',
+      );
+      if (response.statusCode == 200) {
+        List<dynamic> loaderData = response.data;
+        List<String> versions = [];
+        for (var loader in loaderData) {
+          if (loader['loader'] != null && loader['loader']['version'] != null) {
+            versions.add(loader['loader']['version']);
+            bool isStable = loader['loader']['stable'] ?? false;
+            _fabricStableList.add(isStable);
+          }
+        }
+        setState(() {
+          _fabricVersionList = versions;
+          _fabricJson = loaderData;
+        });
+      }
+    } catch (e) {
+      LogUtil.log('请求出错: $e', level: 'ERROR');
+    }
+  }
+
+  // 加载NeoForge
+  Future<void> _loadNeoForgeList() async {
+    LogUtil.log('加载${widget.version.id} NeoForge版本列表', level: 'INFO');
+
+    try {
+      final response = await DioClient().dio.get(
+        'https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge/maven-metadata.xml',
+      );
+      if (response.statusCode == 200) {
+        // 解析XML数据
+        final xmlString = response.data.toString();
+        List<String> stableVersions = [];
+        List<String> betaVersions = [];
+        RegExp versionRegExp = RegExp(r'<version>([^<]+)</version>');
+        final matches = versionRegExp.allMatches(xmlString);
+        for (var match in matches) {
+          String version = match.group(1) ?? '';
+          if (version.isNotEmpty) {
+            if (version.contains('-beta')) {
+              betaVersions.add(version);
+            } else {
+              stableVersions.add(version);
+            }
+          }
+        }
+        // 获取版本前缀
+        String mcVersionPrefix = '';
+        try {
+          if (widget.version.id.startsWith('1.')) {
+            String versionWithoutPrefix = widget.version.id.substring(2);
+            mcVersionPrefix = versionWithoutPrefix;
+          }
+        } catch (e) {
+          LogUtil.log('版本号解析错误: $e', level: 'ERROR');
+        }
+
+        // 过滤版本
+        if (mcVersionPrefix.isNotEmpty) {
+          stableVersions = stableVersions
+              .where((v) => v.startsWith(mcVersionPrefix))
+              .toList();
+          betaVersions = betaVersions
+              .where((v) => v.startsWith(mcVersionPrefix))
+              .toList();
+        }
+        // 按版本号排序
+        stableVersions.sort((a, b) => _compareVersions(b, a));
+        betaVersions.sort((a, b) => _compareVersions(b, a));
+        setState(() {
+          _neoForgeStableVersions = stableVersions;
+          _neoforgeBetaVersions = betaVersions;
+        });
+      }
+    } catch (e) {
+      LogUtil.log('请求出错: $e', level: 'ERROR');
+    }
   }
 }
