@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:fml/constants.dart';
 import 'package:fml/function/dio_client.dart';
@@ -97,31 +95,31 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                     border: OutlineInputBorder(),
                   ),
 
-                  //实时验证驶入内容
+                  // 实时验证驶入内容
                   autovalidateMode: AutovalidateMode.onUserInteraction,
 
                   onChanged: (value) => setState(() {
                     _versionFolderName = value;
 
-                    //更新状态变量
+                    // 更新状态变量
                     _isFormValid = _formKey.currentState!.validate();
                   }),
 
-                  //检测文本输入是否有效
+                  // 检测文本输入是否有效
                   validator: (String? value) {
-                    //TODO:添加更多检测，包装一个检查路径的Util
+                    // TODO:添加更多检测，包装一个检查路径的Util
 
-                    //判断是否为空
+                    // 判断是否为空
                     if (value == null || value.isEmpty) {
                       return '文件夹名称不能为空';
                     }
 
-                    //判断是否已经存在
+                    // 判断是否已经存在
                     if (_versionList.contains(_versionFolderName)) {
                       return "已存在名为 '$value' 的文件夹！";
                     }
 
-                    //所有检查通过
+                    // 所有检查通过
                     return null;
                   },
                 ),
