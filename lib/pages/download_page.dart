@@ -14,29 +14,22 @@ class DownloadPage extends StatefulWidget {
 class DownloadPageState extends State<DownloadPage> {
   int _selectedIndex = 0;
 
-  late final List<NavigationDrawerItem> _downloadPageItems;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _downloadPageItems = const [
-      NavigationDrawerItem(
-        page: DownloadVersionPage(),
-        destination: NavigationDrawerDestination(
-          icon: Icon(Icons.code, fill: 1),
-          label: Text('游戏'),
-        ),
+  final List<NavigationDrawerItem> _downloadPageItems = const [
+    NavigationDrawerItem(
+      page: DownloadVersionPage(),
+      destination: NavigationDrawerDestination(
+        icon: Icon(Icons.code, fill: 1),
+        label: Text('游戏'),
       ),
-      NavigationDrawerItem(
-        page: DownloadResources(),
-        destination: NavigationDrawerDestination(
-          icon: Icon(Icons.extension, fill: 1),
-          label: Text('资源'),
-        ),
+    ),
+    NavigationDrawerItem(
+      page: DownloadResources(),
+      destination: NavigationDrawerDestination(
+        icon: Icon(Icons.extension, fill: 1),
+        label: Text('资源'),
       ),
-    ];
-  }
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
