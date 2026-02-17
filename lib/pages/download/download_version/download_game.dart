@@ -368,7 +368,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                 SlidePageRoute(
                   page: DownloadVanillaPage(
                     version: widget.version.id,
-                    url: widget.version.id,
+                    url: widget.version.url,
                     name: _gameFolderName,
                   ),
                 ),
