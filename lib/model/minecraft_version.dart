@@ -2,7 +2,7 @@
 
 library;
 
-import 'dart:developer' as developer;
+import 'package:fml/function/log.dart';
 
 /// 从Api解析出来的Minecraft版本
 /// 示例 :
@@ -30,7 +30,7 @@ class MinecraftVersion {
   factory MinecraftVersion.fromJson(Map<String, dynamic> json) {
     return MinecraftVersion(
       id: json['id'] as String,
-      type: VersionType.fromString(json['type'] as String)!,
+      type: VersionType.fromString(json['type'] as String),
       url: json['url'] as String,
       time: json['time'] as String,
       releaseTime: json['releaseTime'] as String,
@@ -47,12 +47,13 @@ enum VersionType {
   release,
   snapshot,
   oldBeta,
-  oldAlpha;
+  oldAlpha,
+  unknown;
 
   ///
   /// 从字符串解析出对应的VersionType
   ///
-  static VersionType? fromString(String name) {
+  static VersionType fromString(String name) {
     final normalizedName = name.toLowerCase().replaceAll('_', '');
 
     try {
@@ -60,13 +61,8 @@ enum VersionType {
         (type) => type.name.toLowerCase() == normalizedName,
       );
     } catch (e) {
-      developer.log(
-        "Couldn't parse '$name' as VersionType!",
-        name: 'VersionType',
-        level: 900,
-        error: e,
-      );
-      return null;
+      LogUtil.log("无法将 '$name' 解析为 VersionType!", level: 'ERROR');
+      return VersionType.unknown;
     }
   }
 
@@ -98,6 +94,8 @@ enum VersionType {
         return '远古Beta版';
       case VersionType.oldAlpha:
         return '远古Alpha版';
+      case VersionType.unknown:
+        return '未知';
     }
   }
 }
