@@ -194,7 +194,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
               child: TextField(
                 controller: _gameNameController,
                 decoration: InputDecoration(
-                  labelText: '游戏文件夹名称',
+                  labelText: '版本名称',
                   border: OutlineInputBorder(),
                 ),
                 onChanged: (value) => setState(() {
@@ -348,14 +348,14 @@ class DownloadGamePageState extends State<DownloadGamePage> {
           if (_gameFolderName.isEmpty) {
             ScaffoldMessenger.of(
               context,
-            ).showSnackBar(const SnackBar(content: Text('游戏文件夹名称不能为空')));
+            ).showSnackBar(const SnackBar(content: Text('版本名称不能为空')));
             return;
           }
 
           if (_versionList.contains(_gameFolderName)) {
             ScaffoldMessenger.of(
               context,
-            ).showSnackBar(const SnackBar(content: Text('该游戏文件夹已存在，请换一个名称')));
+            ).showSnackBar(const SnackBar(content: Text('该版本名称已存在，请换一个名称')));
             return;
           }
 
