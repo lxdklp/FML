@@ -250,9 +250,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
               if (_showUnstable)
                 // 分割线
                 const Padding(
-                  padding: EdgeInsetsGeometry.symmetric(
-                    vertical: kDefaultPadding / 2,
-                  ),
+                  padding: EdgeInsets.symmetric(vertical: kDefaultPadding / 2),
                   child: Divider(height: 1),
                 ),
 
@@ -304,9 +302,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
               if (_showNeoForgeUnstable)
                 // 分割线
                 const Padding(
-                  padding: EdgeInsetsGeometry.symmetric(
-                    vertical: kDefaultPadding / 2,
-                  ),
+                  padding: EdgeInsets.symmetric(vertical: kDefaultPadding / 2),
                   child: Divider(height: 1),
                 ),
 
