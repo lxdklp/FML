@@ -241,26 +241,19 @@ class MainStartPageState extends State<MainStartPage> {
   int _selectedIndex = 0;
   bool? _javaInstalled;
 
+  // 使页面仅被初始化一次
+  final List<Widget> _mainPages = const [
+    HomePage(),
+    OnlinePage(),
+    DownloadPage(),
+    SettingPage(),
+  ];
+
   @override
   void initState() {
     super.initState();
     _checkJavaInstalled();
     _checkUpdate();
-  }
-
-  // 构建页面
-  Widget _buildPage(int index) {
-    switch (index) {
-      case 1:
-        return const OnlinePage();
-      case 2:
-        return const DownloadPage();
-      case 3:
-        return const SettingPage();
-      case 0:
-      default:
-        return const HomePage();
-    }
   }
 
   // 检查是否安装Java
@@ -432,7 +425,11 @@ class MainStartPageState extends State<MainStartPage> {
               ),
             ],
           ),
-          Expanded(child: Center(child: _buildPage(_selectedIndex))),
+
+          // 显示当前页面
+          Expanded(
+            child: IndexedStack(index: _selectedIndex, children: _mainPages),
+          ),
         ],
       ),
     );

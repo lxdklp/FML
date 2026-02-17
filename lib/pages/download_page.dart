@@ -14,25 +14,32 @@ class DownloadPage extends StatefulWidget {
 class DownloadPageState extends State<DownloadPage> {
   int _selectedIndex = 0;
 
+  late final List<NavigationDrawerItem> _downloadPageItems;
+
   @override
-  Widget build(BuildContext context) {
-    final List<NavigationDrawerItem> downloadPageItems = [
+  void initState() {
+    super.initState();
+
+    _downloadPageItems = const [
       NavigationDrawerItem(
-        page: const DownloadVersionPage(),
+        page: DownloadVersionPage(),
         destination: NavigationDrawerDestination(
-          icon: const Icon(Icons.code, fill: 1),
+          icon: Icon(Icons.code, fill: 1),
           label: Text('游戏'),
         ),
       ),
       NavigationDrawerItem(
-        page: const DownloadResources(),
+        page: DownloadResources(),
         destination: NavigationDrawerDestination(
-          icon: const Icon(Icons.extension, fill: 1),
+          icon: Icon(Icons.extension, fill: 1),
           label: Text('资源'),
         ),
       ),
     ];
+  }
 
+  @override
+  Widget build(BuildContext context) {
     ThemeData theme = Theme.of(context);
 
     return Material(
@@ -88,7 +95,7 @@ class DownloadPageState extends State<DownloadPage> {
                       ),
 
                       // Destinations
-                      for (var item in downloadPageItems) item.destination,
+                      for (var item in _downloadPageItems) item.destination,
                     ],
                   ),
                 ),
@@ -98,7 +105,9 @@ class DownloadPageState extends State<DownloadPage> {
               Expanded(
                 child: IndexedStack(
                   index: _selectedIndex,
-                  children: downloadPageItems.map((item) => item.page).toList(),
+                  children: _downloadPageItems
+                      .map((item) => item.page)
+                      .toList(),
                 ),
               ),
             ],
