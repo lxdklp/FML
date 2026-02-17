@@ -26,6 +26,28 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
 
   late Future<List<MinecraftVersion>> _versionsFuture;
 
+  static final DateFormat dateFormat = DateFormat("yyyy-MM-dd HH:mm:ss");
+
+  // 顶部ButtonSegments
+  static final segments = <ButtonSegment<VersionType>>[
+    ButtonSegment<VersionType>(
+      value: VersionType.release,
+      label: Text(VersionType.release.getVersionTypeLabel()),
+    ),
+    ButtonSegment<VersionType>(
+      value: VersionType.snapshot,
+      label: Text(VersionType.snapshot.getVersionTypeLabel()),
+    ),
+    ButtonSegment<VersionType>(
+      value: VersionType.oldBeta,
+      label: Text(VersionType.oldBeta.getVersionTypeLabel()),
+    ),
+    ButtonSegment<VersionType>(
+      value: VersionType.oldAlpha,
+      label: Text(VersionType.oldAlpha.getVersionTypeLabel()),
+    ),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -117,26 +139,6 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
 
   @override
   Widget build(BuildContext context) {
-    // 顶部ButtonSegment
-    final segments = <ButtonSegment<VersionType>>[
-      ButtonSegment<VersionType>(
-        value: VersionType.release,
-        label: Text(VersionType.release.getVersionTypeLabel()),
-      ),
-      ButtonSegment<VersionType>(
-        value: VersionType.snapshot,
-        label: Text(VersionType.snapshot.getVersionTypeLabel()),
-      ),
-      ButtonSegment<VersionType>(
-        value: VersionType.oldBeta,
-        label: Text(VersionType.oldBeta.getVersionTypeLabel()),
-      ),
-      ButtonSegment<VersionType>(
-        value: VersionType.oldAlpha,
-        label: Text(VersionType.oldAlpha.getVersionTypeLabel()),
-      ),
-    ];
-
     return Scaffold(
       body: Center(
         child: FutureBuilder(
@@ -251,7 +253,7 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           subtitle: Text(
-                            '更新时间: ${DateFormat("yyyy-MM-dd HH:mm:ss").format(DateTime.parse(version.releaseTime).toLocal())}',
+                            '更新时间: ${dateFormat.format(DateTime.parse(version.releaseTime).toLocal())}',
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
                         ),
