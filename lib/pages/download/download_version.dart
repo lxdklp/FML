@@ -251,7 +251,7 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           subtitle: Text(
-                            '${'更新时间'}: ${DateFormat("yyyy-MM-dd HH:mm:ss").format(DateTime.parse(version.releaseTime).toLocal())}',
+                            '更新时间: ${DateFormat("yyyy-MM-dd HH:mm:ss").format(DateTime.parse(version.releaseTime).toLocal())}',
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
                         ),
