@@ -24,13 +24,18 @@ class MinecraftVersion {
   /// 工厂构造函数，用于从JSON对象创建实例
   ///
   factory MinecraftVersion.fromJson(Map<String, dynamic> json) {
-    return MinecraftVersion(
-      id: json['id'] as String,
-      type: VersionType.fromString(json['type'] as String),
-      url: json['url'] as String,
-      time: json['time'] as String,
-      releaseTime: json['releaseTime'] as String,
-    );
+    try {
+      return MinecraftVersion(
+        id: json['id'] as String,
+        type: VersionType.fromString(json['type'] as String),
+        url: json['url'] as String,
+        time: json['time'] as String,
+        releaseTime: json['releaseTime'] as String,
+      );
+    } catch (e) {
+      LogUtil.log('无效的版本 JSON: $json', level: 'ERROR');
+      throw FormatException('无效的版本JSON: $json', e);
+    }
   }
 
   @override
