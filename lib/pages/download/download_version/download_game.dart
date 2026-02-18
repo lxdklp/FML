@@ -362,6 +362,10 @@ class DownloadGamePageState extends State<DownloadGamePage> {
     final gameList = prefs.getStringList('Game_$selectedPath') ?? [];
     setState(() {
       _versionList = gameList;
+
+      if (gameList.contains(widget.version.id)) {
+        _isFormValid = false;
+      }
     });
   }
 
