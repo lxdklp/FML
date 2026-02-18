@@ -1,10 +1,6 @@
-//https://piston-meta.mojang.com/mc/game/version_manifest.json
-
-library;
-
 import 'package:fml/function/log.dart';
 
-/// 从Api解析出来的Minecraft版本
+/// 从API解析出来的Minecraft版本
 /// 示例 :
 /// {
 ///   "id": "1.20.1",
