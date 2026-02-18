@@ -389,6 +389,8 @@ class DownloadGamePageState extends State<DownloadGamePage> {
           }
         }
         setState(() {
+          if (!mounted) return;
+
           _fabricVersionList = versions;
           _fabricJson = loaderData;
         });
@@ -447,6 +449,8 @@ class DownloadGamePageState extends State<DownloadGamePage> {
         stableVersions.sort((a, b) => _compareVersions(b, a));
         betaVersions.sort((a, b) => _compareVersions(b, a));
         setState(() {
+          if (!mounted) return;
+
           _neoForgeStableVersions = stableVersions;
           _neoforgeBetaVersions = betaVersions;
         });
