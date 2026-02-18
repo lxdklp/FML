@@ -144,7 +144,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                     value: _selectedLoader,
                     hint: const Text('选择模组加载器'),
 
-                    items: modLoadersDropdownMenuItem,
+                    items: modLoadersDropdownMenuItems,
                     onChanged: (value) {
                       setState(() {
                         _selectedLoader = value!;
@@ -334,7 +334,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
     );
   }
 
-  static final List<DropdownMenuItem<String>> modLoadersDropdownMenuItem =
+  static final List<DropdownMenuItem<String>> modLoadersDropdownMenuItems =
       const [
         DropdownMenuItem<String>(value: 'Vanilla', child: Text('不安装模组加载器')),
         DropdownMenuItem<String>(value: 'Fabric', child: Text('Fabric')),
