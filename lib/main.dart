@@ -32,7 +32,7 @@ void main() async {
   WindowOptions windowOptions = WindowOptions(
     center: true,
     title: "$kAppName v$gAppVersion ($gAppBuildNumber)",
-    minimumSize: Size(600, 600),
+    minimumSize: const Size(600, 600),
   );
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
