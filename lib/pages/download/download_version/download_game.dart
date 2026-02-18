@@ -361,6 +361,9 @@ class DownloadGamePageState extends State<DownloadGamePage> {
     final prefs = await SharedPreferences.getInstance();
     final selectedPath = prefs.getString('SelectedPath') ?? '';
     final gameList = prefs.getStringList('Game_$selectedPath') ?? [];
+
+    if (!mounted) return;
+
     setState(() {
       _versionList = gameList;
 
