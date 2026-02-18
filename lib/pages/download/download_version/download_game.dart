@@ -92,7 +92,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                   controller: _versionFolderController,
                   decoration: InputDecoration(
                     labelText: '版本名称',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
 
                   // 实时验证输入内容
