@@ -91,8 +91,24 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
           }
         }
 
-        final List<dynamic> rawList = responseData['versions'] as List;
+        if (responseData is! Map) {
+          LogUtil.log(
+            "响应数据格式不符合预期: 期望为包含'versions'字段的JSON对象，实际为: ${responseData.runtimeType}",
+            level: 'ERROR',
+          );
+          throw const FormatException("响应数据格式不正确: 顶层JSON应为包含'versions'字段的对象");
+        }
 
+        final dynamic versionsField = (responseData)['versions'];
+        if (versionsField is! List) {
+          LogUtil.log(
+            "响应数据缺少'versions'字段或类型不正确: ${versionsField.runtimeType}",
+            level: 'ERROR',
+          );
+          throw const FormatException("响应数据格式不正确: 'versions'字段缺失或不是列表类型");
+        }
+
+        final List<dynamic> rawList = versionsField;
         // 将JSON转换为Dart Model
         final List<MinecraftVersion> versions = rawList
             .map((json) => MinecraftVersion.fromJson(json))
