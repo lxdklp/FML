@@ -115,8 +115,9 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                     }
 
                     // 判断是否已经存在
-                    if (_versionList.contains(_versionFolderName)) {
-                      return "已存在名为 '$value' 的文件夹！";
+                    final String folderName = value.trim();
+                    if (_versionList.contains(folderName)) {
+                      return "已存在名为 '$folderName' 的文件夹！";
                     }
 
                     // 所有检查通过
@@ -388,9 +389,10 @@ class DownloadGamePageState extends State<DownloadGamePage> {
             _fabricStableList.add(isStable);
           }
         }
-        setState(() {
-          if (!mounted) return;
 
+        if (!mounted) return;
+
+        setState(() {
           _fabricVersionList = versions;
           _fabricJson = loaderData;
         });
@@ -448,9 +450,10 @@ class DownloadGamePageState extends State<DownloadGamePage> {
         // 按版本号排序
         stableVersions.sort((a, b) => _compareVersions(b, a));
         betaVersions.sort((a, b) => _compareVersions(b, a));
-        setState(() {
-          if (!mounted) return;
 
+        if (!mounted) return;
+
+        setState(() {
           _neoForgeStableVersions = stableVersions;
           _neoforgeBetaVersions = betaVersions;
         });
