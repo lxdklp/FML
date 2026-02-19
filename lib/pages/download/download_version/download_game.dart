@@ -366,10 +366,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
 
     setState(() {
       _versionList = gameList;
-
-      if (gameList.contains(widget.version.id)) {
-        _isFormValid = false;
-      }
+      _isFormValid = _formKey.currentState?.validate() ?? false;
     });
   }
 
