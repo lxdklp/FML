@@ -11,18 +11,10 @@ class ThemePage extends StatefulWidget {
 }
 
 class ThemePageState extends State<ThemePage> {
-  Color _themeColor = Colors.blue;
-
   // 每个设置间的间距
   static const _itemsPadding = Padding(
     padding: EdgeInsets.symmetric(vertical: kDefaultPadding / 2),
   );
-
-  @override
-  void initState() {
-    super.initState();
-    _themeColor = FMLBaseApp.of(context).themeColor;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,8 +61,11 @@ class ThemePageState extends State<ThemePage> {
                 ),
               ],
               selected: {FMLBaseApp.of(context).themeMode},
+
               onSelectionChanged: (Set<ThemeMode> newSelection) {
-                FMLBaseApp.of(context).changeTheme(newSelection.first);
+                setState(() {
+                  FMLBaseApp.of(context).changeTheme(newSelection.first);
+                });
               },
             ),
           ),
@@ -117,6 +112,8 @@ class ThemePageState extends State<ThemePage> {
     showDialog(
       context: context,
       builder: (context) {
+        final themeColor = FMLBaseApp.of(context).themeColor;
+
         return AlertDialog(
           title: const Text('选择主题色'),
           content: BlockPicker(
@@ -137,7 +134,7 @@ class ThemePageState extends State<ThemePage> {
                         color: color,
                         shape: BoxShape.circle,
                         border: isCurrentColor
-                            ? Border.all(color: Colors.black26, width: 2)
+                            ? Border.all(color: Colors.black38, width: 2)
                             : null,
                       ),
                       width: 40,
@@ -145,14 +142,13 @@ class ThemePageState extends State<ThemePage> {
                     ),
                   );
                 },
-            pickerColor: _themeColor,
+            pickerColor: themeColor,
             // 不使用自带的颜色
             availableColors: Colors.primaries,
 
             onColorChanged: (Color color) {
               setState(() {
-                _themeColor = color;
-                FMLBaseApp.of(context).changeThemeColor(_themeColor);
+                FMLBaseApp.of(context).changeThemeColor(color);
               });
             },
           ),
