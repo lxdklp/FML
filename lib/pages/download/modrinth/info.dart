@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dio/dio.dart';
-
+import 'package:share_plus/share_plus.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/function/dio_client.dart';
 import 'package:fml/constants.dart';
@@ -50,6 +50,21 @@ class InfoPageState extends State<InfoPage> {
       return '[${projectTypeNames[projectType]}] $title';
     }
     return title;
+  }
+
+  // 分享项目链接
+  Future<void> _shareProject(String? url) async {
+    if (url == null || url.isEmpty) return;
+    final Uri uri = Uri.parse(url);
+    try {
+      SharePlus.instance.share(
+        ShareParams(uri: uri, title: '分享 Modrinth 项目'),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('无法分享项目: $e')));
+    }
   }
 
   // 获取模组详情
@@ -460,56 +475,70 @@ class InfoPageState extends State<InfoPage> {
                 ),
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          if (projectDetails['project_type'] == 'mod') {
-            Navigator.push(
-              context,
-              SlidePageRoute(
-                page: ModPage(
-                  projectId: projectDetails['id'] ?? '',
-                  projectName: projectDetails['title'] ?? '',
-                ),
-              ),
-            );
-          } else if (projectDetails['project_type'] == 'modpack') {
-            Navigator.push(
-              context,
-              SlidePageRoute(
-                page: ModpackPage(
-                  projectId: projectDetails['id'] ?? '',
-                  projectName: projectDetails['title'] ?? '',
-                ),
-              ),
-            );
-          } else if (projectDetails['project_type'] == 'resourcepack') {
-            Navigator.push(
-              context,
-              SlidePageRoute(
-                page: ResourcepackPage(
-                  projectId: projectDetails['id'] ?? '',
-                  projectName: projectDetails['title'] ?? '',
-                ),
-              ),
-            );
-          } else if (projectDetails['project_type'] == 'shader') {
-            Navigator.push(
-              context,
-              SlidePageRoute(
-                page: ShaderPage(
-                  projectId: projectDetails['id'] ?? '',
-                  projectName: projectDetails['title'] ?? '',
-                ),
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('未知的项目类型，无法下载')));
-          }
-        },
-        child: const Icon(Icons.download),
-      ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'share',
+            onPressed: () {
+              final projectUrl = 'https://modrinth.com/project/${widget.slug}';
+              _shareProject(projectUrl);
+            },
+            child: const Icon(Icons.share),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            onPressed: () {
+              if (projectDetails['project_type'] == 'mod') {
+                Navigator.push(
+                  context,
+                  SlidePageRoute(
+                    page: ModPage(
+                      projectId: projectDetails['id'] ?? '',
+                      projectName: projectDetails['title'] ?? '',
+                    ),
+                  ),
+                );
+              } else if (projectDetails['project_type'] == 'modpack') {
+                Navigator.push(
+                  context,
+                  SlidePageRoute(
+                    page: ModpackPage(
+                      projectId: projectDetails['id'] ?? '',
+                      projectName: projectDetails['title'] ?? '',
+                    ),
+                  ),
+                );
+              } else if (projectDetails['project_type'] == 'resourcepack') {
+                Navigator.push(
+                  context,
+                  SlidePageRoute(
+                    page: ResourcepackPage(
+                      projectId: projectDetails['id'] ?? '',
+                      projectName: projectDetails['title'] ?? '',
+                    ),
+                  ),
+                );
+              } else if (projectDetails['project_type'] == 'shader') {
+                Navigator.push(
+                  context,
+                  SlidePageRoute(
+                    page: ShaderPage(
+                      projectId: projectDetails['id'] ?? '',
+                      projectName: projectDetails['title'] ?? '',
+                    ),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('未知的项目类型，无法下载')));
+              }
+            },
+            child: const Icon(Icons.download),
+          ),
+        ]
+      )
     );
   }
 }
