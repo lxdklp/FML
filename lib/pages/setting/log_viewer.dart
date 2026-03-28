@@ -18,7 +18,6 @@ class LogViewerPage extends StatefulWidget {
 class LogViewerPageState extends State<LogViewerPage> {
   late Future<List<Map<String, dynamic>>> _logsFuture;
 
-  List<Map<String, dynamic>> logs = [];
   String _dirPath = '';
 
   static final _kDateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
@@ -33,106 +32,51 @@ class LogViewerPageState extends State<LogViewerPage> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding),
-      child: Column(
+      child: Row(
         children: [
-          // 大标题
-          Padding(
-            padding: const EdgeInsets.only(
-              left: kDefaultPadding / 2,
-              top: kDefaultPadding,
-              bottom: kDefaultPadding,
-            ),
-
-            child: Row(
-              children: [
-                Text('日志', style: Theme.of(context).textTheme.headlineMedium),
-
-                // 将按钮推到右边
-                const Spacer(),
-
-                Row(
-                  // 使按钮组紧贴
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.settings),
-                      onPressed: () => Navigator.push(
-                        context,
-                        SlidePageRoute(page: const LogSettingPage()),
-                      ),
-                    ),
-
-                    IconButton(
-                      icon: const Icon(Icons.refresh),
-                      onPressed: () {
-                        if (!mounted) return;
-                        setState(() {
-                          _logsFuture = LogUtil.getLogs();
-                        });
-                      }, // _loadLogs,
-                      tooltip: '刷新',
-                    ),
-
-                    IconButton(
-                      icon: const Icon(Icons.file_download),
-                      onPressed: logs.isEmpty ? null : _exportAllLogs,
-                      tooltip: '导出全部日志',
-                    ),
-
-                    IconButton(
-                      icon: const Icon(Icons.delete_sweep),
-                      onPressed: logs.isEmpty ? null : _clearLogs,
-                      tooltip: '清除日志',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // 标题下的间距
-          const SizedBox(height: kDefaultPadding),
-
           Expanded(
-            child: Center(
-              child: FutureBuilder(
-                future: _logsFuture,
-                builder: (context, snapshot) {
-                  // 加载时显示CircularProgressIndicator
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const CircularProgressIndicator();
-                  }
+            child: FutureBuilder(
+              future: _logsFuture,
 
-                  if (snapshot.hasError) {
-                    return Text('加载失败：${snapshot.error}');
-                  }
+              builder: (context, snapshot) {
+                // 加载时显示CircularProgressIndicator
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                  final logs = (snapshot.data ?? []).reversed.toList();
+                if (snapshot.hasError) {
+                  return Center(child: Text('加载失败：${snapshot.error}'));
+                }
 
-                  if (logs.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.all(kDefaultPadding),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                final logs = (snapshot.data ?? []).reversed.toList();
 
-                        children: [
-                          Icon(Icons.inbox, size: 64, color: Colors.grey[400]),
+                // 使用变量来定义返回的内容
+                late Widget content;
 
-                          const SizedBox(height: kDefaultPadding),
+                if (logs.isEmpty) {
+                  // 日志为空，将content定义为提示界面
+                  content = Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
 
-                          Text(
-                            '暂无日志',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
+                      children: [
+                        Icon(Icons.inbox, size: 64, color: Colors.grey[400]),
+
+                        const SizedBox(height: kDefaultPadding),
+
+                        Text(
+                          '暂无日志',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
                           ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
+                        ),
+                      ],
+                    ),
+                  );
+                } else {
+                  // 否则将content定义日志ListView
+                  content = ListView.builder(
                     itemCount: logs.length,
 
                     itemBuilder: (context, index) {
@@ -201,8 +145,25 @@ class LogViewerPageState extends State<LogViewerPage> {
                       );
                     },
                   );
-                },
-              ),
+                }
+
+                // 将标题按钮与要返回的内容统一一起返回
+                return Column(
+                  children: [
+                    _buildTitleAndButtons(logs),
+
+                    // 标题下的间距
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        vertical: kDefaultPadding / 2,
+                      ),
+                    ),
+
+                    // 返回content
+                    Expanded(child: content),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -210,7 +171,9 @@ class LogViewerPageState extends State<LogViewerPage> {
     );
   }
 
-  // 清除所有日志
+  ///
+  /// 清除所有日志
+  ///
   Future<void> _clearLogs() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -247,7 +210,9 @@ class LogViewerPageState extends State<LogViewerPage> {
     }
   }
 
-  // 文件夹选择器
+  ///
+  /// 文件夹选择器
+  ///
   Future<void> _selectDirectory() async {
     final path = await FilePicker.platform.getDirectoryPath(
       dialogTitle: '选择版本路径',
@@ -330,7 +295,68 @@ class LogViewerPageState extends State<LogViewerPage> {
     }
   }
 
-  // 复制单条日志到剪贴板
+  ///
+  /// 构建带有标题和操作按钮的Row
+  ///
+  Widget _buildTitleAndButtons(List<Map<String, dynamic>> logs) {
+    return Row(
+      children: [
+        // 大标题
+        Padding(
+          padding: const EdgeInsets.only(
+            left: kDefaultPadding / 2,
+            top: kDefaultPadding,
+            bottom: kDefaultPadding,
+          ),
+          child: Text('日志', style: Theme.of(context).textTheme.headlineMedium),
+        ),
+
+        // 将按钮推到右边
+        const Spacer(),
+
+        Row(
+          // 使按钮组紧贴
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () => Navigator.push(
+                context,
+                SlidePageRoute(page: const LogSettingPage()),
+              ),
+            ),
+
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                if (!mounted) return;
+                setState(() {
+                  _logsFuture = LogUtil.getLogs();
+                });
+              }, // _loadLogs,
+              tooltip: '刷新',
+            ),
+
+            IconButton(
+              icon: const Icon(Icons.file_download),
+              onPressed: logs.isEmpty ? null : _exportAllLogs,
+              tooltip: '导出全部日志',
+            ),
+
+            IconButton(
+              icon: const Icon(Icons.delete_sweep),
+              onPressed: logs.isEmpty ? null : _clearLogs,
+              tooltip: '清除日志',
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  ///
+  /// 复制单条日志到剪贴板
+  ///
   Future<void> _copySingleLog(Map<String, dynamic> log) async {
     final timestamp = log['timestamp'] as String;
     final level = log['level'] as String;
@@ -351,7 +377,9 @@ class LogViewerPageState extends State<LogViewerPage> {
     }
   }
 
-  // 获取日志级别对应的颜色
+  ///
+  /// 获取日志级别对应的颜色
+  ///
   Color _getLevelColor(String level) {
     switch (level.toUpperCase()) {
       case 'ERROR':
@@ -365,7 +393,9 @@ class LogViewerPageState extends State<LogViewerPage> {
     }
   }
 
-  // 获取日志级别对应的图标
+  ///
+  /// 获取日志级别对应的图标
+  ///
   IconData _getLevelIcon(String level) {
     switch (level.toUpperCase()) {
       case 'ERROR':
