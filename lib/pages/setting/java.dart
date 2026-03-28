@@ -105,7 +105,7 @@ class JavaPageState extends State<JavaPage> {
                 }
 
                 // 如果系统默认存在且路径不为空，移除扫描列表中与系统默认路径相同的项
-                if (systemJavaExists && systemJavaInfo.path.isNotEmpty) {
+                if (systemJavaInfo != null && systemJavaInfo.path.isNotEmpty) {
                   javaRuntimes.removeWhere(
                     (runtime) => runtime.executable == systemJavaInfo.path,
                   );
