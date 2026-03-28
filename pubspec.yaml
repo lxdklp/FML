@@ -36,6 +36,7 @@ dependencies:
   dart_nbt: ^0.1.2
   window_manager: ^0.5.1
   intl: ^0.20.2
+  lazy_load_indexed_stack: ^1.2.1
 
 dev_dependencies:
   flutter_test:

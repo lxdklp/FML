@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/function/dio_client.dart';
+import 'package:lazy_load_indexed_stack/lazy_load_indexed_stack.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -425,7 +426,10 @@ class MainStartPageState extends State<MainStartPage> {
           ),
           // 显示当前页面
           Expanded(
-            child: IndexedStack(index: _selectedIndex, children: _mainPages),
+            child: LazyLoadIndexedStack(
+              index: _selectedIndex,
+              children: _mainPages,
+            ),
           ),
         ],
       ),
