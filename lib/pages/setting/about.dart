@@ -262,6 +262,18 @@ class AboutPageState extends State<AboutPage> {
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () => _launchURL('https://github.com/lxdklp/FML/pull/7'),
                 ),
+                ListTile(
+                  title: const Text('Google 翻译'),
+                  subtitle: const Text('https://translate.google.com/about'),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => _launchURL('https://translate.google.com/about'),
+                ),
+                ListTile(
+                  title: const Text('Cloudflare'),
+                  subtitle: const Text('https://www.cloudflare.com'),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => _launchURL('https://www.cloudflare.com'),
+                ),
                 const ListTile(
                   title: Text('GitHub 上提出 Issue 等的各位'),
                   subtitle: Text('谢谢大家'),

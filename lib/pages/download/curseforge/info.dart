@@ -30,7 +30,9 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
   bool isLoading = true;
   Map<String, dynamic> projectDetails = {};
   String? error;
-  String _description = '';
+  String projectDocument = '';
+  String originalProjectDocument = '';
+  int projectDocumentTranslated = 0;
 
   // 项目类型映射
   final Map<int, String> classIdNames = {
@@ -110,7 +112,8 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
         final document = html_parser.parse(htmlContent);
         final text = document.body?.text ?? '';
         setState(() {
-          _description = text;
+          projectDocument = text;
+          originalProjectDocument = text;
         });
         LogUtil.log('成功获取项目描述', level: 'INFO');
       }
@@ -153,6 +156,41 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
       }
     } catch (e) {
       LogUtil.log('获取翻译失败，使用原始内容: $e', level: 'WARNING');
+    }
+  }
+
+  // 简介翻译
+  Future<void> _getTranslatedBody() async {
+    if (projectDocumentTranslated == 1) {
+      setState(() {
+        projectDocument = originalProjectDocument;
+        projectDocumentTranslated = 0;
+      });
+      return;
+    }
+    final translated = await DioClient().dio.post(
+      'https://translate.lxdklp.top/translate_a/single',
+      data: {
+        'client': 'at',
+        'sl': 'auto',
+        'tl': 'zh-CN',
+        'dt': 't',
+        'q': originalProjectDocument,
+      },
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        headers: {'User-Agent': gAppModrinthUserAgent},
+        validateStatus: (status) => status != null,
+      ),
+    );
+    LogUtil.log('详细信息翻译响应状态: ${translated.statusCode}, 状态代码: ${translated.data['code'] ?? -1}', level: 'INFO');
+    if (translated.statusCode == 200 && translated.data is Map<String, dynamic> && translated.data['code'] == 0) {
+      final transData = translated.data as Map<String, dynamic>;
+      String translatedBody = transData['text']?.toString() ?? '';
+      setState(() {
+        projectDocument = translatedBody;
+        projectDocumentTranslated = 1;
+      });
     }
   }
 
@@ -467,7 +505,7 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
                     // 相关链接
                     _buildLinks(),
                     const SizedBox(height: 16),
-                    if (_description.isNotEmpty)
+                    if (projectDocument.isNotEmpty)
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
@@ -480,7 +518,7 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                _description,
+                                projectDocument,
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ],
@@ -494,6 +532,14 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          FloatingActionButton(
+            heroTag: 'translate',
+            onPressed: () async {
+              _getTranslatedBody();
+            },
+            child: const Icon(Icons.translate),
+          ),
+          const SizedBox(height: 16),
           FloatingActionButton(
             heroTag: 'share',
             onPressed: () {

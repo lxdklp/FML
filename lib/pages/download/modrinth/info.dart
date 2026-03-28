@@ -26,6 +26,8 @@ class InfoPageState extends State<InfoPage> {
   bool isLoading = true;
   Map<String, dynamic> projectDetails = {};
   String? error;
+  String body = '';
+  int bodyTranslated = 0;
 
   // 项目类型映射
   final Map<String, String> projectTypeNames = {
@@ -90,6 +92,7 @@ class InfoPageState extends State<InfoPage> {
         await _applyTranslation(details);
         setState(() {
           projectDetails = details;
+          body = details['body'] ?? '';
           isLoading = false;
         });
       } else {
@@ -138,6 +141,47 @@ class InfoPageState extends State<InfoPage> {
       }
     } catch (e) {
       LogUtil.log('获取翻译失败，使用原始内容: $e', level: 'WARNING');
+    }
+  }
+
+  // 简介翻译
+  Future<void> _getTranslatedBody() async {
+    final originalBody = projectDetails['body'] ?? '';
+    if (bodyTranslated == 1) {
+      setState(() {
+        body = originalBody;
+        bodyTranslated = 0;
+      });
+      return;
+    }
+    final translated = await DioClient().dio.post(
+      'https://translate.lxdklp.top/translate_a/single',
+      data: {
+        'client': 'at',
+        'sl': 'auto',
+        'tl': 'zh-CN',
+        'dt': 't',
+        'q': originalBody,
+      },
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        headers: {'User-Agent': gAppModrinthUserAgent},
+        validateStatus: (status) => status != null,
+      ),
+    );
+    LogUtil.log('详细信息翻译响应状态: ${translated.statusCode}, 状态代码: ${translated.data['code'] ?? -1}', level: 'INFO');
+    if (translated.statusCode == 200 && translated.data is Map<String, dynamic> && translated.data['code'] == 0) {
+      final transData = translated.data as Map<String, dynamic>;
+      String translatedBody = transData['text']?.toString() ?? '';
+      // 尽力修复被 Google 翻译破坏的 Markdown 格式 (´_ゝ`)
+      translatedBody = translatedBody.replaceAllMapped(
+        RegExp(r'\[\s*(.*?)\s*\]\s*\(\s*(.*?)\s*\)'),
+        (match) => '[${match[1]}](${match[2]})'
+      );
+      setState(() {
+        body = translatedBody;
+        bodyTranslated = 1;
+      });
     }
   }
 
@@ -459,7 +503,7 @@ class InfoPageState extends State<InfoPage> {
                               ),
                               const SizedBox(height: 8),
                               Markdown(
-                                data: projectDetails['body'],
+                                data: body,
                                 selectable: true,
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
@@ -478,6 +522,14 @@ class InfoPageState extends State<InfoPage> {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          FloatingActionButton(
+            heroTag: 'translate',
+            onPressed: () async {
+              _getTranslatedBody();
+            },
+            child: const Icon(Icons.translate),
+          ),
+          const SizedBox(height: 16),
           FloatingActionButton(
             heroTag: 'share',
             onPressed: () {
