@@ -5,6 +5,7 @@ import 'package:fml/function/slide_page_route.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fml/constants.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download/curseforge/type/mod.dart';
@@ -33,6 +34,9 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
   String projectDocument = '';
   String originalProjectDocument = '';
   int projectDocumentTranslated = 0;
+  bool _autoTranslate = true;
+  bool _enableGoogleTranslate = true;
+  String _googleTranslateClient = 'at';
 
   // 项目类型映射
   final Map<int, String> classIdNames = {
@@ -46,6 +50,30 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
   void initState() {
     super.initState();
     _fetchProjectDetails();
+    _getTranslateConfig();
+  }
+
+  // 获取翻译设置
+  Future<void> _getTranslateConfig() async{
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool autoTranslate = prefs.getBool('autoTranslate') ?? true;
+    bool enableGoogleTranslate = prefs.getBool('enableGoogleTranslate') ?? true;
+    int googleTranslateClient = prefs.getInt('googleTranslateClient') ?? 0;
+    setState(() {
+      _autoTranslate = autoTranslate;
+      _enableGoogleTranslate = enableGoogleTranslate;
+      if (googleTranslateClient == 0) {
+        _googleTranslateClient = 'at';
+      } else if (googleTranslateClient == 1) {
+        _googleTranslateClient = 'gtx';
+      } else if (googleTranslateClient == 2) {
+        _googleTranslateClient = 't';
+      } else if (googleTranslateClient == 3) {
+        _googleTranslateClient = 'webapp';
+      } else {
+        _googleTranslateClient = 'at';
+      }
+    });
   }
 
   // 获取格式化的标题
@@ -121,10 +149,16 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
       LogUtil.log('获取项目描述错误: $e', level: 'ERROR');
     }
     // 尝试获取翻译
-    await _applyTranslation();
-    setState(() {
-      isLoading = false;
-    });
+    if (_autoTranslate) {
+      await _applyTranslation();
+      setState(() {
+        isLoading = false;
+      });
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   // 尝试从 MCIM API 获取翻译并应用，失败则保留原始内容
@@ -159,7 +193,7 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
     }
   }
 
-  // 简介翻译
+  // 详细信息翻译
   Future<void> _getTranslatedBody() async {
     if (projectDocumentTranslated == 1) {
       setState(() {
@@ -171,7 +205,7 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
     final translated = await DioClient().dio.post(
       'https://translate.lxdklp.top/translate_a/single',
       data: {
-        'client': 'at',
+        'client': _googleTranslateClient,
         'sl': 'auto',
         'tl': 'zh-CN',
         'dt': 't',
@@ -532,13 +566,15 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FloatingActionButton(
-            heroTag: 'translate',
-            onPressed: () async {
-              _getTranslatedBody();
-            },
-            child: const Icon(Icons.translate),
-          ),
+          if (_enableGoogleTranslate) ... [
+            FloatingActionButton(
+              heroTag: 'translate',
+              onPressed: () async {
+                _getTranslatedBody();
+              },
+              child: const Icon(Icons.translate),
+            ),
+          ],
           const SizedBox(height: 16),
           FloatingActionButton(
             heroTag: 'share',

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/function/dio_client.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download/modrinth/info.dart';
 import 'package:fml/pages/download/curseforge/info.dart';
@@ -287,6 +287,9 @@ class DownloadResourcesState extends State<DownloadResources> {
 
   // 调度翻译（根据当前数据源）
   Future<void> _applyTranslations() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool autoTranslate = prefs.getBool('autoTranslate') ?? true;
+    if (!autoTranslate) return;
     if (_dataSource == 'modrinth') {
       await _applyModrinthTranslations();
     } else {

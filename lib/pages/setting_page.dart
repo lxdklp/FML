@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:fml/constants.dart';
 import 'package:fml/models/page/navigation_drawer_item.dart';
 import 'package:fml/pages/setting/theme.dart';
+import 'package:fml/pages/setting/java.dart';
+import 'package:fml/pages/setting/translate.dart';
 import 'package:fml/pages/setting/log_viewer.dart';
 import 'package:fml/pages/setting/about.dart';
-import 'package:fml/pages/setting/java.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
@@ -29,6 +30,13 @@ class SettingPageState extends State<SettingPage> {
       destination: NavigationDrawerDestination(
         icon: Icon(Icons.code),
         label: Text('Java管理'),
+      ),
+    ),
+    NavigationDrawerItem(
+      page: TranslatePage(),
+      destination: NavigationDrawerDestination(
+        icon: Icon(Icons.translate),
+        label: Text('翻译'),
       ),
     ),
     NavigationDrawerItem(
