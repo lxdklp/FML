@@ -21,7 +21,7 @@ jobs:
         runs-on: windows-latest
         steps:
             - name: 签出代码
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
             - name: 配置 Flutter
               uses: subosito/flutter-action@v2
               with:
@@ -91,7 +91,7 @@ jobs:
                 }
                 Write-Host "安装程序创建成功"
             - name: 上传 Windows 构建产物
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                 name: windows-release
                 path: |
@@ -104,7 +104,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: 签出代码
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
             - name: 配置 Linux (x64)
               run: |
                 sudo apt-get update
@@ -161,7 +161,7 @@ jobs:
                 chmod +x appimagetool
                 ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir FML-Linux-${VERSION}-x64.AppImage
             - name: 上传 Linux (x64) 构建产物
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                 name: linux-x64-release
                 path: |
@@ -175,7 +175,7 @@ jobs:
         runs-on: ubuntu-24.04-arm
         steps:
             - name: 签出代码
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
             - name: 配置 Linux (arm64)
               run: |
                 sudo apt-get update
@@ -235,7 +235,7 @@ jobs:
                 chmod +x appimagetool
                 ARCH=aarch64 ./appimagetool --appimage-extract-and-run AppDir FML-Linux-${VERSION}-arm64.AppImage
             - name: 上传 Linux (arm64) 构建产物
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                 name: linux-arm64-release
                 path: |
@@ -249,7 +249,7 @@ jobs:
         runs-on: macos-latest
         steps:
             - name: 签出代码
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: 配置 Flutter
               uses: subosito/flutter-action@v2
@@ -298,7 +298,7 @@ jobs:
                 hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_STAGE" -ov -format UDZO "$OUT_NAME"
                 rm -rf "$DMG_STAGE"
             - name: 上传 macOS 构建产物
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                 name: macos-release
                 path: FML-macOS-*.dmg
@@ -313,11 +313,11 @@ jobs:
         contents: write
       steps:
             - name: 下载所有构建产物
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@v8
               with:
                 path: artifacts
             - name: 创建 GitHub Release
-              uses: softprops/action-gh-release@v1
+              uses: softprops/action-gh-release@v3
               with:
                 files: |
                   artifacts/windows-release/FML-Windows-*.zip
