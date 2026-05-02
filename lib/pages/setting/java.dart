@@ -51,6 +51,10 @@ class JavaPageState extends State<JavaPage> {
                 final isCurrentJava =
                     JavaService.currentJavaPath == javaRuntime.executable;
 
+                final isSystemDefault =
+                    javaRuntime.executable ==
+                    JavaService.systemDefaultJavaInfo?.path;
+
                 return _buildJavaCard(
                   javaInfo: javaRuntime.info,
 
@@ -59,6 +63,8 @@ class JavaPageState extends State<JavaPage> {
                   vendor: javaRuntime.info.vendor,
 
                   isCurrent: isCurrentJava,
+
+                  isSystemDefault: isSystemDefault,
 
                   onTap: () => {
                     setState(() {
@@ -81,6 +87,7 @@ class JavaPageState extends State<JavaPage> {
     required String typeChipLabel,
     String? vendor,
     required bool isCurrent,
+    required bool isSystemDefault,
     required VoidCallback onTap,
   }) {
     return Card(
@@ -113,6 +120,13 @@ class JavaPageState extends State<JavaPage> {
 
               SizedBox(width: kDefaultPadding / 2),
             ],
+
+            if (isSystemDefault) ...[
+              Chip(label: Text('系统默认')),
+
+              SizedBox(width: kDefaultPadding / 2),
+            ],
+
             Chip(label: Text(typeChipLabel)),
 
             SizedBox(width: kDefaultPadding / 2),

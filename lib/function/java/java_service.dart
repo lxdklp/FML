@@ -9,27 +9,36 @@ class JavaService {
   static List<JavaRuntime> _javaRuntimes = [];
   static List<JavaRuntime> get javaRuntimes => _javaRuntimes;
 
-  static String _currentJavaPath = '';
-  static String get currentJavaPath => _currentJavaPath;
+  static String _javaSelectedPath = '';
+  static String get currentJavaPath => _javaSelectedPath;
 
   static JavaInfo? _systemDefaultJavaInfo;
   static JavaInfo? get systemDefaultJavaInfo => _systemDefaultJavaInfo;
 
   static Future<void> init() async {
     _systemDefaultJavaInfo = await JavaUtils.getSystemDefaultJavaInfo();
+    _javaRuntimes = [];
+
+    final systemJavaInfo = _systemDefaultJavaInfo;
 
     final prefs = await SharedPreferences.getInstance();
     final javaList = prefs.getStringList('javaList') ?? [];
 
     final List<String> validPaths = [];
 
-    // 初次打开/缓存为空，直接执行搜索
     if (javaList.isEmpty) {
+      // 初次打开/缓存为空，直接执行搜索并写入
       _javaRuntimes = await JavaUtils.searchPotentialJavaExecutables();
+
+      prefs.setStringList(
+        'javaList',
+        _javaRuntimes.map((e) => e.executable).toList(),
+      );
     } else {
       // 遍历缓存的列表
       for (final exe in javaList) {
         final info = await JavaUtils.probeJavaExecutable(exe);
+
         // 检测对应文件是否有效
         if (info != null) {
           final isJdk = await JavaUtils.looksLikeJdk(exe);
@@ -51,14 +60,37 @@ class JavaService {
     // 缓存内路径全部失效，搜索Java
     if (_javaRuntimes.isEmpty) {
       _javaRuntimes = await JavaUtils.searchPotentialJavaExecutables();
+
+      prefs.setStringList(
+        'javaList',
+        _javaRuntimes.map((e) => e.executable).toList(),
+      );
     }
 
     /// 处理_currentJavaPath
-    _currentJavaPath = prefs.getString('javaSelectedPath') ?? '';
+    _javaSelectedPath = prefs.getString('javaSelectedPath') ?? '';
 
-    if (_currentJavaPath.isEmpty) {
-      if (_systemDefaultJavaInfo != null) {
-        _currentJavaPath = _systemDefaultJavaInfo.path;
+    // 若不存在/为空，设置为系统java，若系统java也不存在，设置为扫描到的第一个JavaRuntime
+    if (_javaSelectedPath.isEmpty) {
+      if (systemJavaInfo != null) {
+        _javaSelectedPath = systemJavaInfo.path;
+      } else if (javaRuntimes.isNotEmpty) {
+        _javaSelectedPath = _javaRuntimes.first.executable;
+      }
+
+      prefs.setString('javaSelectedPath', _javaSelectedPath);
+    } else {
+      // 缓存的java已无效，重复上方逻辑
+      final info = await JavaUtils.probeJavaExecutable(_javaSelectedPath);
+
+      if (info == null) {
+        if (systemJavaInfo != null) {
+          _javaSelectedPath = systemJavaInfo.path;
+        } else if (javaRuntimes.isNotEmpty) {
+          _javaSelectedPath = _javaRuntimes.first.executable;
+        }
+
+        prefs.setString('javaSelectedPath', _javaSelectedPath);
       }
     }
   }
@@ -70,16 +102,6 @@ class JavaService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('javaSelectedPath', path);
 
-    _currentJavaPath = path;
-  }
-
-  ///
-  /// 设置为系统 Java
-  ///
-  static Future<void> setSystemJava() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('javaSelectedPath');
-
-    _currentJavaPath = 'default';
+    _javaSelectedPath = path;
   }
 }
