@@ -5,8 +5,8 @@ import 'package:fml/function/java/models/java_info.dart';
 import 'package:fml/function/java/models/java_runtime.dart';
 import 'package:path/path.dart' as path;
 
-class JavaManager {
-  JavaManager._();
+class JavaUtils {
+  JavaUtils._();
 
   ///
   /// Java 可执行文件名称
@@ -373,7 +373,7 @@ class JavaManager {
           ? javaVersionProcess.stderr as String
           : javaVersionProcess.stdout as String;
 
-      final parsedVersion = JavaManager.parseVersionOutput(versionOutput);
+      final parsedVersion = JavaUtils.parseVersionOutput(versionOutput);
 
       if (parsedVersion == null) {
         LogUtil.log('无法解析系统默认 Java 版本信息', level: 'WARN');

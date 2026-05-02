@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:fml/function/java/java_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:path/path.dart' as p;
@@ -292,7 +293,7 @@ Future<void> fabricLauncher({
   final prefs = await SharedPreferences.getInstance();
   // 游戏参数
   onProgress?.call('正在获取游戏参数');
-  final java = prefs.getString('javaSelectedPath') ?? 'java';
+  final java = JavaService.currentJavaPath;
   final selectedPath = prefs.getString('SelectedPath') ?? '';
   final gamePath = prefs.getString('Path_$selectedPath') ?? '';
   final game = prefs.getString('SelectedGame') ?? '';

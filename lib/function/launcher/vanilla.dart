@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:fml/constants.dart';
+import 'package:fml/function/java/java_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:async';
@@ -96,7 +97,7 @@ Future<void> vanillaLauncher({
   onProgress?.call('正在准备启动');
   final prefs = await SharedPreferences.getInstance();
   // 游戏参数
-  final java = prefs.getString('javaSelectedPath') ?? 'java';
+  final java = JavaService.currentJavaPath;
   final selectedPath = prefs.getString('SelectedPath') ?? '';
   final gamePath = prefs.getString('Path_$selectedPath') ?? '';
   final game = prefs.getString('SelectedGame') ?? '';

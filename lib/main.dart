@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fml/function/java/java_service.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/function/dio_client.dart';
 import 'package:lazy_load_indexed_stack/lazy_load_indexed_stack.dart';
@@ -38,6 +39,7 @@ void main() async {
   });
 
   await initLogs();
+  await JavaService.init();
 
   runApp(const FMLBaseApp());
 }
@@ -319,9 +321,12 @@ class MainStartPageState extends State<MainStartPage> {
       final response = await DioClient().dio.get(
         AppUrls.latestVersionApi,
         options: Options(
-          headers: {'User-Agent': '$kAppNameAbb/${Platform.operatingSystem}/$gAppVersion+$gAppBuildNumber ${kDebugMode ? 'debug' : ''}'},
+          headers: {
+            'User-Agent':
+                '$kAppNameAbb/${Platform.operatingSystem}/$gAppVersion+$gAppBuildNumber ${kDebugMode ? 'debug' : ''}',
+          },
         ),
-        );
+      );
       if (response.statusCode == 200) {
         String rawVersionData = response.data.toString();
         String cleanedVersionString = rawVersionData
