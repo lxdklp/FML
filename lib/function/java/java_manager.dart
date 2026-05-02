@@ -24,7 +24,7 @@ class JavaManager {
   /// 寻找 Java 可执行文件
   ///
   static Future<List<JavaRuntime>> searchPotentialJavaExecutables({
-    int searchDepth = 4,
+    int searchDepth = 0,
   }) async {
     final Set<String> found = {};
     final List<JavaRuntime> result = [];
@@ -103,10 +103,10 @@ class JavaManager {
     // 同时检查每个候选目录下常见的顶级 JDK 名称
     for (final exe in found) {
       try {
-        final info = await _probeJavaExecutable(exe);
+        final info = await probeJavaExecutable(exe);
 
         if (info != null) {
-          final isJdk = await _looksLikeJdk(exe);
+          final isJdk = await looksLikeJdk(exe);
           result.add(JavaRuntime(info: info, executable: exe, isJdk: isJdk));
         }
       } catch (e) {
@@ -114,36 +114,38 @@ class JavaManager {
       }
     }
 
-    final roots = <Directory>[];
+    if (searchDepth > 0) {
+      final roots = <Directory>[];
 
-    if (Platform.isWindows) {
-      // Windows枚举
-      for (int i = 0; i < 26; i++) {
-        // CharCode 68（排除A,B,C）
-        final drive = '${String.fromCharCode(68 + i)}:\\';
-        final dir = Directory(drive);
+      if (Platform.isWindows) {
+        // Windows枚举
+        for (int i = 0; i < 26; i++) {
+          // CharCode 68（排除A,B,C）
+          final drive = '${String.fromCharCode(68 + i)}:\\';
+          final dir = Directory(drive);
 
-        try {
-          if (dir.existsSync()) {
-            roots.add(dir);
+          try {
+            if (dir.existsSync()) {
+              roots.add(dir);
+            }
+          } catch (_) {
+            // 忽略无法访问的驱动器
           }
-        } catch (_) {
-          // 忽略无法访问的驱动器
         }
+
+        //final stopwatch = Stopwatch()..start();
+        for (final rootDir in roots) {
+          final javaRuntimes = await _searchJavaInDirRecursive(
+            dir: rootDir,
+            searchDepth: searchDepth,
+          );
+
+          result.addAll(javaRuntimes);
+        }
+        //stopwatch.stop();
+
+        //print('timeee: ${stopwatch.elapsedMilliseconds} ms, $result');
       }
-
-      //final stopwatch = Stopwatch()..start();
-      for (final rootDir in roots) {
-        final javaRuntimes = await _searchJavaInDirRecursive(
-          dir: rootDir,
-          searchDepth: searchDepth,
-        );
-
-        result.addAll(javaRuntimes);
-      }
-      //stopwatch.stop();
-
-      //print('timeee: ${stopwatch.elapsedMilliseconds} ms, $result');
     }
 
     // 去重返回（按 executable 路径去重）
@@ -189,10 +191,10 @@ class JavaManager {
           if (lowerFileName == kJavaExecutableName) {
             // 创建JavaRuntime逻辑
             final exePath = entity.path;
-            final info = await _probeJavaExecutable(exePath);
+            final info = await probeJavaExecutable(exePath);
 
             if (info != null) {
-              final isJdk = await _looksLikeJdk(exePath);
+              final isJdk = await looksLikeJdk(exePath);
 
               result.add(
                 JavaRuntime(info: info, executable: exePath, isJdk: isJdk),
@@ -237,7 +239,7 @@ class JavaManager {
   ///
   /// 检查可执行文件是否看为 JDK（存在 javac）
   ///
-  static Future<bool> _looksLikeJdk(String exe) async {
+  static Future<bool> looksLikeJdk(String exe) async {
     try {
       final bin = File(exe).parent;
       final javac = File(
@@ -253,7 +255,7 @@ class JavaManager {
   ///
   /// Java 可执行文件信息
   ///
-  static Future<JavaInfo?> _probeJavaExecutable(String exe) async {
+  static Future<JavaInfo?> probeJavaExecutable(String exe) async {
     // 首先尝试“java -version”
     try {
       final proc = await Process.start(exe, ['-version']);
@@ -351,6 +353,72 @@ class JavaManager {
       }
     }
     return null;
+  }
+
+  ///
+  /// 获取系统默认 Java 信息
+  ///
+  static Future<JavaInfo?> getSystemDefaultJavaInfo() async {
+    try {
+      final javaVersionProcess = await Process.run('java', ['-version']);
+
+      if (javaVersionProcess.exitCode != 0) {
+        LogUtil.log(
+          '获取系统默认 Java 信息失败，退出码：${javaVersionProcess.exitCode}',
+          level: 'WARN',
+        );
+      }
+
+      final versionOutput = (javaVersionProcess.stderr as String).isNotEmpty
+          ? javaVersionProcess.stderr as String
+          : javaVersionProcess.stdout as String;
+
+      final parsedVersion = JavaManager.parseVersionOutput(versionOutput);
+
+      if (parsedVersion == null) {
+        LogUtil.log('无法解析系统默认 Java 版本信息', level: 'WARN');
+        return null;
+      }
+
+      String executablePath = '';
+
+      try {
+        if (Platform.isWindows) {
+          final where = await Process.run('where', ['java']);
+
+          if (where.exitCode == 0) {
+            executablePath = (where.stdout as String)
+                .toString()
+                .split('\n')
+                .first
+                .trim();
+          }
+        } else {
+          final which = await Process.run('which', ['java']);
+
+          if (which.exitCode == 0) {
+            executablePath = (which.stdout as String)
+                .toString()
+                .split('\n')
+                .first
+                .trim();
+          }
+        }
+      } catch (e) {
+        LogUtil.log('获取系统默认 Java 路径时出错：$e', level: 'WARN');
+      }
+
+      return JavaInfo(
+        version: parsedVersion['version'] ?? 'unknown',
+        vendor: parsedVersion['vendor'],
+        path: executablePath,
+        os: Platform.operatingSystem,
+        arch: Platform.version,
+      );
+    } catch (e) {
+      LogUtil.log('执行 "java -version" 时出错：$e', level: 'WARN');
+      return null;
+    }
   }
 
   ///

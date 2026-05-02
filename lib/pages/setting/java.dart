@@ -18,7 +18,7 @@ class JavaPageState extends State<JavaPage> {
   late Future<List<JavaRuntime>> _javaRuntimesFuture;
   late Future<JavaInfo?> _systemDefaultJavaInfo;
 
-  String? _currentJavaPath;
+  late String? _currentJavaPath;
 
   // 每个设置间的间距
   static const _itemsPadding = Padding(
@@ -28,18 +28,56 @@ class JavaPageState extends State<JavaPage> {
   @override
   void initState() {
     super.initState();
-    _getCurrentJavaPathFromPrefs();
-    _refresh();
+
+    _javaRuntimesFuture = _loadJavaRuntimesFromPrefs();
+    _systemDefaultJavaInfo = JavaManager.getSystemDefaultJavaInfo();
   }
 
   ///
-  /// 刷新 Java 列表与系统默认 Java
+  /// 从SharedPreferences读取缓存的Java列表
   ///
-  Future<void> _refresh() async {
-    setState(() {
-      _systemDefaultJavaInfo = _getSystemDefaultJavaInfo();
+  /// 本处执行的Java搜索不涉及遍历
+  ///
+  Future<List<JavaRuntime>> _loadJavaRuntimesFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final javaList = prefs.getStringList('javaList') ?? [];
+
+    final List<JavaRuntime> javaRuntimes = [];
+    final List<String> validPaths = [];
+
+    _currentJavaPath = prefs.getString('javaSelectedPath');
+
+    // 初次打开/缓存为空，直接执行搜索
+    if (javaList.isEmpty) {
       _javaRuntimesFuture = JavaManager.searchPotentialJavaExecutables();
-    });
+    } else {
+      // 遍历缓存的列表
+      for (final exe in javaList) {
+        final info = await JavaManager.probeJavaExecutable(exe);
+        // 检测对应文件是否有效
+        if (info != null) {
+          final isJdk = await JavaManager.looksLikeJdk(exe);
+
+          javaRuntimes.add(
+            JavaRuntime(info: info, executable: exe, isJdk: isJdk),
+          );
+
+          validPaths.add(exe);
+        }
+      }
+    }
+
+    // 缓存内java列表出现了变化，再次写入SharedPreferences
+    if (validPaths.length != javaList.length) {
+      await prefs.setStringList('javaList', validPaths);
+    }
+
+    // 缓存内路径全部失效，搜索Java
+    if (javaRuntimes.isEmpty) {
+      return JavaManager.searchPotentialJavaExecutables();
+    }
+
+    return javaRuntimes;
   }
 
   @override
@@ -172,22 +210,11 @@ class JavaPageState extends State<JavaPage> {
   }
 
   ///
-  /// 从SharedPreferences读取选择的Java
-  ///
-  Future<void> _getCurrentJavaPathFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    setState(() {
-      _currentJavaPath = prefs.getString('java');
-    });
-  }
-
-  ///
   /// 写入当前 Java
   ///
   Future<void> _setCurrentJavaPathToPrefs(String path) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('java', path);
+    await prefs.setString('javaSelectedPath', path);
 
     setState(() {
       _currentJavaPath = path;
@@ -199,77 +226,11 @@ class JavaPageState extends State<JavaPage> {
   ///
   Future<void> _setSystemJava() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('java');
+    await prefs.remove('javaSelectedPath');
 
     setState(() {
       _currentJavaPath = 'default';
     });
-  }
-
-  //
-  // 获取系统默认 Java 信息
-  //
-  Future<JavaInfo?> _getSystemDefaultJavaInfo() async {
-    try {
-      final javaVersionProcess = await Process.run('java', ['-version']);
-
-      if (javaVersionProcess.exitCode != 0) {
-        LogUtil.log(
-          '获取系统默认 Java 信息失败，退出码：${javaVersionProcess.exitCode}',
-          level: 'WARN',
-        );
-      }
-
-      final versionOutput = (javaVersionProcess.stderr as String).isNotEmpty
-          ? javaVersionProcess.stderr as String
-          : javaVersionProcess.stdout as String;
-
-      final parsedVersion = JavaManager.parseVersionOutput(versionOutput);
-
-      if (parsedVersion == null) {
-        LogUtil.log('无法解析系统默认 Java 版本信息', level: 'WARN');
-        return null;
-      }
-
-      String executablePath = '';
-
-      try {
-        if (Platform.isWindows) {
-          final where = await Process.run('where', ['java']);
-
-          if (where.exitCode == 0) {
-            executablePath = (where.stdout as String)
-                .toString()
-                .split('\n')
-                .first
-                .trim();
-          }
-        } else {
-          final which = await Process.run('which', ['java']);
-
-          if (which.exitCode == 0) {
-            executablePath = (which.stdout as String)
-                .toString()
-                .split('\n')
-                .first
-                .trim();
-          }
-        }
-      } catch (e) {
-        LogUtil.log('获取系统默认 Java 路径时出错：$e', level: 'WARN');
-      }
-
-      return JavaInfo(
-        version: parsedVersion['version'] ?? 'unknown',
-        vendor: parsedVersion['vendor'],
-        path: executablePath,
-        os: Platform.operatingSystem,
-        arch: Platform.version,
-      );
-    } catch (e) {
-      LogUtil.log('执行 "java -version" 时出错：$e', level: 'WARN');
-      return null;
-    }
   }
 
   Widget _buildJavaCard({

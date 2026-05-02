@@ -4,14 +4,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:path/path.dart' as p;
 import 'package:fml/function/log.dart';
-import 'package:fml/function/launcher/login/microsoft_login.dart' as microsoft_login;
-import 'package:fml/function/launcher/login/external_login.dart' as external_login;
+import 'package:fml/function/launcher/login/microsoft_login.dart'
+    as microsoft_login;
+import 'package:fml/function/launcher/login/external_login.dart'
+    as external_login;
 
 typedef ProgressCallback = void Function(String message);
 typedef ErrorCallback = void Function(String error);
 
 // library获取
-Future<List<String>> loadLibraryArtifactPaths(String versionJsonPath, String gamePath) async {
+Future<List<String>> loadLibraryArtifactPaths(
+  String versionJsonPath,
+  String gamePath,
+) async {
   final file = File(versionJsonPath);
   if (!await file.exists()) return [];
   late final dynamic root;
@@ -77,32 +82,64 @@ Future<String?> getAssetIndex(String versionJsonPath) async {
 // fabric相关
 Future<Map<String, dynamic>> getFabricInfo(String path) async {
   final file = File(path);
-  if (!await file.exists()) return {'game': null, 'fabric': null, 'mixin': null, 'libraries': <String>[]};
+  if (!await file.exists())
+    return {
+      'game': null,
+      'fabric': null,
+      'mixin': null,
+      'libraries': <String>[],
+    };
 
   dynamic root;
   try {
     root = jsonDecode(await file.readAsString());
   } catch (_) {
-    return {'game': null, 'fabric': null, 'mixin': null, 'libraries': <String>[]};
+    return {
+      'game': null,
+      'fabric': null,
+      'mixin': null,
+      'libraries': <String>[],
+    };
   }
-  if (root is! Map) return {'game': null, 'fabric': null, 'mixin': null, 'libraries': <String>[]};
+  if (root is! Map)
+    return {
+      'game': null,
+      'fabric': null,
+      'mixin': null,
+      'libraries': <String>[],
+    };
   final patches = root['patches'];
-  if (patches is! List) return {'game': null, 'fabric': null, 'mixin': null, 'libraries': <String>[]};
+  if (patches is! List)
+    return {
+      'game': null,
+      'fabric': null,
+      'mixin': null,
+      'libraries': <String>[],
+    };
   String? gameVer;
   String? fabricVer;
   String? mixin;
   final List<String> fabricLibraries = [];
   String? readVersion(Map m) {
     String? s;
-    if (m['version'] is String && (m['version'] as String).isNotEmpty) s = m['version'] as String;
-    s ??= (m['versionId'] is String && (m['versionId'] as String).isNotEmpty) ? m['versionId'] as String : null;
-    s ??= (m['ver'] is String && (m['ver'] as String).isNotEmpty) ? m['ver'] as String : null;
+    if (m['version'] is String && (m['version'] as String).isNotEmpty)
+      s = m['version'] as String;
+    s ??= (m['versionId'] is String && (m['versionId'] as String).isNotEmpty)
+        ? m['versionId'] as String
+        : null;
+    s ??= (m['ver'] is String && (m['ver'] as String).isNotEmpty)
+        ? m['ver'] as String
+        : null;
     final meta = m['metadata'];
-    if (s == null && meta is Map && meta['version'] is String && (meta['version'] as String).isNotEmpty) {
+    if (s == null &&
+        meta is Map &&
+        meta['version'] is String &&
+        (meta['version'] as String).isNotEmpty) {
       s = meta['version'] as String;
     }
     return s;
   }
+
   for (final patch in patches) {
     if (patch is! Map) continue;
     final id = patch['id'];
@@ -123,7 +160,12 @@ Future<Map<String, dynamic>> getFabricInfo(String path) async {
               final groupIdParts = parts[0].split('.');
               final artifactId = parts[1];
               final version = parts[2];
-              final jarPath = p.joinAll([...groupIdParts, artifactId, version, '$artifactId-$version.jar']);
+              final jarPath = p.joinAll([
+                ...groupIdParts,
+                artifactId,
+                version,
+                '$artifactId-$version.jar',
+              ]);
               fabricLibraries.add(jarPath);
             }
             if (name.contains('net.fabricmc:sponge-mixin')) {
@@ -138,23 +180,31 @@ Future<Map<String, dynamic>> getFabricInfo(String path) async {
     'game': gameVer,
     'fabric': fabricVer,
     'mixin': mixin,
-    'libraries': fabricLibraries
+    'libraries': fabricLibraries,
   };
 }
 
 // 登录模式
 String _getLoginMode(String loginMode) {
   switch (loginMode) {
-    case '0': return 'offline';
-    case '1': return 'online';
-    case '2': return 'external';
-    default: return 'unknown';
+    case '0':
+      return 'offline';
+    case '1':
+      return 'online';
+    case '2':
+      return 'external';
+    default:
+      return 'unknown';
   }
 }
 
 // 从fabric.json文件中获取Fabric信息
-Future<Map<String, dynamic>> getFabricInfoFromFabricJson(String gamePath, String game) async {
-  final fabricJsonPath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}fabric.json';
+Future<Map<String, dynamic>> getFabricInfoFromFabricJson(
+  String gamePath,
+  String game,
+) async {
+  final fabricJsonPath =
+      '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}fabric.json';
   final file = File(fabricJsonPath);
   if (!await file.exists()) {
     LogUtil.log('fabric.json 不存在: $fabricJsonPath', level: 'ERROR');
@@ -171,12 +221,12 @@ Future<Map<String, dynamic>> getFabricInfoFromFabricJson(String gamePath, String
     final json = jsonDecode(content);
     if (json is! Map) {
       return {
-      'loader': null,
-      'intermediary': null,
-      'mixin': null,
-      'libraries': <String>[],
-      'asm': <String, String>{}
-    };
+        'loader': null,
+        'intermediary': null,
+        'mixin': null,
+        'libraries': <String>[],
+        'asm': <String, String>{},
+      };
     }
     // 获取loader版本
     final String? loaderVersion = json['loader']?['version'];
@@ -198,7 +248,8 @@ Future<Map<String, dynamic>> getFabricInfoFromFabricJson(String gamePath, String
             final groupId = parts[0].replaceAll('.', Platform.pathSeparator);
             final artifactId = parts[1];
             final version = parts[2];
-            final jarPath = '$groupId${Platform.pathSeparator}$artifactId${Platform.pathSeparator}$version${Platform.pathSeparator}$artifactId-$version.jar';
+            final jarPath =
+                '$groupId${Platform.pathSeparator}$artifactId${Platform.pathSeparator}$version${Platform.pathSeparator}$artifactId-$version.jar';
             libraries.add(jarPath);
             if (name.startsWith('org.ow2.asm:')) {
               asmVersions[artifactId] = version;
@@ -241,50 +292,65 @@ Future<void> fabricLauncher({
   final prefs = await SharedPreferences.getInstance();
   // 游戏参数
   onProgress?.call('正在获取游戏参数');
-  final java = prefs.getString('java') ?? 'java';
+  final java = prefs.getString('javaSelectedPath') ?? 'java';
   final selectedPath = prefs.getString('SelectedPath') ?? '';
   final gamePath = prefs.getString('Path_$selectedPath') ?? '';
   final game = prefs.getString('SelectedGame') ?? '';
-  final nativesPath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}natives';
+  final nativesPath =
+      '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}natives';
   final version = prefs.getString('version') ?? '';
   final cfg = prefs.getStringList('Config_${selectedPath}_$game') ?? [];
-  final jsonPath = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}$game.json';
+  final jsonPath =
+      '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}$game.json';
   final libraries = await loadLibraryArtifactPaths(jsonPath, gamePath);
   final separator = Platform.isWindows ? ';' : ':';
-  final gameJar = '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}$game.jar';
+  final gameJar =
+      '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}$game.jar';
   final assetIndex = await getAssetIndex(jsonPath) ?? '';
   // 从fabric.json获取Fabric信息
   onProgress?.call('正在获取Fabric参数');
   final fabricInfo = await getFabricInfoFromFabricJson(gamePath, game);
   // 基础路径
   onProgress?.call('正在构建路径');
-  final fabricLoader = '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}net${Platform.pathSeparator}fabricmc${Platform.pathSeparator}fabric-loader${Platform.pathSeparator}${fabricInfo['loader'] ?? ''}${Platform.pathSeparator}fabric-loader-${fabricInfo['loader'] ?? ''}.jar';
-  final intermediary = '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}net${Platform.pathSeparator}fabricmc${Platform.pathSeparator}intermediary${Platform.pathSeparator}${fabricInfo['intermediary'] ?? ''}${Platform.pathSeparator}intermediary-${fabricInfo['intermediary'] ?? ''}.jar';
+  final fabricLoader =
+      '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}net${Platform.pathSeparator}fabricmc${Platform.pathSeparator}fabric-loader${Platform.pathSeparator}${fabricInfo['loader'] ?? ''}${Platform.pathSeparator}fabric-loader-${fabricInfo['loader'] ?? ''}.jar';
+  final intermediary =
+      '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}net${Platform.pathSeparator}fabricmc${Platform.pathSeparator}intermediary${Platform.pathSeparator}${fabricInfo['intermediary'] ?? ''}${Platform.pathSeparator}intermediary-${fabricInfo['intermediary'] ?? ''}.jar';
   // 构建Fabric依赖库路径
   onProgress?.call('正在构建Fabric依赖库路径');
   final List<String> fabricLibraryPaths = [];
   for (final lib in (fabricInfo['libraries'] as List<String>? ?? [])) {
-    fabricLibraryPaths.add('$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$lib');
+    fabricLibraryPaths.add(
+      '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$lib',
+    );
   }
   // 过滤原版库中与Fabric提供的ASM组件冲突的版本
   onProgress?.call('正在准备ASM组件');
-  final Map<String, String> fabricAsmVersions = fabricInfo['asm'] as Map<String, String>? ?? {};
+  final Map<String, String> fabricAsmVersions =
+      fabricInfo['asm'] as Map<String, String>? ?? {};
   final List<String> filteredLibraries = [];
   for (final lib in libraries) {
     bool shouldExclude = false;
     // 检查是否是ASM组件
-    if (lib.contains('${Platform.pathSeparator}org${Platform.pathSeparator}ow2${Platform.pathSeparator}asm${Platform.pathSeparator}')) {
+    if (lib.contains(
+      '${Platform.pathSeparator}org${Platform.pathSeparator}ow2${Platform.pathSeparator}asm${Platform.pathSeparator}',
+    )) {
       for (final asmComponent in fabricAsmVersions.keys) {
         // 如果路径中包含ASM组件名称
-        if (lib.contains('${Platform.pathSeparator}$asmComponent${Platform.pathSeparator}')) {
+        if (lib.contains(
+          '${Platform.pathSeparator}$asmComponent${Platform.pathSeparator}',
+        )) {
           // 检查版本是否不同于Fabric提供的版本
           final libParts = p.split(lib);
           for (int i = 0; i < libParts.length - 1; i++) {
             if (libParts[i] == asmComponent && i > 0) {
-              final version = libParts[i-1];
+              final version = libParts[i - 1];
               if (version != fabricAsmVersions[asmComponent]) {
                 shouldExclude = true;
-                LogUtil.log('排除冲突的ASM组件: $lib (版本 $version 与Fabric提供的版本 ${fabricAsmVersions[asmComponent]} 冲突)', level: 'INFO');
+                LogUtil.log(
+                  '排除冲突的ASM组件: $lib (版本 $version 与Fabric提供的版本 ${fabricAsmVersions[asmComponent]} 冲突)',
+                  level: 'INFO',
+                );
                 break;
               }
             }
@@ -306,16 +372,29 @@ Future<void> fabricLauncher({
   }
   // 检查关键文件是否存在
   onProgress?.call('正在检查文件完整性');
-  LogUtil.log('Fabric Loader 文件存在: ${File(fabricLoader).existsSync()}', level: 'INFO');
-  LogUtil.log('Intermediary 文件存在: ${File(intermediary).existsSync()}', level: 'INFO');
+  LogUtil.log(
+    'Fabric Loader 文件存在: ${File(fabricLoader).existsSync()}',
+    level: 'INFO',
+  );
+  LogUtil.log(
+    'Intermediary 文件存在: ${File(intermediary).existsSync()}',
+    level: 'INFO',
+  );
   for (final lib in fabricLibraryPaths) {
     if (lib.contains('sponge-mixin')) {
-      LogUtil.log('Sponge Mixin 文件存在: ${File(lib).existsSync()}', level: 'INFO');
+      LogUtil.log(
+        'Sponge Mixin 文件存在: ${File(lib).existsSync()}',
+        level: 'INFO',
+      );
     }
   }
   final accountName = prefs.getString('SelectedAccountName') ?? '';
   final accountType = prefs.getString('SelectedAccountType') ?? '';
-  final accountInfo = prefs.getStringList('${_getLoginMode(accountType)}_account_$accountName') ?? [];
+  final accountInfo =
+      prefs.getStringList(
+        '${_getLoginMode(accountType)}_account_$accountName',
+      ) ??
+      [];
   // 账号信息
   String uuid = '';
   String token = '';
@@ -334,14 +413,17 @@ Future<void> fabricLauncher({
   if (accountInfo[0] == '2') {
     if (await external_login.checkAuthlibInjector(gamePath)) {
       onProgress?.call('AuthlibInjector已存在');
-    }
-    else {
+    } else {
       onProgress?.call('正在下载AuthlibInjector');
       await external_login.downloadAuthlibInjector(gamePath);
     }
     uuid = accountInfo[1];
     onProgress?.call('正在检查令牌');
-    if (await external_login.checkToken(accountInfo[2], accountInfo[5], accountInfo[6])) {
+    if (await external_login.checkToken(
+      accountInfo[2],
+      accountInfo[5],
+      accountInfo[6],
+    )) {
       token = accountInfo[5];
     } else {
       token = await external_login.refreshToken(
@@ -349,7 +431,7 @@ Future<void> fabricLauncher({
         accountInfo[5],
         accountInfo[6],
         accountName,
-        uuid
+        uuid,
       );
     }
   }
@@ -370,32 +452,50 @@ Future<void> fabricLauncher({
     '-Djna.tmpdir=$nativesPath',
     '-Dfabric.gameDir=$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
     '-Dfabric.modsDir=$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}mods',
-    if (accountInfo[0] == '2') '-javaagent:$gamePath${Platform.pathSeparator}authlib-injector.jar=${accountInfo[2]}',
-    '-cp', cp,
+    if (accountInfo[0] == '2')
+      '-javaagent:$gamePath${Platform.pathSeparator}authlib-injector.jar=${accountInfo[2]}',
+    '-cp',
+    cp,
     'net.fabricmc.loader.impl.launch.knot.KnotClient',
-    '--username', accountName,
-    '--version', game,
-    '--gameDir', '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
-    '--assetsDir', '$gamePath${Platform.pathSeparator}assets',
-    '--assetIndex', assetIndex,
-    '--uuid', uuid,
-    if (accountInfo[0] == '0') '--accessToken', accountInfo[0],
-    if (accountInfo[0] == '0') '--clientId', '"\${clientid}"',
-    if (accountInfo[0] == '1' || accountInfo[0] == '2') '--accessToken', token,
-    if (accountInfo[0] == '1' || accountInfo[0] == '2') '--userType', 'mojang',
-    if (accountInfo[0] == '2') '--clientId', token,
-    '--versionType', '"FML $version"',
-    '--xuid', '"\${auth_xuid}"',
-    '--width', cfg[2],
-    '--height', cfg[3],
-    if (cfg[1] == '1') '--fullscreen'
+    '--username',
+    accountName,
+    '--version',
+    game,
+    '--gameDir',
+    '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
+    '--assetsDir',
+    '$gamePath${Platform.pathSeparator}assets',
+    '--assetIndex',
+    assetIndex,
+    '--uuid',
+    uuid,
+    if (accountInfo[0] == '0') '--accessToken',
+    accountInfo[0],
+    if (accountInfo[0] == '0') '--clientId',
+    '"\${clientid}"',
+    if (accountInfo[0] == '1' || accountInfo[0] == '2') '--accessToken',
+    token,
+    if (accountInfo[0] == '1' || accountInfo[0] == '2') '--userType',
+    'mojang',
+    if (accountInfo[0] == '2') '--clientId',
+    token,
+    '--versionType',
+    '"FML $version"',
+    '--xuid',
+    '"\${auth_xuid}"',
+    '--width',
+    cfg[2],
+    '--height',
+    cfg[3],
+    if (cfg[1] == '1') '--fullscreen',
   ];
   LogUtil.log('使用的Java: $java', level: 'INFO');
   onProgress?.call('正在启动游戏');
   final out = await Process.start(
-  java,
-  args,
-  workingDirectory: '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
+    java,
+    args,
+    workingDirectory:
+        '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
   );
   out.stdout.listen((_) {});
   out.stderr.listen((_) {});

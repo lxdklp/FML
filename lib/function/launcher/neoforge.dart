@@ -182,7 +182,7 @@ Future<void> neoforgeLauncher({
   onProgress?.call('正在准备启动');
   final prefs = await SharedPreferences.getInstance();
   // 游戏参数
-  final java = prefs.getString('java') ?? 'java';
+  final java = prefs.getString('javaSelectedPath') ?? 'java';
   final selectedPath = prefs.getString('SelectedPath') ?? '';
   final gamePath = prefs.getString('Path_$selectedPath') ?? '';
   final game = prefs.getString('SelectedGame') ?? '';

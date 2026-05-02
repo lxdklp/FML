@@ -30,7 +30,8 @@
 | PathList | 游戏文件夹列表 | list(string) |
 | Path_$name | 版本路径 | string |
 | Game_$name | 版本列表 | list(string) |
-| java | Java路径 | string |
+| javaSelectedPath | 所选Java路径 | string |
+| javaList | Java列表 | list(string) |
 
 离线账号配置 offline_account_$name list(string)
 | 序号 | 值 |
