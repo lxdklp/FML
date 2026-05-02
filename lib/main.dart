@@ -39,7 +39,8 @@ void main() async {
   });
 
   await initLogs();
-  await JavaService.init();
+
+  JavaService.init();
 
   runApp(const FMLBaseApp());
 }
