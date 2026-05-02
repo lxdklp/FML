@@ -15,6 +15,8 @@ class JavaService {
   static JavaInfo? _systemDefaultJavaInfo;
   static JavaInfo? get systemDefaultJavaInfo => _systemDefaultJavaInfo;
 
+  static late final Future<void> initFuture;
+
   static Future<void> init() async {
     _systemDefaultJavaInfo = await JavaUtils.getSystemDefaultJavaInfo();
     _javaRuntimes = [];

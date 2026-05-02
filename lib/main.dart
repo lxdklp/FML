@@ -40,7 +40,7 @@ void main() async {
 
   await initLogs();
 
-  JavaService.init();
+  JavaService.initFuture = JavaService.init();
 
   runApp(const FMLBaseApp());
 }
@@ -240,7 +240,6 @@ class MainStartPage extends StatefulWidget {
 
 class MainStartPageState extends State<MainStartPage> {
   int _selectedIndex = 0;
-  bool? _javaInstalled;
 
   // 使页面仅被初始化一次
   final List<Widget> _mainPages = const [
@@ -253,46 +252,165 @@ class MainStartPageState extends State<MainStartPage> {
   @override
   void initState() {
     super.initState();
-    _checkJavaInstalled();
+
     _checkUpdate();
   }
 
-  // 检查是否安装Java
-  Future<void> _checkJavaInstalled() async {
-    try {
-      final result = await Process.run('java', ['-version']);
-      setState(() {
-        _javaInstalled = result.exitCode == 0;
-      });
-      if (_javaInstalled == false) {
-        _showJavaNotFoundDialog();
-      }
-    } catch (e) {
-      setState(() {
-        _javaInstalled = false;
-      });
-      _showJavaNotFoundDialog();
-    }
-  }
+  @override
+  Widget build(BuildContext context) {
+    // 主界面内容
+    Widget mainContent = FutureBuilder(
+      future: JavaService.initFuture,
 
-  // 显示Java未找到的对话框
-  Future<void> _showJavaNotFoundDialog() async {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('未检测到 Java'),
-          content: const Text('未检测到 Java 环境或者 Java 环境未正确配置，请先安装 Java 后再打开启动器'),
-          actions: [
-            TextButton(
-              onPressed: () => _launchURL(AppUrls.javaDownload),
-              child: const Text('打开Java下载页面'),
-            ),
-          ],
-        ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done &&
+            JavaService.javaRuntimes.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                title: const Text('未检测到 Java'),
+                content: const Text(
+                  '未检测到 Java 环境或者 Java 环境未正确配置，请先安装 Java 后再打开启动器',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => _launchURL(AppUrls.javaDownload),
+                    child: const Text('打开Java下载页面'),
+                  ),
+                ],
+              ),
+            );
+          });
+        }
+
+        return Scaffold(
+          appBar: AppBar(title: const Text(kAppName)),
+          body: Row(
+            children: [
+              NavigationRail(
+                selectedIndex: _selectedIndex,
+                onDestinationSelected: (int index) {
+                  setState(() => _selectedIndex = index);
+                },
+                labelType: NavigationRailLabelType.all,
+                destinations: const [
+                  NavigationRailDestination(
+                    icon: Icon(Icons.play_arrow),
+                    label: Text('启动'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.hub),
+                    label: Text('联机'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.download),
+                    label: Text('下载'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.settings),
+                    label: Text('设置'),
+                  ),
+                ],
+              ),
+              // 显示当前页面
+              Expanded(
+                child: LazyLoadIndexedStack(
+                  index: _selectedIndex,
+                  children: _mainPages,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    // macOS 菜单栏
+    if (Platform.isMacOS) {
+      return PlatformMenuBar(
+        menus: [
+          // FML 菜单
+          PlatformMenu(
+            label: kAppName,
+            menus: [
+              PlatformMenuItem(
+                label: '关于',
+                onSelected: () => _showAboutDialog(context),
+              ),
+              PlatformMenuItem(label: '检查更新', onSelected: () => _checkUpdate()),
+              PlatformMenuItem(
+                label: '设置',
+                shortcut: const SingleActivator(
+                  LogicalKeyboardKey.comma,
+                  meta: true,
+                ),
+                onSelected: () => setState(() => _selectedIndex = 3),
+              ),
+              PlatformMenuItem(
+                label: '退出',
+                shortcut: const SingleActivator(
+                  LogicalKeyboardKey.keyQ,
+                  meta: true,
+                ),
+                onSelected: () => SystemNavigator.pop(),
+              ),
+            ],
+          ),
+          // 导航菜单
+          PlatformMenu(
+            label: '导航',
+            menus: [
+              PlatformMenuItem(
+                label: '启动',
+                shortcut: const SingleActivator(
+                  LogicalKeyboardKey.digit1,
+                  meta: true,
+                ),
+                onSelected: () => setState(() => _selectedIndex = 0),
+              ),
+              PlatformMenuItem(
+                label: '联机',
+                shortcut: const SingleActivator(
+                  LogicalKeyboardKey.digit2,
+                  meta: true,
+                ),
+                onSelected: () => setState(() => _selectedIndex = 1),
+              ),
+              PlatformMenuItem(
+                label: '下载',
+                shortcut: const SingleActivator(
+                  LogicalKeyboardKey.digit3,
+                  meta: true,
+                ),
+                onSelected: () => setState(() => _selectedIndex = 2),
+              ),
+              PlatformMenuItem(
+                label: '设置',
+                shortcut: const SingleActivator(
+                  LogicalKeyboardKey.digit4,
+                  meta: true,
+                ),
+                onSelected: () => setState(() => _selectedIndex = 3),
+              ),
+            ],
+          ),
+          // 帮助菜单
+          PlatformMenu(
+            label: '帮助',
+            menus: [
+              PlatformMenuItem(
+                label: '访问 GitHub',
+                onSelected: () => _launchURL(AppUrls.githubProject),
+              ),
+            ],
+          ),
+        ],
+        child: mainContent,
       );
-    });
+    }
+    return mainContent;
   }
 
   // 打开URL
@@ -396,134 +514,6 @@ class MainStartPageState extends State<MainStartPage> {
         ],
       ),
     );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // 主界面内容
-    Widget mainContent = Scaffold(
-      appBar: AppBar(title: const Text(kAppName)),
-      body: Row(
-        children: [
-          NavigationRail(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (int index) {
-              setState(() => _selectedIndex = index);
-            },
-            labelType: NavigationRailLabelType.all,
-            destinations: const [
-              NavigationRailDestination(
-                icon: Icon(Icons.play_arrow),
-                label: Text('启动'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.hub),
-                label: Text('联机'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.download),
-                label: Text('下载'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.settings),
-                label: Text('设置'),
-              ),
-            ],
-          ),
-          // 显示当前页面
-          Expanded(
-            child: LazyLoadIndexedStack(
-              index: _selectedIndex,
-              children: _mainPages,
-            ),
-          ),
-        ],
-      ),
-    );
-    // macOS 菜单栏
-    if (Platform.isMacOS) {
-      return PlatformMenuBar(
-        menus: [
-          // FML 菜单
-          PlatformMenu(
-            label: kAppName,
-            menus: [
-              PlatformMenuItem(
-                label: '关于',
-                onSelected: () => _showAboutDialog(context),
-              ),
-              PlatformMenuItem(label: '检查更新', onSelected: () => _checkUpdate()),
-              PlatformMenuItem(
-                label: '设置',
-                shortcut: const SingleActivator(
-                  LogicalKeyboardKey.comma,
-                  meta: true,
-                ),
-                onSelected: () => setState(() => _selectedIndex = 3),
-              ),
-              PlatformMenuItem(
-                label: '退出',
-                shortcut: const SingleActivator(
-                  LogicalKeyboardKey.keyQ,
-                  meta: true,
-                ),
-                onSelected: () => SystemNavigator.pop(),
-              ),
-            ],
-          ),
-          // 导航菜单
-          PlatformMenu(
-            label: '导航',
-            menus: [
-              PlatformMenuItem(
-                label: '启动',
-                shortcut: const SingleActivator(
-                  LogicalKeyboardKey.digit1,
-                  meta: true,
-                ),
-                onSelected: () => setState(() => _selectedIndex = 0),
-              ),
-              PlatformMenuItem(
-                label: '联机',
-                shortcut: const SingleActivator(
-                  LogicalKeyboardKey.digit2,
-                  meta: true,
-                ),
-                onSelected: () => setState(() => _selectedIndex = 1),
-              ),
-              PlatformMenuItem(
-                label: '下载',
-                shortcut: const SingleActivator(
-                  LogicalKeyboardKey.digit3,
-                  meta: true,
-                ),
-                onSelected: () => setState(() => _selectedIndex = 2),
-              ),
-              PlatformMenuItem(
-                label: '设置',
-                shortcut: const SingleActivator(
-                  LogicalKeyboardKey.digit4,
-                  meta: true,
-                ),
-                onSelected: () => setState(() => _selectedIndex = 3),
-              ),
-            ],
-          ),
-          // 帮助菜单
-          PlatformMenu(
-            label: '帮助',
-            menus: [
-              PlatformMenuItem(
-                label: '访问 GitHub',
-                onSelected: () => _launchURL(AppUrls.githubProject),
-              ),
-            ],
-          ),
-        ],
-        child: mainContent,
-      );
-    }
-    return mainContent;
   }
 
   // 显示关于对话框
