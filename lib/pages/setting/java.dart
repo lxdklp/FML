@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fml/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fml/function/log.dart';
 import 'package:fml/function/java/java_manager.dart';
 import 'package:fml/function/java/models/java_info.dart';
 import 'package:fml/function/java/models/java_runtime.dart';
@@ -29,7 +27,7 @@ class JavaPageState extends State<JavaPage> {
   void initState() {
     super.initState();
 
-    _javaRuntimesFuture = _loadJavaRuntimesFromPrefs();
+    _javaRuntimesFuture = _initJavaRuntimes();
     _systemDefaultJavaInfo = JavaManager.getSystemDefaultJavaInfo();
   }
 
@@ -38,7 +36,7 @@ class JavaPageState extends State<JavaPage> {
   ///
   /// 本处执行的Java搜索不涉及遍历
   ///
-  Future<List<JavaRuntime>> _loadJavaRuntimesFromPrefs() async {
+  Future<List<JavaRuntime>> _initJavaRuntimes() async {
     final prefs = await SharedPreferences.getInstance();
     final javaList = prefs.getStringList('javaList') ?? [];
 
@@ -74,7 +72,7 @@ class JavaPageState extends State<JavaPage> {
 
     // 缓存内路径全部失效，搜索Java
     if (javaRuntimes.isEmpty) {
-      return JavaManager.searchPotentialJavaExecutables();
+      return await JavaManager.searchPotentialJavaExecutables();
     }
 
     return javaRuntimes;
