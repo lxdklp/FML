@@ -68,7 +68,7 @@ class JavaPageState extends State<JavaPage> {
 
                   onTap: () => {
                     setState(() {
-                      JavaService.setCurrentJavaPathToPrefs(
+                      JavaService.setSelectedJavaPathToPrefs(
                         javaRuntime.executable,
                       );
                     }),

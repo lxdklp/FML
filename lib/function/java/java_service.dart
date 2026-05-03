@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:fml/function/java/java_utils.dart';
 import 'package:fml/function/java/models/java_info.dart';
 import 'package:fml/function/java/models/java_runtime.dart';
@@ -18,55 +21,48 @@ class JavaService {
   static late final Future<void> initFuture;
 
   static Future<void> init() async {
-    _systemDefaultJavaInfo = await JavaUtils.getSystemDefaultJavaInfo();
-    _javaRuntimes = [];
+    final futures = await Future.wait([
+      JavaUtils.getSystemDefaultJavaInfo(),
+      SharedPreferences.getInstance(),
+    ]);
 
+    _systemDefaultJavaInfo = futures[0] as JavaInfo?;
+    SharedPreferences prefs = futures[1] as SharedPreferences;
+
+    final cachedJson = prefs.getString('javaRuntimes') ?? '';
     final systemJavaInfo = _systemDefaultJavaInfo;
-
-    final prefs = await SharedPreferences.getInstance();
-    final javaList = prefs.getStringList('javaList') ?? [];
-
     final List<String> validPaths = [];
 
-    if (javaList.isEmpty) {
+    _javaRuntimes = [];
+
+    late final List<JavaRuntime> cachedRuntimes;
+
+    if (cachedJson.isEmpty) {
       // 初次打开/缓存为空，直接执行搜索并写入
       _javaRuntimes = await JavaUtils.searchPotentialJavaExecutables();
-
-      prefs.setStringList(
-        'javaList',
-        _javaRuntimes.map((e) => e.executable).toList(),
-      );
+      writeRuntimesToPrefs(prefs, _javaRuntimes);
     } else {
+      cachedRuntimes = await readRuntimesFromPrefs(cachedJson);
+
       // 遍历缓存的列表
-      for (final exe in javaList) {
-        final info = await JavaUtils.probeJavaExecutable(exe);
-
-        // 检测对应文件是否有效
-        if (info != null) {
-          final isJdk = await JavaUtils.looksLikeJdk(exe);
-
-          _javaRuntimes.add(
-            JavaRuntime(info: info, executable: exe, isJdk: isJdk),
-          );
-
-          validPaths.add(exe);
+      for (final javaRuntime in cachedRuntimes) {
+        // 检测对应文件是否存在
+        if (await File(javaRuntime.executable).exists()) {
+          validPaths.add(javaRuntime.executable);
         }
       }
     }
 
     // 缓存内java列表出现了变化，再次写入SharedPreferences
-    if (validPaths.length != javaList.length) {
-      await prefs.setStringList('javaList', validPaths);
+    if (cachedJson.isNotEmpty && validPaths.length != cachedRuntimes.length) {
+      writeRuntimesToPrefs(prefs, _javaRuntimes);
     }
 
     // 缓存内路径全部失效，搜索Java
     if (_javaRuntimes.isEmpty) {
       _javaRuntimes = await JavaUtils.searchPotentialJavaExecutables();
 
-      prefs.setStringList(
-        'javaList',
-        _javaRuntimes.map((e) => e.executable).toList(),
-      );
+      writeRuntimesToPrefs(prefs, _javaRuntimes);
     }
 
     /// 处理_currentJavaPath
@@ -98,9 +94,36 @@ class JavaService {
   }
 
   ///
-  /// 写入当前 Java
+  /// 将JavaRuntimes列表序列化为JSON字符串并写入
   ///
-  static Future<void> setCurrentJavaPathToPrefs(String path) async {
+  static Future<void> writeRuntimesToPrefs(
+    SharedPreferences prefs,
+    List<JavaRuntime> javaRuntimes,
+  ) async {
+    final List<Map<String, dynamic>> mapList = javaRuntimes
+        .map((e) => e.toJson())
+        .toList();
+
+    final jsonString = jsonEncode(mapList);
+
+    await prefs.setString('javaRuntimes', jsonString);
+  }
+
+  ///
+  /// 从JSON字符串反序列化出存储的JavaRuntimes列表
+  ///
+  static Future<List<JavaRuntime>> readRuntimesFromPrefs(String input) async {
+    final List<dynamic> decoded = jsonDecode(input);
+
+    return decoded
+        .map((e) => JavaRuntime.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  ///
+  /// 写入当前所选的Java
+  ///
+  static Future<void> setSelectedJavaPathToPrefs(String path) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('javaSelectedPath', path);
 

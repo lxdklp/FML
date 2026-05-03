@@ -31,7 +31,7 @@
 | Path_$name | 版本路径 | string |
 | Game_$name | 版本列表 | list(string) |
 | javaSelectedPath | 所选Java路径 | string |
-| javaList | Java列表 | list(string) |
+| javaRuntimes | Java运行时列表（以JSON格式存储） | string |
 
 离线账号配置 offline_account_$name list(string)
 | 序号 | 值 |
