@@ -37,6 +37,7 @@ dependencies:
   window_manager: ^0.5.1
   intl: ^0.20.2
   lazy_load_indexed_stack: ^1.2.1
+  win32_registry: ^2.1.0
 
 dev_dependencies:
   flutter_test:
