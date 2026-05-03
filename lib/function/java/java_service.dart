@@ -46,8 +46,9 @@ class JavaService {
 
       // 遍历缓存的列表
       for (final javaRuntime in cachedRuntimes) {
-        // 检测对应文件是否存在
+        // 仅检测对应文件是否存在
         if (await File(javaRuntime.executable).exists()) {
+          _javaRuntimes.add(javaRuntime);
           validPaths.add(javaRuntime.executable);
         }
       }
