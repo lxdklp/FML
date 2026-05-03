@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -63,7 +64,9 @@ class JavaPageState extends State<JavaPage> {
                     : () async {
                         setState(() => _isRefreshing = true);
                         try {
-                          await JavaService.refreshJavaRuntimes();
+                          await Isolate.run(() {
+                            JavaService.refreshJavaRuntimes();
+                          });
                         } finally {
                           if (mounted) setState(() => _isRefreshing = false);
                         }
