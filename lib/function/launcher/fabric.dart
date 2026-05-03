@@ -83,13 +83,14 @@ Future<String?> getAssetIndex(String versionJsonPath) async {
 // fabric相关
 Future<Map<String, dynamic>> getFabricInfo(String path) async {
   final file = File(path);
-  if (!await file.exists())
+  if (!await file.exists()) {
     return {
       'game': null,
       'fabric': null,
       'mixin': null,
       'libraries': <String>[],
     };
+  }
 
   dynamic root;
   try {
@@ -102,29 +103,32 @@ Future<Map<String, dynamic>> getFabricInfo(String path) async {
       'libraries': <String>[],
     };
   }
-  if (root is! Map)
+  if (root is! Map) {
     return {
       'game': null,
       'fabric': null,
       'mixin': null,
       'libraries': <String>[],
     };
+  }
   final patches = root['patches'];
-  if (patches is! List)
+  if (patches is! List) {
     return {
       'game': null,
       'fabric': null,
       'mixin': null,
       'libraries': <String>[],
     };
+  }
   String? gameVer;
   String? fabricVer;
   String? mixin;
   final List<String> fabricLibraries = [];
   String? readVersion(Map m) {
     String? s;
-    if (m['version'] is String && (m['version'] as String).isNotEmpty)
+    if (m['version'] is String && (m['version'] as String).isNotEmpty) {
       s = m['version'] as String;
+    }
     s ??= (m['versionId'] is String && (m['versionId'] as String).isNotEmpty)
         ? m['versionId'] as String
         : null;
