@@ -13,7 +13,7 @@ class JavaService {
   static List<JavaRuntime> get javaRuntimes => _javaRuntimes;
 
   static String _javaSelectedPath = '';
-  static String get currentJavaPath => _javaSelectedPath;
+  static String get javaSelectedPath => _javaSelectedPath;
 
   static JavaInfo? _systemDefaultJavaInfo;
   static JavaInfo? get systemDefaultJavaInfo => _systemDefaultJavaInfo;
@@ -129,5 +129,17 @@ class JavaService {
     await prefs.setString('javaSelectedPath', path);
 
     _javaSelectedPath = path;
+  }
+
+  static set javaSelectedPath(String newPath) {
+    if (newPath == _javaSelectedPath) return;
+
+    final newFile = File(newPath);
+
+    if (!newFile.existsSync()) {
+      throw ArgumentError('路径不存在: $newPath');
+    }
+
+    _javaSelectedPath = newPath;
   }
 }

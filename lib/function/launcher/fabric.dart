@@ -293,7 +293,7 @@ Future<void> fabricLauncher({
   final prefs = await SharedPreferences.getInstance();
   // 游戏参数
   onProgress?.call('正在获取游戏参数');
-  final java = JavaService.currentJavaPath;
+  final java = JavaService.javaSelectedPath;
   final selectedPath = prefs.getString('SelectedPath') ?? '';
   final gamePath = prefs.getString('Path_$selectedPath') ?? '';
   final game = prefs.getString('SelectedGame') ?? '';
