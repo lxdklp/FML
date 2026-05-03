@@ -7,6 +7,7 @@ import 'package:fml/function/java/java_service.dart';
 import 'package:fml/function/java/java_utils.dart';
 import 'package:fml/function/java/models/java_info.dart';
 import 'package:fml/function/java/models/java_runtime.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class JavaPage extends StatefulWidget {
@@ -71,7 +72,7 @@ class JavaPageState extends State<JavaPage> {
                 final javaRuntime = JavaService.javaRuntimes[index];
 
                 final isCurrentJava =
-                    JavaService.currentJavaPath == javaRuntime.executable;
+                    JavaService.javaSelectedPath == javaRuntime.executable;
 
                 final isSystemDefault =
                     javaRuntime.executable ==
@@ -95,12 +96,115 @@ class JavaPageState extends State<JavaPage> {
                       );
                     }),
                   },
+
+                  onLongPress: () =>
+                      _buildOnLongPressDialog(context, javaRuntime),
                 );
               },
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _buildOnLongPressDialog(
+    BuildContext context,
+    JavaRuntime javaRuntime,
+  ) async {
+    await showDialog(
+      context: context,
+
+      builder: (context) {
+        return SimpleDialog(
+          title: Text('选择要进行的操作'),
+
+          children: <Widget>[
+            SimpleDialogOption(
+              child: Text('在文件资源管理器中显示父文件夹'),
+              onPressed: () {
+                // 打开父文件夹
+                final parentDirPath = File(javaRuntime.executable).parent.path;
+
+                OpenFilex.open(parentDirPath);
+
+                Navigator.of(context).pop();
+              },
+            ),
+
+            Divider(),
+
+            SimpleDialogOption(
+              child: Text('在列表中删除'),
+
+              onPressed: () {
+                final javaName =
+                    '${javaRuntime.info.vendor} ${javaRuntime.info.version}';
+
+                showCustomDialog(
+                  context: context,
+                  title: '提示',
+                  barrierDismissible: false,
+
+                  content: Text('你确认要在列表中删除 $javaName 吗？'),
+
+                  actions: [
+                    TextButton(
+                      onPressed: () async {
+                        if (!mounted) return;
+
+                        // 弹出当前Dialog
+                        Navigator.of(context).maybePop();
+
+                        if (JavaService.javaRuntimes.length <= 1) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('该Java为最后一个Java，无法移除！')),
+                          );
+
+                          return;
+                        }
+
+                        // 从列表中移除
+                        JavaService.javaRuntimes.remove(javaRuntime);
+
+                        // 刷新UI 并执行异步操作
+                        setState(() {});
+
+                        JavaService.writeRuntimesToPrefs(
+                          await SharedPreferences.getInstance(),
+                          JavaService.javaRuntimes,
+                        );
+
+                        if (!mounted) return;
+
+                        // 若移除的为当前Java，将第一个设置为javaRuntimes的第一个
+                        if (JavaService.javaRuntimes.isNotEmpty) {
+                          JavaService.javaSelectedPath =
+                              JavaService.javaRuntimes.first.executable;
+                        }
+
+                        // 显示SnackBar并弹出父Dialog
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('已从列表中移除 $javaName')),
+                        );
+
+                        Navigator.of(context).maybePop();
+                      },
+
+                      child: Text('是'),
+                    ),
+
+                    TextButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      child: Text('否'),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -268,6 +372,7 @@ class JavaPageState extends State<JavaPage> {
     required bool isCurrent,
     required bool isSystemDefault,
     required VoidCallback onTap,
+    required VoidCallback onLongPress,
   }) {
     return Card(
       // 裁剪掉ListTile超出圆角的部分
@@ -314,6 +419,7 @@ class JavaPageState extends State<JavaPage> {
           ],
         ),
         onTap: onTap,
+        onLongPress: onLongPress,
       ),
     );
   }
