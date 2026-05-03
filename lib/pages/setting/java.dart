@@ -23,6 +23,8 @@ class JavaPageState extends State<JavaPage> {
     padding: EdgeInsets.symmetric(vertical: kDefaultPadding / 2),
   );
 
+  bool _isRefreshing = false;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -54,6 +56,21 @@ class JavaPageState extends State<JavaPage> {
               Spacer(),
 
               IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: '刷新',
+                onPressed: _isRefreshing
+                    ? null
+                    : () async {
+                        setState(() => _isRefreshing = true);
+                        try {
+                          await JavaService.refreshJavaRuntimes();
+                        } finally {
+                          if (mounted) setState(() => _isRefreshing = false);
+                        }
+                      },
+              ),
+
+              IconButton(
                 icon: const Icon(Icons.add),
                 tooltip: '手动添加一个Java',
                 onPressed: () async => await _pickAndAddJavaRuntime(),
@@ -65,43 +82,46 @@ class JavaPageState extends State<JavaPage> {
 
           // 确保ListView占满剩余空间
           Expanded(
-            child: ListView.builder(
-              itemCount: JavaService.javaRuntimes.length,
-              itemBuilder: (context, index) {
-                // 构建Java的卡片
-                final javaRuntime = JavaService.javaRuntimes[index];
+            child: _isRefreshing
+                ? Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    itemCount: JavaService.javaRuntimes.length,
+                    itemBuilder: (context, index) {
+                      // 构建Java的卡片
+                      final javaRuntime = JavaService.javaRuntimes[index];
 
-                final isCurrentJava =
-                    JavaService.javaSelectedPath == javaRuntime.executable;
+                      final isCurrentJava =
+                          JavaService.javaSelectedPath ==
+                          javaRuntime.executable;
 
-                final isSystemDefault =
-                    javaRuntime.executable ==
-                    JavaService.systemDefaultJavaInfo?.path;
+                      final isSystemDefault =
+                          javaRuntime.executable ==
+                          JavaService.systemDefaultJavaInfo?.path;
 
-                return _buildJavaCard(
-                  javaInfo: javaRuntime.info,
+                      return _buildJavaCard(
+                        javaInfo: javaRuntime.info,
 
-                  typeChipLabel: javaRuntime.isJdk ? 'JDK' : 'JRE',
+                        typeChipLabel: javaRuntime.isJdk ? 'JDK' : 'JRE',
 
-                  vendor: javaRuntime.info.vendor,
+                        vendor: javaRuntime.info.vendor,
 
-                  isCurrent: isCurrentJava,
+                        isCurrent: isCurrentJava,
 
-                  isSystemDefault: isSystemDefault,
+                        isSystemDefault: isSystemDefault,
 
-                  onTap: () => {
-                    setState(() {
-                      JavaService.setSelectedJavaPathToPrefs(
-                        javaRuntime.executable,
+                        onTap: () => {
+                          setState(() {
+                            JavaService.setSelectedJavaPathToPrefs(
+                              javaRuntime.executable,
+                            );
+                          }),
+                        },
+
+                        onLongPress: () =>
+                            _buildOnLongPressDialog(context, javaRuntime),
                       );
-                    }),
-                  },
-
-                  onLongPress: () =>
-                      _buildOnLongPressDialog(context, javaRuntime),
-                );
-              },
-            ),
+                    },
+                  ),
           ),
         ],
       ),
@@ -170,8 +190,10 @@ class JavaPageState extends State<JavaPage> {
                         // 刷新UI 并执行异步操作
                         setState(() {});
 
-                        JavaService.writeRuntimesToPrefs(
-                          await SharedPreferences.getInstance(),
+                        final prefs = await SharedPreferences.getInstance();
+
+                        await JavaService.writeRuntimesToPrefs(
+                          prefs,
                           JavaService.javaRuntimes,
                         );
 
@@ -181,6 +203,11 @@ class JavaPageState extends State<JavaPage> {
                         if (JavaService.javaRuntimes.isNotEmpty) {
                           JavaService.javaSelectedPath =
                               JavaService.javaRuntimes.first.executable;
+
+                          await prefs.setString(
+                            'javaSelectedPath',
+                            JavaService.javaSelectedPath,
+                          );
                         }
 
                         // 显示SnackBar并弹出父Dialog
@@ -307,22 +334,24 @@ class JavaPageState extends State<JavaPage> {
 
         Navigator.of(context).pop();
 
-        // 仅添加成功会有页面更新，故只在此处调用setState
-        setState(() {
-          showCustomDialog(
-            context: context,
-            title: '提示',
-            content: Text('添加 ${info.vendor} ${info.version} 成功！'),
+        // 调用setState触发页面更新
+        setState(() {});
 
-            actions: [
-              if (mounted)
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text('关闭'),
-                ),
-            ],
-          );
-        });
+        if (!mounted) return;
+
+        showCustomDialog(
+          context: context,
+          title: '提示',
+          content: Text('添加 ${info.vendor} ${info.version} 成功！'),
+
+          actions: [
+            if (mounted)
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('关闭'),
+              ),
+          ],
+        );
 
         return;
       }

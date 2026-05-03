@@ -131,6 +131,19 @@ class JavaService {
     _javaSelectedPath = path;
   }
 
+  ///
+  /// 刷新JavaRuntimes
+  ///
+  static Future<void> refreshJavaRuntimes() async {
+    final freshList = await JavaUtils.searchPotentialJavaExecutables();
+
+    _javaRuntimes = freshList;
+
+    final prefs = await SharedPreferences.getInstance();
+
+    await writeRuntimesToPrefs(prefs, freshList);
+  }
+
   static set javaSelectedPath(String newPath) {
     if (newPath == _javaSelectedPath) return;
 
