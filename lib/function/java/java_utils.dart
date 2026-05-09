@@ -102,8 +102,10 @@ class JavaUtils {
 
       for (final root in rootKeys) {
         for (final path in paths) {
+          RegistryKey? key;
+
           try {
-            final key = Registry.openPath(root, path: path);
+            key = Registry.openPath(root, path: path);
 
             // 枚举所有版本子键
             for (final versionKeyName in key.subkeyNames) {
@@ -121,18 +123,24 @@ class JavaUtils {
                 'InstallationPath',
               );
 
-              String? javaPath = javaHome ?? installationPath;
+              try {
+                String? javaPath = javaHome ?? installationPath;
 
-              if (javaPath != null && javaPath.isNotEmpty) {
-                candidates.add(Directory(javaPath));
+                if (javaPath != null && javaPath.isNotEmpty) {
+                  candidates.add(Directory(javaPath));
+                }
+              } finally {
+                // 确保键被关闭
+                versionKey.close();
               }
-
-              versionKey.close();
             }
 
             key.close();
           } catch (e) {
             // 键不存在或无权限，跳过
+          } finally {
+            // 确保键被关闭
+            key?.close();
           }
         }
       }
