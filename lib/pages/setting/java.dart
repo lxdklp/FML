@@ -9,7 +9,6 @@ import 'package:fml/function/java/java_utils.dart';
 import 'package:fml/function/java/models/java_info.dart';
 import 'package:fml/function/java/models/java_runtime.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class JavaPage extends StatefulWidget {
   const JavaPage({super.key});
@@ -60,10 +59,30 @@ class JavaPageState extends State<JavaPage> {
                     ? null
                     : () async {
                         setState(() => _isRefreshing = true);
+
                         try {
-                          await Isolate.run(() {
-                            JavaService.refreshJavaRuntimes();
-                          });
+                          // 在子线程获取数据
+                          final searchResults = await Isolate.run(
+                            () => JavaUtils.searchPotentialJavaExecutables(),
+                          );
+
+                          // 将javaRuntimes转换为Map
+                          final Map<String, JavaRuntime> runtimeMap = {
+                            for (var runtime in JavaService.javaRuntimes)
+                              runtime.executable: runtime,
+                          };
+
+                          // 通过Map查重
+                          for (var result in searchResults) {
+                            if (!runtimeMap.containsKey(result.executable)) {
+                              runtimeMap[result.executable] = result;
+                            }
+                          }
+
+                          // 更新并写入
+                          await JavaService.updateJavaRuntimes(
+                            runtimeMap.values.toList(),
+                          );
                         } finally {
                           if (mounted) setState(() => _isRefreshing = false);
                         }
@@ -109,12 +128,14 @@ class JavaPageState extends State<JavaPage> {
 
                         isSystemDefault: isSystemDefault,
 
-                        onTap: () => {
-                          setState(() {
-                            JavaService.setSelectedJavaPathToPrefs(
-                              javaRuntime.executable,
-                            );
-                          }),
+                        onTap: () async => {
+                          // 异步更新数据
+                          await JavaService.updateJavaSelectedPath(
+                            javaRuntime.executable,
+                          ),
+
+                          // 通知UI刷新
+                          if (mounted) {setState(() {})},
                         },
 
                         onLongPress: () =>
@@ -190,10 +211,7 @@ class JavaPageState extends State<JavaPage> {
                         // 刷新UI 并执行异步操作
                         setState(() {});
 
-                        final prefs = await SharedPreferences.getInstance();
-
-                        await JavaService.writeRuntimesToPrefs(
-                          prefs,
+                        await JavaService.updateJavaRuntimes(
                           JavaService.javaRuntimes,
                         );
 
@@ -201,12 +219,8 @@ class JavaPageState extends State<JavaPage> {
 
                         // 若移除的为当前Java，将第一个设置为javaRuntimes的第一个
                         if (JavaService.javaRuntimes.isNotEmpty) {
-                          JavaService.javaSelectedPath =
-                              JavaService.javaRuntimes.first.executable;
-
-                          await prefs.setString(
-                            'javaSelectedPath',
-                            JavaService.javaSelectedPath,
+                          await JavaService.updateJavaSelectedPath(
+                            JavaService.javaRuntimes.first.executable,
                           );
                         }
 
@@ -327,10 +341,7 @@ class JavaPageState extends State<JavaPage> {
           JavaRuntime(info: info, executable: exe, isJdk: isJdk),
         );
 
-        JavaService.writeRuntimesToPrefs(
-          await SharedPreferences.getInstance(),
-          JavaService.javaRuntimes,
-        );
+        JavaService.updateJavaRuntimes(JavaService.javaRuntimes);
 
         Navigator.of(context).pop();
 
