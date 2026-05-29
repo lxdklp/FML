@@ -40,9 +40,9 @@ class JavaService {
     if (cachedJson.isEmpty) {
       // 初次打开/缓存为空，直接执行搜索并写入
       _javaRuntimes = await JavaUtils.searchPotentialJavaExecutables();
-      writeRuntimesToPrefs(prefs, _javaRuntimes);
+      updateJavaRuntimes(_javaRuntimes, prefs);
     } else {
-      cachedRuntimes = await readRuntimesFromPrefs(cachedJson);
+      cachedRuntimes = await readJavaRuntimesFromPrefs(cachedJson);
 
       // 遍历缓存的列表
       for (final javaRuntime in cachedRuntimes) {
@@ -56,14 +56,14 @@ class JavaService {
 
     // 缓存内java列表出现了变化，再次写入SharedPreferences
     if (cachedJson.isNotEmpty && validPaths.length != cachedRuntimes.length) {
-      writeRuntimesToPrefs(prefs, _javaRuntimes);
+      updateJavaRuntimes(_javaRuntimes, prefs);
     }
 
     // 缓存内路径全部失效，搜索Java
     if (_javaRuntimes.isEmpty) {
       _javaRuntimes = await JavaUtils.searchPotentialJavaExecutables();
 
-      writeRuntimesToPrefs(prefs, _javaRuntimes);
+      updateJavaRuntimes(_javaRuntimes, prefs);
     }
 
     /// 处理_currentJavaPath
@@ -95,25 +95,11 @@ class JavaService {
   }
 
   ///
-  /// 将JavaRuntimes列表序列化为JSON字符串并写入
-  ///
-  static Future<void> writeRuntimesToPrefs(
-    SharedPreferences prefs,
-    List<JavaRuntime> javaRuntimes,
-  ) async {
-    final List<Map<String, dynamic>> mapList = javaRuntimes
-        .map((e) => e.toJson())
-        .toList();
-
-    final jsonString = jsonEncode(mapList);
-
-    await prefs.setString('javaRuntimes', jsonString);
-  }
-
-  ///
   /// 从JSON字符串反序列化出存储的JavaRuntimes列表
   ///
-  static Future<List<JavaRuntime>> readRuntimesFromPrefs(String input) async {
+  static Future<List<JavaRuntime>> readJavaRuntimesFromPrefs(
+    String input,
+  ) async {
     final List<dynamic> decoded = jsonDecode(input);
 
     return decoded
@@ -122,29 +108,27 @@ class JavaService {
   }
 
   ///
-  /// 写入当前所选的Java
+  /// 更新[_javaRuntimes]并写入
   ///
-  static Future<void> setSelectedJavaPathToPrefs(String path) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('javaSelectedPath', path);
+  static Future<void> updateJavaRuntimes(
+    List<JavaRuntime> newList, [
+    SharedPreferences? prefsIn,
+  ]) async {
+    _javaRuntimes = newList;
 
-    _javaSelectedPath = path;
+    // 如果外部传了prefs就用外部的，否则内部获取实例
+    final prefs = prefsIn ?? await SharedPreferences.getInstance();
+
+    final String jsonString = jsonEncode(newList);
+
+    await prefs.setString('javaRuntimes', jsonString);
   }
 
   ///
-  /// 刷新JavaRuntimes
+  /// 更新[_javaSelectedPath]并写入
   ///
-  static Future<void> refreshJavaRuntimes() async {
-    final freshList = await JavaUtils.searchPotentialJavaExecutables();
-
-    _javaRuntimes = freshList;
-
-    final prefs = await SharedPreferences.getInstance();
-
-    await writeRuntimesToPrefs(prefs, freshList);
-  }
-
-  static set javaSelectedPath(String newPath) {
+  static Future<void> updateJavaSelectedPath(String newPath) async {
+    // 检查路径
     if (newPath == _javaSelectedPath) return;
 
     final newFile = File(newPath);
@@ -153,6 +137,11 @@ class JavaService {
       throw ArgumentError('路径不存在: $newPath');
     }
 
+    // 更新路径并写入
     _javaSelectedPath = newPath;
+
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString('javaSelectedPath', _javaSelectedPath);
   }
 }
