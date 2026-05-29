@@ -37,9 +37,6 @@ class JavaPageState extends State<JavaPage> {
         children: [
           // 大标题
           Row(
-            // 使按钮组紧贴
-            mainAxisSize: MainAxisSize.min,
-
             children: [
               Padding(
                 padding: const EdgeInsets.only(
