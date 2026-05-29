@@ -73,16 +73,29 @@ class JavaPageState extends State<JavaPage> {
                           };
 
                           // 通过Map查重
+                          int addedCount = 0;
                           for (var result in searchResults) {
                             if (!runtimeMap.containsKey(result.executable)) {
                               runtimeMap[result.executable] = result;
+                              // 发现新Java时计数
+                              addedCount++;
                             }
                           }
 
+                          final totalList = runtimeMap.values.toList();
+
                           // 更新并写入
-                          await JavaService.updateJavaRuntimes(
-                            runtimeMap.values.toList(),
-                          );
+                          await JavaService.updateJavaRuntimes(totalList);
+
+                          if (!mounted) return;
+
+                          String message = addedCount > 0
+                              ? '刷新完成，搜索到了$addedCount个Java（共有${totalList.length}个）'
+                              : '刷新完成，未发现新的Java (共有${totalList.length}个)';
+
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(message)));
                         } finally {
                           if (mounted) setState(() => _isRefreshing = false);
                         }
