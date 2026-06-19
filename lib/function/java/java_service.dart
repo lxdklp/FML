@@ -71,11 +71,7 @@ class JavaService {
 
     // 若不存在/为空，设置为系统java，若系统java也不存在，设置为扫描到的第一个JavaRuntime
     if (_javaSelectedPath.isEmpty) {
-      if (systemJavaInfo != null) {
-        _javaSelectedPath = systemJavaInfo.path;
-      } else if (javaRuntimes.isNotEmpty) {
-        _javaSelectedPath = _javaRuntimes.first.executable;
-      }
+      _javaSelectedPath = _getFallbackJavaPath(systemJavaInfo);
 
       prefs.setString('javaSelectedPath', _javaSelectedPath);
     } else {
@@ -83,11 +79,7 @@ class JavaService {
       final info = await JavaUtils.probeJavaExecutable(_javaSelectedPath);
 
       if (info == null) {
-        if (systemJavaInfo != null) {
-          _javaSelectedPath = systemJavaInfo.path;
-        } else if (javaRuntimes.isNotEmpty) {
-          _javaSelectedPath = _javaRuntimes.first.executable;
-        }
+        _javaSelectedPath = _getFallbackJavaPath(systemJavaInfo);
 
         prefs.setString('javaSelectedPath', _javaSelectedPath);
       }
@@ -143,5 +135,17 @@ class JavaService {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString('javaSelectedPath', _javaSelectedPath);
+  }
+
+  static String _getFallbackJavaPath(JavaInfo? systemJavaInfo) {
+    String javaSelectedPath = "";
+
+    if (systemJavaInfo != null && systemJavaInfo.path.isNotEmpty) {
+      javaSelectedPath = systemJavaInfo.path;
+    } else if (javaRuntimes.isNotEmpty) {
+      javaSelectedPath = _javaRuntimes.first.executable;
+    }
+
+    return javaSelectedPath;
   }
 }
