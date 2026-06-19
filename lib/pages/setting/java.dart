@@ -96,6 +96,12 @@ class JavaPageState extends State<JavaPage> {
                           ScaffoldMessenger.of(
                             context,
                           ).showSnackBar(SnackBar(content: Text(message)));
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text('刷新失败：$e')));
+                          }
                         } finally {
                           if (mounted) setState(() => _isRefreshing = false);
                         }
