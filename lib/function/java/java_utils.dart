@@ -111,31 +111,40 @@ class JavaUtils {
             for (final versionKeyName in key.subkeyNames) {
               if (versionKeyName == 'null') continue;
 
-              final versionKey = Registry.openPath(
-                root,
-                path: '$path\\$versionKeyName',
-                desiredAccessRights: AccessRights.readOnly,
-              );
-
-              // 读取路径
-              final javaHome = versionKey.getStringValue('JavaHome');
-              final installationPath = versionKey.getStringValue(
-                'InstallationPath',
-              );
+              RegistryKey? versionKey;
 
               try {
-                String? javaPath = javaHome ?? installationPath;
+                versionKey = Registry.openPath(
+                  root,
+                  path: '$path\\$versionKeyName',
+                  desiredAccessRights: AccessRights.readOnly,
+                );
+
+                // 读取路径
+                String? javaHome;
+                try {
+                  javaHome = versionKey.getStringValue('JavaHome');
+                } catch (_) {}
+
+                String? installationPath;
+                try {
+                  installationPath = versionKey.getStringValue(
+                    'InstallationPath',
+                  );
+                } catch (_) {}
+
+                final javaPath = javaHome ?? installationPath;
 
                 if (javaPath != null && javaPath.isNotEmpty) {
                   candidates.add(Directory(javaPath));
                 }
+              } catch (_) {
+                // 键不存在或无权限，跳过
               } finally {
                 // 确保键被关闭
-                versionKey.close();
+                versionKey?.close();
               }
             }
-
-            key.close();
           } catch (e) {
             // 键不存在或无权限，跳过
           } finally {
