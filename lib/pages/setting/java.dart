@@ -302,102 +302,123 @@ class JavaPageState extends State<JavaPage> {
         ? ['java.exe', 'javaw.exe']
         : ['java', 'javaw'];
 
-    final exe = file.path!;
-    final info = await JavaUtils.probeJavaExecutable(exe);
+    final path = file.path!;
 
-    // 选择的文件文件名合法
-    if (file.path != null && validNames.contains(fileName)) {
-      if (!mounted) return;
-
+    // 选择的文件文件名不合法等
+    if (!validNames.contains(fileName)) {
       showCustomDialog(
         context: context,
-        title: '正在添加Java',
-        content: SizedBox(
-          height: 80,
-          child: Center(child: CircularProgressIndicator()),
-        ),
+        title: '提示',
+        content: Text('请选择正确的Java可执行文件'),
 
-        barrierDismissible: false,
+        actions: [
+          TextButton(
+            onPressed: () => {if (mounted) Navigator.of(context).pop()},
+            child: Text('关闭'),
+          ),
+        ],
       );
 
-      if (info != null) {
-        // 查重逻辑
-        final alreadyExists = JavaService.javaRuntimes.any(
-          (runtime) => runtime.executable == exe,
-        );
-
-        if (alreadyExists) {
-          Navigator.of(context).pop();
-
-          showCustomDialog(
-            context: context,
-            title: '提示',
-
-            content: Text('该Java已存在'),
-
-            actions: [
-              if (mounted)
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text('关闭'),
-                ),
-            ],
-          );
-
-          return;
-        }
-
-        // 添加并写入SharedPreference
-        final isJdk = await JavaUtils.looksLikeJdk(exe);
-
-        JavaService.javaRuntimes.add(
-          JavaRuntime(info: info, executable: exe, isJdk: isJdk),
-        );
-
-        JavaService.updateJavaRuntimes(JavaService.javaRuntimes);
-
-        Navigator.of(context).pop();
-
-        // 调用setState触发页面更新
-        setState(() {});
-
-        if (!mounted) return;
-
-        showCustomDialog(
-          context: context,
-          title: '提示',
-          content: Text('添加 ${info.vendor} ${info.version} 成功！'),
-
-          actions: [
-            if (mounted)
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('关闭'),
-              ),
-          ],
-        );
-
-        return;
-      }
+      return;
     }
 
-    // 最后分支，选择的文件文件名不合法等情况
     if (!mounted) return;
 
-    Navigator.of(context).maybePop();
+    // 获取规范化的真实物理路径
+    final resolvedPath = File(path).resolveSymbolicLinksSync();
+
+    // 查重
+    final alreadyExists = JavaService.javaRuntimes.any(
+      (runtime) => runtime.executable == resolvedPath,
+    );
+
+    if (alreadyExists) {
+      showCustomDialog(
+        context: context,
+        title: '提示',
+
+        content: Text('该Java已存在'),
+
+        actions: [
+          if (mounted)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('关闭'),
+            ),
+        ],
+      );
+
+      return;
+    }
+
+    // 开始添加Java，弹出加载对话框
+    if (!mounted) return;
 
     showCustomDialog(
       context: context,
-      title: '提示',
-      content: Text('请选择正确的Java可执行文件'),
+      title: '正在添加Java',
+      content: SizedBox(
+        height: 80,
+        child: Center(child: CircularProgressIndicator()),
+      ),
 
-      actions: [
-        TextButton(
-          onPressed: () => {if (mounted) Navigator.of(context).pop()},
-          child: Text('关闭'),
-        ),
-      ],
+      barrierDismissible: false,
     );
+
+    // 解析Info
+    try {
+      final info = await JavaUtils.probeJavaExecutable(resolvedPath);
+
+      if (info == null) {
+        throw '无法解析Java版本信息，请检查Java是否有效';
+      }
+
+      // 解析成功，添加并写入SharedPreference
+      final isJdk = await JavaUtils.looksLikeJdk(resolvedPath);
+
+      JavaService.javaRuntimes.add(
+        JavaRuntime(info: info, executable: resolvedPath, isJdk: isJdk),
+      );
+
+      JavaService.updateJavaRuntimes(JavaService.javaRuntimes);
+
+      if (mounted) Navigator.of(context).pop();
+
+      // 调用setState触发页面更新
+      setState(() {});
+
+      showCustomDialog(
+        context: context,
+        title: '提示',
+        content: Text('添加 ${info.vendor} ${info.version} 成功！'),
+
+        actions: [
+          if (mounted)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('关闭'),
+            ),
+        ],
+      );
+    } catch (e) {
+      // 有异常，先关闭 Loading
+      if (mounted) Navigator.of(context).pop();
+
+      showCustomDialog(
+        context: context,
+        title: '错误',
+
+        content: Text('添加Java时发生异常: $e'),
+
+        actions: [
+          if (mounted)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('关闭'),
+            ),
+        ],
+      );
+    }
   }
 
   ///
