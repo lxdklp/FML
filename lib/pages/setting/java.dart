@@ -218,6 +218,10 @@ class JavaPageState extends State<JavaPage> {
                           return;
                         }
 
+                        final wasSelected =
+                            JavaService.javaSelectedPath ==
+                            javaRuntime.executable;
+
                         // 从列表中移除
                         JavaService.javaRuntimes.remove(javaRuntime);
 
@@ -231,7 +235,8 @@ class JavaPageState extends State<JavaPage> {
                         if (!mounted) return;
 
                         // 若移除的为当前Java，将第一个设置为javaRuntimes的第一个
-                        if (JavaService.javaRuntimes.isNotEmpty) {
+                        if (wasSelected &&
+                            JavaService.javaRuntimes.isNotEmpty) {
                           await JavaService.updateJavaSelectedPath(
                             JavaService.javaRuntimes.first.executable,
                           );
