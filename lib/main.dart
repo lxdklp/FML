@@ -263,8 +263,15 @@ class MainStartPageState extends State<MainStartPage> {
       future: JavaService.initFuture,
 
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done &&
-            JavaService.javaRuntimes.isEmpty) {
+        // 在初始化未完成时显示CircularProgressIndicator
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // 加载完成但没有Java，显示Dialog
+        if (JavaService.javaRuntimes.isEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             showDialog(
               context: context,
