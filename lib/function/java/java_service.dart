@@ -6,6 +6,8 @@ import 'package:fml/function/java/models/java_info.dart';
 import 'package:fml/function/java/models/java_runtime.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../log.dart';
+
 class JavaService {
   JavaService._();
 
@@ -42,7 +44,11 @@ class JavaService {
       _javaRuntimes = await JavaUtils.searchPotentialJavaExecutables();
       updateJavaRuntimes(_javaRuntimes, prefs);
     } else {
-      cachedRuntimes = await readJavaRuntimesFromPrefs(cachedJson);
+      try {
+        cachedRuntimes = await readJavaRuntimesFromPrefs(cachedJson);
+      } catch (e) {
+        LogUtil.log('解析缓存的Java运行时失败：$e', level: 'WARN');
+      }
 
       // 遍历缓存的列表
       for (final javaRuntime in cachedRuntimes) {
