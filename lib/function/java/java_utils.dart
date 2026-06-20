@@ -3,15 +3,15 @@ import 'dart:io';
 import 'package:fml/function/log.dart';
 import 'package:fml/function/java/models/java_info.dart';
 import 'package:fml/function/java/models/java_runtime.dart';
-import 'package:path/path.dart' as path;
+import 'package:win32_registry/win32_registry.dart';
 
-class JavaManager {
-  JavaManager._();
+class JavaUtils {
+  JavaUtils._();
 
   ///
   /// Java 可执行文件名称
   ///
-  static String kJavaExecutableName = Platform.isWindows ? 'java.exe' : 'java';
+  static String _javaExecutableName = Platform.isWindows ? 'java.exe' : 'java';
 
   static final RegExp _vendorVersionRegExp = RegExp(
     r'(?:(OpenJDK|java|IBM|AdoptOpenJDK|Microsoft).*?)?version\s+"([^"]+)"',
@@ -24,12 +24,11 @@ class JavaManager {
   /// 寻找 Java 可执行文件
   ///
   static Future<List<JavaRuntime>> searchPotentialJavaExecutables({
-    int searchDepth = 4,
+    int searchDepth = 0,
   }) async {
     final Set<String> found = {};
-    final List<JavaRuntime> result = [];
 
-    // PATH
+    // 搜索PATH
     final pathSeparator = Platform.isWindows ? ';' : ':';
     final pathEntries =
         Platform.environment['PATH']?.split(pathSeparator) ?? [];
@@ -37,14 +36,14 @@ class JavaManager {
     for (final entry in pathEntries) {
       if (entry.trim().isEmpty) continue;
 
-      final javaPath = _join(entry, kJavaExecutableName);
+      final javaPath = _join(entry, _javaExecutableName);
 
       if (await File(javaPath).exists()) {
         found.add(await File(javaPath).resolveSymbolicLinks());
       }
     }
 
-    // 常用系统目录
+    // 搜索常用系统目录
     final List<Directory> candidates = [];
 
     if (Platform.isWindows) {
@@ -75,10 +74,86 @@ class JavaManager {
       }
     }
 
-    // 用户jdks
-    final home = Platform.environment['HOME'];
+    // 搜索用户jdks
+    final home =
+        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
 
     if (home != null) candidates.add(Directory('$home/.jdks'));
+
+    // 在Windows下通过注册表搜索
+    if (Platform.isWindows) {
+      final rootKeys = [RegistryHive.currentUser, RegistryHive.localMachine];
+
+      // 大部分的注册表路径
+      const paths = [
+        r'SOFTWARE\JavaSoft\Java Runtime Environment',
+        r'SOFTWARE\JavaSoft\Java Development Kit',
+        r'SOFTWARE\JavaSoft\JDK',
+        r'SOFTWARE\Wow6432Node\JavaSoft\Java Runtime Environment',
+        r'SOFTWARE\Wow6432Node\JavaSoft\Java Development Kit',
+        r'SOFTWARE\WOW6432Node\JavaSoft\JDK',
+        r'SOFTWARE\AdoptOpenJDK\JDK',
+        r'SOFTWARE\Microsoft\JDK',
+        r'SOFTWARE\Azul Systems\Zulu',
+        r'SOFTWARE\Amazon\Corretto',
+        r'SOFTWARE\RedHat\OpenJDK\JDK',
+        r'SOFTWARE\BellSoft\Liberica',
+      ];
+
+      for (final root in rootKeys) {
+        for (final path in paths) {
+          RegistryKey? key;
+
+          try {
+            key = Registry.openPath(root, path: path);
+
+            // 枚举所有版本子键
+            for (final versionKeyName in key.subkeyNames) {
+              if (versionKeyName == 'null') continue;
+
+              RegistryKey? versionKey;
+
+              try {
+                versionKey = Registry.openPath(
+                  root,
+                  path: '$path\\$versionKeyName',
+                  desiredAccessRights: AccessRights.readOnly,
+                );
+
+                // 读取路径
+                String? javaHome;
+                try {
+                  javaHome = versionKey.getStringValue('JavaHome');
+                } catch (_) {}
+
+                String? installationPath;
+                try {
+                  installationPath = versionKey.getStringValue(
+                    'InstallationPath',
+                  );
+                } catch (_) {}
+
+                final javaPath = javaHome ?? installationPath;
+
+                if (javaPath != null && javaPath.isNotEmpty) {
+                  candidates.add(Directory(javaPath));
+                }
+              } catch (_) {
+                // 键不存在或无权限，跳过
+              } finally {
+                // 确保键被关闭
+                versionKey?.close();
+              }
+            }
+          } catch (e) {
+            // 键不存在或无权限，跳过
+          } finally {
+            // 确保键被关闭
+            key?.close();
+          }
+        }
+      }
+    }
 
     for (final dir in candidates) {
       if (!await dir.exists()) continue;
@@ -89,9 +164,13 @@ class JavaManager {
             // 快速检查预期布局
             final javaHome = entry.path;
             final probes = _possibleExecutablePaths(javaHome);
+
             for (final p in probes) {
-              final f = File(p);
-              if (await f.exists()) found.add(await f.resolveSymbolicLinks());
+              final file = File(p);
+
+              if (await file.exists()) {
+                found.add(await file.resolveSymbolicLinks());
+              }
             }
           }
         }
@@ -100,50 +179,21 @@ class JavaManager {
       }
     }
 
+    final List<JavaRuntime> result = [];
+
     // 同时检查每个候选目录下常见的顶级 JDK 名称
+    // 并将其转换为JavaRuntime
     for (final exe in found) {
       try {
-        final info = await _probeJavaExecutable(exe);
+        final info = await probeJavaExecutable(exe);
 
         if (info != null) {
-          final isJdk = await _looksLikeJdk(exe);
+          final isJdk = await looksLikeJdk(exe);
           result.add(JavaRuntime(info: info, executable: exe, isJdk: isJdk));
         }
       } catch (e) {
         LogUtil.log('探测 Java 可执行文件时出错：$e', level: 'WARN');
       }
-    }
-
-    final roots = <Directory>[];
-
-    if (Platform.isWindows) {
-      // Windows枚举
-      for (int i = 0; i < 26; i++) {
-        // CharCode 68（排除A,B,C）
-        final drive = '${String.fromCharCode(68 + i)}:\\';
-        final dir = Directory(drive);
-
-        try {
-          if (dir.existsSync()) {
-            roots.add(dir);
-          }
-        } catch (_) {
-          // 忽略无法访问的驱动器
-        }
-      }
-
-      //final stopwatch = Stopwatch()..start();
-      for (final rootDir in roots) {
-        final javaRuntimes = await _searchJavaInDirRecursive(
-          dir: rootDir,
-          searchDepth: searchDepth,
-        );
-
-        result.addAll(javaRuntimes);
-      }
-      //stopwatch.stop();
-
-      //print('timeee: ${stopwatch.elapsedMilliseconds} ms, $result');
     }
 
     // 去重返回（按 executable 路径去重）
@@ -158,86 +208,29 @@ class JavaManager {
   }
 
   ///
-  /// 递归搜索Java运行时
-  ///
-  /// [dir]           要搜索的根目录
-  /// [searchDepth]   最大允许的递归深度
-  /// [currentDepth]  当前递归深度（内部调用使用）
-  ///
-  static Future<List<JavaRuntime>> _searchJavaInDirRecursive({
-    required Directory dir,
-    required int searchDepth,
-    int currentDepth = 0,
-  }) async {
-    List<JavaRuntime> result = [];
-
-    if (currentDepth > searchDepth) return result;
-
-    try {
-      // 检查当前目录下的文件
-      final dirs = dir.list(followLinks: false);
-
-      await for (final entity in dirs) {
-        final name = path.basename(entity.path);
-
-        // 排除 . 开头目录
-        if (name.startsWith('.')) continue;
-
-        if (entity is File) {
-          final lowerFileName = name.toLowerCase();
-
-          if (lowerFileName == kJavaExecutableName) {
-            // 创建JavaRuntime逻辑
-            final exePath = entity.path;
-            final info = await _probeJavaExecutable(exePath);
-
-            if (info != null) {
-              final isJdk = await _looksLikeJdk(exePath);
-
-              result.add(
-                JavaRuntime(info: info, executable: exePath, isJdk: isJdk),
-              );
-            }
-          }
-        } else if (entity is Directory) {
-          // 递归搜索子目录（深度+1）
-          result.addAll(
-            await _searchJavaInDirRecursive(
-              dir: entity,
-              currentDepth: currentDepth + 1,
-              searchDepth: searchDepth,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      // 忽略权限错误或无法访问的目录
-    }
-
-    return result;
-  }
-
-  ///
   /// 可能的可执行文件路径
   ///
   static List<String> _possibleExecutablePaths(String javaHome) {
     final List<String> probes = [];
 
     if (Platform.isMacOS) {
-      probes.add('$javaHome/jre.bundle/Contents/Home/bin/$kJavaExecutableName');
-
-      probes.add('$javaHome/Contents/Home/bin/$kJavaExecutableName');
+      probes.add('$javaHome/jre.bundle/Contents/Home/bin/$_javaExecutableName');
+      probes.add('$javaHome/Contents/Home/bin/$_javaExecutableName');
     }
 
-    probes.add('$javaHome/bin/$kJavaExecutableName');
-    probes.add('$javaHome/jre/bin/$kJavaExecutableName');
+    if (Platform.isWindows) {
+      probes.add('$javaHome/$_javaExecutableName');
+      probes.add('$javaHome/bin/$_javaExecutableName');
+      probes.add('$javaHome/jre/bin/$_javaExecutableName');
+    }
+
     return probes;
   }
 
   ///
   /// 检查可执行文件是否看为 JDK（存在 javac）
   ///
-  static Future<bool> _looksLikeJdk(String exe) async {
+  static Future<bool> looksLikeJdk(String exe) async {
     try {
       final bin = File(exe).parent;
       final javac = File(
@@ -253,7 +246,7 @@ class JavaManager {
   ///
   /// Java 可执行文件信息
   ///
-  static Future<JavaInfo?> _probeJavaExecutable(String exe) async {
+  static Future<JavaInfo?> probeJavaExecutable(String exe) async {
     // 首先尝试“java -version”
     try {
       final proc = await Process.start(exe, ['-version']);
@@ -351,6 +344,72 @@ class JavaManager {
       }
     }
     return null;
+  }
+
+  ///
+  /// 获取系统默认 Java 信息
+  ///
+  static Future<JavaInfo?> getSystemDefaultJavaInfo() async {
+    try {
+      final javaVersionProcess = await Process.run('java', ['-version']);
+
+      if (javaVersionProcess.exitCode != 0) {
+        LogUtil.log(
+          '获取系统默认 Java 信息失败，退出码：${javaVersionProcess.exitCode}',
+          level: 'WARN',
+        );
+      }
+
+      final versionOutput = (javaVersionProcess.stderr as String).isNotEmpty
+          ? javaVersionProcess.stderr as String
+          : javaVersionProcess.stdout as String;
+
+      final parsedVersion = JavaUtils.parseVersionOutput(versionOutput);
+
+      if (parsedVersion == null) {
+        LogUtil.log('无法解析系统默认 Java 版本信息', level: 'WARN');
+        return null;
+      }
+
+      String executablePath = '';
+
+      try {
+        if (Platform.isWindows) {
+          final where = await Process.run('where', ['java']);
+
+          if (where.exitCode == 0) {
+            executablePath = (where.stdout as String)
+                .toString()
+                .split('\n')
+                .first
+                .trim();
+          }
+        } else {
+          final which = await Process.run('which', ['java']);
+
+          if (which.exitCode == 0) {
+            executablePath = (which.stdout as String)
+                .toString()
+                .split('\n')
+                .first
+                .trim();
+          }
+        }
+      } catch (e) {
+        LogUtil.log('获取系统默认 Java 路径时出错：$e', level: 'WARN');
+      }
+
+      return JavaInfo(
+        version: parsedVersion['version'] ?? 'unknown',
+        vendor: parsedVersion['vendor'],
+        path: executablePath,
+        os: Platform.operatingSystem,
+        arch: Platform.version,
+      );
+    } catch (e) {
+      LogUtil.log('执行 "java -version" 时出错：$e', level: 'WARN');
+      return null;
+    }
   }
 
   ///

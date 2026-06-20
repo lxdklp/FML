@@ -1,11 +1,14 @@
 import 'dart:io';
+import 'dart:isolate';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:fml/constants.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fml/function/log.dart';
-import 'package:fml/function/java/java_manager.dart';
+import 'package:fml/function/java/java_service.dart';
+import 'package:fml/function/java/java_utils.dart';
 import 'package:fml/function/java/models/java_info.dart';
 import 'package:fml/function/java/models/java_runtime.dart';
+import 'package:open_filex/open_filex.dart';
 
 class JavaPage extends StatefulWidget {
   const JavaPage({super.key});
@@ -15,32 +18,12 @@ class JavaPage extends StatefulWidget {
 }
 
 class JavaPageState extends State<JavaPage> {
-  late Future<List<JavaRuntime>> _javaRuntimesFuture;
-  late Future<JavaInfo?> _systemDefaultJavaInfo;
-
-  String? _currentJavaPath;
-
   // 每个设置间的间距
   static const _itemsPadding = Padding(
     padding: EdgeInsets.symmetric(vertical: kDefaultPadding / 2),
   );
 
-  @override
-  void initState() {
-    super.initState();
-    _getCurrentJavaPathFromPrefs();
-    _refresh();
-  }
-
-  ///
-  /// 刷新 Java 列表与系统默认 Java
-  ///
-  Future<void> _refresh() async {
-    setState(() {
-      _systemDefaultJavaInfo = _getSystemDefaultJavaInfo();
-      _javaRuntimesFuture = JavaManager.searchPotentialJavaExecutables();
-    });
-  }
+  bool _isRefreshing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -52,224 +35,419 @@ class JavaPageState extends State<JavaPage> {
 
         children: [
           // 大标题
-          Padding(
-            padding: const EdgeInsets.only(
-              left: kDefaultPadding / 2,
-              top: kDefaultPadding,
-              bottom: kDefaultPadding,
-            ),
-            child: Text(
-              '设备上的Java列表',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+          Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: kDefaultPadding / 2,
+                  top: kDefaultPadding,
+                  bottom: kDefaultPadding,
+                ),
+
+                child: Text(
+                  '设备上的Java列表',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+              ),
+
+              Spacer(),
+
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: '刷新',
+                onPressed: _isRefreshing
+                    ? null
+                    : () async {
+                        setState(() => _isRefreshing = true);
+
+                        try {
+                          // 在子线程获取数据
+                          final searchResults = await Isolate.run(
+                            () => JavaUtils.searchPotentialJavaExecutables(),
+                          );
+
+                          // 将javaRuntimes转换为Map
+                          final Map<String, JavaRuntime> runtimeMap = {
+                            for (var runtime in JavaService.javaRuntimes)
+                              runtime.executable: runtime,
+                          };
+
+                          // 通过Map查重
+                          int addedCount = 0;
+                          for (var result in searchResults) {
+                            if (!runtimeMap.containsKey(result.executable)) {
+                              runtimeMap[result.executable] = result;
+                              // 发现新Java时计数
+                              addedCount++;
+                            }
+                          }
+
+                          final totalList = runtimeMap.values.toList();
+
+                          // 更新并写入
+                          await JavaService.updateJavaRuntimes(totalList);
+
+                          if (!mounted) return;
+
+                          String message = addedCount > 0
+                              ? '刷新完成，搜索到了$addedCount个Java（共有${totalList.length}个）'
+                              : '刷新完成，未发现新的Java (共有${totalList.length}个)';
+
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(message)));
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text('刷新失败：$e')));
+                          }
+                        } finally {
+                          if (mounted) setState(() => _isRefreshing = false);
+                        }
+                      },
+              ),
+
+              IconButton(
+                icon: const Icon(Icons.add),
+                tooltip: '手动添加一个Java',
+                onPressed: () async => await _pickAndAddJavaRuntime(),
+              ),
+            ],
           ),
 
           _itemsPadding,
 
-          // 确保FutureBuilder占满剩余空间
+          // 确保ListView占满剩余空间
           Expanded(
-            child: FutureBuilder<List<dynamic>>(
-              future: Future.wait([
-                _systemDefaultJavaInfo,
-                _javaRuntimesFuture,
-              ]),
+            child: _isRefreshing
+                ? Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    itemCount: JavaService.javaRuntimes.length,
+                    itemBuilder: (context, index) {
+                      // 构建Java的卡片
+                      final javaRuntime = JavaService.javaRuntimes[index];
 
-              builder: (context, snapshot) {
-                // 加载中显示CircularProgressIndicator
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                // 加载失败显示错误信息
-                // TODO: 包装一个表示错误的组件
-                if (snapshot.hasError) {
-                  return Center(child: Text('检测失败：${snapshot.error}'));
-                }
-
-                // Index0: _systemDefaultJavaInfo 的结果（JavaInfo?）
-                // Index1: _javaRuntimesFuture 的结果（List<JavaRuntime>）
-                final results = snapshot.data ?? [];
-
-                // 提取系统默认 Java 信息
-                final JavaInfo? systemJavaInfo = results.isNotEmpty
-                    ? results[0] as JavaInfo?
-                    : null;
-
-                // 检测系统默认Java是否存在
-                final systemJavaExists = systemJavaInfo != null;
-
-                // 提取扫描到的Java运行时列表
-                List<JavaRuntime> javaRuntimes = [];
-                if (results.length > 1) {
-                  javaRuntimes = (results[1] as List).cast<JavaRuntime>();
-                }
-
-                // 如果系统默认存在且路径不为空，移除扫描列表中与系统默认路径相同的项
-                if (systemJavaInfo != null && systemJavaInfo.path.isNotEmpty) {
-                  javaRuntimes.removeWhere(
-                    (runtime) => runtime.executable == systemJavaInfo.path,
-                  );
-                }
-
-                final totalItems = systemJavaExists
-                    ? javaRuntimes.length + 1
-                    : javaRuntimes.length;
-
-                if (totalItems == 0) {
-                  return const Center(child: Text('未检测到 Java'));
-                }
-
-                return ListView.builder(
-                  itemCount: totalItems,
-
-                  itemBuilder: (context, index) {
-                    if (systemJavaExists && index == 0) {
                       final isCurrentJava =
-                          _currentJavaPath == 'default' ||
-                          _currentJavaPath == null;
+                          JavaService.javaSelectedPath ==
+                          javaRuntime.executable;
 
-                      // 构建系统默认Card
+                      final isSystemDefault =
+                          javaRuntime.executable ==
+                          JavaService.systemDefaultJavaInfo?.path;
+
                       return _buildJavaCard(
-                        javaInfo: systemJavaInfo,
+                        javaInfo: javaRuntime.info,
 
-                        typeChipLabel: '系统默认',
+                        typeChipLabel: javaRuntime.isJdk ? 'JDK' : 'JRE',
 
-                        vendor: systemJavaInfo.vendor,
+                        vendor: javaRuntime.info.vendor,
 
                         isCurrent: isCurrentJava,
 
-                        onTap: _setSystemJava,
+                        isSystemDefault: isSystemDefault,
+
+                        onTap: () async => {
+                          // 异步更新数据
+                          await JavaService.updateJavaSelectedPath(
+                            javaRuntime.executable,
+                          ),
+
+                          // 通知UI刷新
+                          if (mounted) {setState(() {})},
+                        },
+
+                        onLongPress: () =>
+                            _buildOnLongPressDialog(context, javaRuntime),
                       );
-                    }
-
-                    // 构建非系统默认的Java的卡片
-                    final realIndex = systemJavaExists ? index - 1 : index;
-                    final javaRuntime = javaRuntimes[realIndex];
-
-                    final isCurrentJava =
-                        _currentJavaPath == javaRuntime.executable;
-
-                    return _buildJavaCard(
-                      javaInfo: javaRuntime.info,
-
-                      typeChipLabel: javaRuntime.isJdk ? 'JDK' : 'JRE',
-
-                      vendor: javaRuntime.info.vendor,
-
-                      isCurrent: isCurrentJava,
-
-                      onTap: () =>
-                          _setCurrentJavaPathToPrefs(javaRuntime.executable),
-                    );
-                  },
-                );
-              },
-            ),
+                    },
+                  ),
           ),
         ],
       ),
     );
   }
 
-  ///
-  /// 从SharedPreferences读取选择的Java
-  ///
-  Future<void> _getCurrentJavaPathFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> _buildOnLongPressDialog(
+    BuildContext context,
+    JavaRuntime javaRuntime,
+  ) async {
+    await showDialog(
+      context: context,
 
-    setState(() {
-      _currentJavaPath = prefs.getString('java');
-    });
-  }
+      builder: (context) {
+        return SimpleDialog(
+          title: Text('选择要进行的操作'),
 
-  ///
-  /// 写入当前 Java
-  ///
-  Future<void> _setCurrentJavaPathToPrefs(String path) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('java', path);
+          children: <Widget>[
+            SimpleDialogOption(
+              child: Text('在文件资源管理器中显示父文件夹'),
+              onPressed: () {
+                // 打开父文件夹
+                final parentDirPath = File(javaRuntime.executable).parent.path;
 
-    setState(() {
-      _currentJavaPath = path;
-    });
-  }
+                OpenFilex.open(parentDirPath);
 
-  ///
-  /// 设置为系统 Java
-  ///
-  Future<void> _setSystemJava() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('java');
+                Navigator.of(context).pop();
+              },
+            ),
 
-    setState(() {
-      _currentJavaPath = 'default';
-    });
-  }
+            Divider(),
 
-  //
-  // 获取系统默认 Java 信息
-  //
-  Future<JavaInfo?> _getSystemDefaultJavaInfo() async {
-    try {
-      final javaVersionProcess = await Process.run('java', ['-version']);
+            SimpleDialogOption(
+              child: Text('在列表中删除'),
 
-      if (javaVersionProcess.exitCode != 0) {
-        LogUtil.log(
-          '获取系统默认 Java 信息失败，退出码：${javaVersionProcess.exitCode}',
-          level: 'WARN',
+              onPressed: () {
+                final javaName =
+                    '${javaRuntime.info.vendor} ${javaRuntime.info.version}';
+
+                showCustomDialog(
+                  context: context,
+                  title: '提示',
+                  barrierDismissible: false,
+
+                  content: Text('你确认要在列表中删除 $javaName 吗？'),
+
+                  actions: [
+                    TextButton(
+                      onPressed: () async {
+                        if (!mounted) return;
+
+                        // 弹出当前Dialog
+                        Navigator.of(context).maybePop();
+
+                        if (JavaService.javaRuntimes.length <= 1) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('该Java为最后一个Java，无法移除！')),
+                          );
+
+                          return;
+                        }
+
+                        final wasSelected =
+                            JavaService.javaSelectedPath ==
+                            javaRuntime.executable;
+
+                        // 从列表中移除
+                        JavaService.javaRuntimes.remove(javaRuntime);
+
+                        // 刷新UI 并执行异步操作
+                        setState(() {});
+
+                        await JavaService.updateJavaRuntimes(
+                          JavaService.javaRuntimes,
+                        );
+
+                        if (!mounted) return;
+
+                        // 若移除的为当前Java，将第一个设置为javaRuntimes的第一个
+                        if (wasSelected &&
+                            JavaService.javaRuntimes.isNotEmpty) {
+                          await JavaService.updateJavaSelectedPath(
+                            JavaService.javaRuntimes.first.executable,
+                          );
+                        }
+
+                        // 显示SnackBar并弹出父Dialog
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('已从列表中移除 $javaName')),
+                        );
+
+                        Navigator.of(context).maybePop();
+                      },
+
+                      child: Text('是'),
+                    ),
+
+                    TextButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      child: Text('否'),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
         );
+      },
+    );
+  }
+
+  ///
+  /// 显示FilePicker并根据选择的文件添加JavaRuntimes
+  ///
+  Future<void> _pickAndAddJavaRuntime() async {
+    // 打开FilePicker
+    final result = await FilePicker.platform.pickFiles(
+      dialogTitle: '选择Java路径',
+      type: FileType.custom,
+      allowedExtensions: Platform.isWindows ? ['exe'] : [],
+    );
+
+    if (!mounted) return;
+
+    // 未选择文件
+    if (result == null) {
+      showCustomDialog(
+        context: context,
+        title: '提示',
+
+        content: Text('未选择任何文件'),
+
+        actions: [
+          if (mounted)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('关闭'),
+            ),
+        ],
+      );
+
+      return;
+    }
+
+    // 读取选择的文件的信息
+    final file = result.files.single;
+    final fileName = file.name.toLowerCase();
+    final validNames = Platform.isWindows
+        ? ['java.exe', 'javaw.exe']
+        : ['java', 'javaw'];
+
+    final path = file.path!;
+
+    // 选择的文件文件名不合法等
+    if (!validNames.contains(fileName)) {
+      showCustomDialog(
+        context: context,
+        title: '提示',
+        content: Text('请选择正确的Java可执行文件'),
+
+        actions: [
+          TextButton(
+            onPressed: () => {if (mounted) Navigator.of(context).pop()},
+            child: Text('关闭'),
+          ),
+        ],
+      );
+
+      return;
+    }
+
+    if (!mounted) return;
+
+    // 获取规范化的真实物理路径
+    final resolvedPath = File(path).resolveSymbolicLinksSync();
+
+    // 查重
+    final alreadyExists = JavaService.javaRuntimes.any(
+      (runtime) => runtime.executable == resolvedPath,
+    );
+
+    if (alreadyExists) {
+      showCustomDialog(
+        context: context,
+        title: '提示',
+
+        content: Text('该Java已存在'),
+
+        actions: [
+          if (mounted)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('关闭'),
+            ),
+        ],
+      );
+
+      return;
+    }
+
+    // 开始添加Java，弹出加载对话框
+    if (!mounted) return;
+
+    showCustomDialog(
+      context: context,
+      title: '正在添加Java',
+      content: SizedBox(
+        height: 80,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+
+      barrierDismissible: false,
+    );
+
+    // 解析Info
+    try {
+      final info = await JavaUtils.probeJavaExecutable(resolvedPath);
+
+      if (info == null) {
+        throw '无法解析Java版本信息，请检查Java是否有效';
       }
 
-      final versionOutput = (javaVersionProcess.stderr as String).isNotEmpty
-          ? javaVersionProcess.stderr as String
-          : javaVersionProcess.stdout as String;
+      // 解析成功，添加并写入SharedPreference
+      final isJdk = await JavaUtils.looksLikeJdk(resolvedPath);
 
-      final parsedVersion = JavaManager.parseVersionOutput(versionOutput);
+      JavaService.javaRuntimes.add(
+        JavaRuntime(info: info, executable: resolvedPath, isJdk: isJdk),
+      );
 
-      if (parsedVersion == null) {
-        LogUtil.log('无法解析系统默认 Java 版本信息', level: 'WARN');
-        return null;
-      }
+      JavaService.updateJavaRuntimes(JavaService.javaRuntimes);
 
-      String executablePath = '';
+      if (mounted) Navigator.of(context).pop();
 
-      try {
-        if (Platform.isWindows) {
-          final where = await Process.run('where', ['java']);
+      // 调用setState触发页面更新
+      setState(() {});
 
-          if (where.exitCode == 0) {
-            executablePath = (where.stdout as String)
-                .toString()
-                .split('\n')
-                .first
-                .trim();
-          }
-        } else {
-          final which = await Process.run('which', ['java']);
+      showCustomDialog(
+        context: context,
+        title: '提示',
+        content: Text('添加 ${info.vendor} ${info.version} 成功！'),
 
-          if (which.exitCode == 0) {
-            executablePath = (which.stdout as String)
-                .toString()
-                .split('\n')
-                .first
-                .trim();
-          }
-        }
-      } catch (e) {
-        LogUtil.log('获取系统默认 Java 路径时出错：$e', level: 'WARN');
-      }
-
-      return JavaInfo(
-        version: parsedVersion['version'] ?? 'unknown',
-        vendor: parsedVersion['vendor'],
-        path: executablePath,
-        os: Platform.operatingSystem,
-        arch: Platform.version,
+        actions: [
+          if (mounted)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('关闭'),
+            ),
+        ],
       );
     } catch (e) {
-      LogUtil.log('执行 "java -version" 时出错：$e', level: 'WARN');
-      return null;
+      // 有异常，先关闭 Loading
+      if (mounted) Navigator.of(context).pop();
+
+      showCustomDialog(
+        context: context,
+        title: '错误',
+
+        content: Text('添加Java时发生异常: $e'),
+
+        actions: [
+          if (mounted)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('关闭'),
+            ),
+        ],
+      );
     }
+  }
+
+  ///
+  /// 显示一个自定义的AlertDialog
+  ///
+  void showCustomDialog({
+    required BuildContext context,
+    required String title,
+    Widget? content,
+    bool barrierDismissible = true,
+    List<Widget>? actions,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (_) =>
+          AlertDialog(title: Text(title), content: content, actions: actions),
+    );
   }
 
   Widget _buildJavaCard({
@@ -277,7 +455,9 @@ class JavaPageState extends State<JavaPage> {
     required String typeChipLabel,
     String? vendor,
     required bool isCurrent,
+    required bool isSystemDefault,
     required VoidCallback onTap,
+    required VoidCallback onLongPress,
   }) {
     return Card(
       // 裁剪掉ListTile超出圆角的部分
@@ -309,6 +489,13 @@ class JavaPageState extends State<JavaPage> {
 
               SizedBox(width: kDefaultPadding / 2),
             ],
+
+            if (isSystemDefault) ...[
+              Chip(label: Text('系统默认')),
+
+              SizedBox(width: kDefaultPadding / 2),
+            ],
+
             Chip(label: Text(typeChipLabel)),
 
             SizedBox(width: kDefaultPadding / 2),
@@ -317,6 +504,7 @@ class JavaPageState extends State<JavaPage> {
           ],
         ),
         onTap: onTap,
+        onLongPress: onLongPress,
       ),
     );
   }

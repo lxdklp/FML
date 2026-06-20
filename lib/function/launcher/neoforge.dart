@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:fml/function/java/java_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:path/path.dart' as p;
@@ -182,7 +183,7 @@ Future<void> neoforgeLauncher({
   onProgress?.call('正在准备启动');
   final prefs = await SharedPreferences.getInstance();
   // 游戏参数
-  final java = prefs.getString('java') ?? 'java';
+  final java = JavaService.javaSelectedPath;
   final selectedPath = prefs.getString('SelectedPath') ?? '';
   final gamePath = prefs.getString('Path_$selectedPath') ?? '';
   final game = prefs.getString('SelectedGame') ?? '';

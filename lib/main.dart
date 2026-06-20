@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fml/function/java/java_service.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/function/dio_client.dart';
 import 'package:lazy_load_indexed_stack/lazy_load_indexed_stack.dart';
@@ -38,6 +39,8 @@ void main() async {
   });
 
   await initLogs();
+
+  JavaService.initFuture = JavaService.init();
 
   runApp(const FMLBaseApp());
 }
@@ -237,7 +240,6 @@ class MainStartPage extends StatefulWidget {
 
 class MainStartPageState extends State<MainStartPage> {
   int _selectedIndex = 0;
-  bool? _javaInstalled;
 
   // 使页面仅被初始化一次
   final List<Widget> _mainPages = const [
@@ -250,190 +252,88 @@ class MainStartPageState extends State<MainStartPage> {
   @override
   void initState() {
     super.initState();
-    _checkJavaInstalled();
+
     _checkUpdate();
-  }
-
-  // 检查是否安装Java
-  Future<void> _checkJavaInstalled() async {
-    try {
-      final result = await Process.run('java', ['-version']);
-      setState(() {
-        _javaInstalled = result.exitCode == 0;
-      });
-      if (_javaInstalled == false) {
-        _showJavaNotFoundDialog();
-      }
-    } catch (e) {
-      setState(() {
-        _javaInstalled = false;
-      });
-      _showJavaNotFoundDialog();
-    }
-  }
-
-  // 显示Java未找到的对话框
-  Future<void> _showJavaNotFoundDialog() async {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('未检测到 Java'),
-          content: const Text('未检测到 Java 环境或者 Java 环境未正确配置，请先安装 Java 后再打开启动器'),
-          actions: [
-            TextButton(
-              onPressed: () => _launchURL(AppUrls.javaDownload),
-              child: const Text('打开Java下载页面'),
-            ),
-          ],
-        ),
-      );
-    });
-  }
-
-  // 打开URL
-  Future<void> _launchURL(String url) async {
-    try {
-      final Uri uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
-    }
-  }
-
-  // 检查更新
-  Future<void> _checkUpdate() async {
-    try {
-      LogUtil.log('正在检查更新', level: 'INFO');
-      final response = await DioClient().dio.get(
-        AppUrls.latestVersionApi,
-        options: Options(
-          headers: {'User-Agent': '$kAppNameAbb/${Platform.operatingSystem}/$gAppVersion+$gAppBuildNumber ${kDebugMode ? 'debug' : ''}'},
-        ),
-        );
-      if (response.statusCode == 200) {
-        String rawVersionData = response.data.toString();
-        String cleanedVersionString = rawVersionData
-            .replaceAll("[", "")
-            .replaceAll("]", "");
-        final int latestVersion =
-            int.tryParse(cleanedVersionString) ?? gAppBuildNumber;
-        LogUtil.log('最新版本: $latestVersion');
-        if (latestVersion > gAppBuildNumber && mounted) {
-          _showUpdateDialog(latestVersion.toString());
-        }
-      }
-    } catch (e) {
-      LogUtil.log(e.toString(), level: 'ERROR');
-    }
-  }
-
-  // 获取更新日志
-  Future<List<String>> _getUpdateInfo() async {
-    try {
-      final response = await DioClient().dio.get(AppUrls.githubReleasesApi);
-      if (response.statusCode == 200) {
-        Map<String, dynamic> loaderData = response.data[0];
-        return [loaderData['name'], loaderData['body']];
-      }
-    } catch (e) {
-      LogUtil.log('获取更新日志失败: $e', level: 'ERROR');
-      return ['', '请前往 GitHub 查看更新日志'];
-    }
-    return ['', '请前往 GitHub 查看更新日志'];
-  }
-
-  // 显示更新对话框
-  Future<void> _showUpdateDialog(String latestVersion) async {
-    List<String> info = await _getUpdateInfo();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('发现新版本 ${info[0]}'),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 300,
-          child: SingleChildScrollView(
-            child: Markdown(
-              data: info[1],
-              selectable: true,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              onTapLink: (text, href, title) {
-                if (href != null) _launchURL(href);
-              },
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              _launchURL(AppUrls.githubLatestRelease);
-            },
-            child: const Text('前往GitHub下载'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     // 主界面内容
-    Widget mainContent = Scaffold(
-      appBar: AppBar(title: const Text(kAppName)),
-      body: Row(
-        children: [
-          NavigationRail(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (int index) {
-              setState(() => _selectedIndex = index);
-            },
-            labelType: NavigationRailLabelType.all,
-            destinations: const [
-              NavigationRailDestination(
-                icon: Icon(Icons.play_arrow),
-                label: Text('启动'),
+    Widget mainContent = FutureBuilder(
+      future: JavaService.initFuture,
+
+      builder: (context, snapshot) {
+        // 在初始化未完成时显示CircularProgressIndicator
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // 加载完成但没有Java，显示Dialog
+        if (JavaService.javaRuntimes.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                title: const Text('未检测到 Java'),
+                content: const Text(
+                  '未检测到 Java 环境或者 Java 环境未正确配置，请先安装 Java 后再打开启动器',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => _launchURL(AppUrls.javaDownload),
+                    child: const Text('打开Java下载页面'),
+                  ),
+                ],
               ),
-              NavigationRailDestination(
-                icon: Icon(Icons.hub),
-                label: Text('联机'),
+            );
+          });
+        }
+
+        return Scaffold(
+          appBar: AppBar(title: const Text(kAppName)),
+          body: Row(
+            children: [
+              NavigationRail(
+                selectedIndex: _selectedIndex,
+                onDestinationSelected: (int index) {
+                  setState(() => _selectedIndex = index);
+                },
+                labelType: NavigationRailLabelType.all,
+                destinations: const [
+                  NavigationRailDestination(
+                    icon: Icon(Icons.play_arrow),
+                    label: Text('启动'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.hub),
+                    label: Text('联机'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.download),
+                    label: Text('下载'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.settings),
+                    label: Text('设置'),
+                  ),
+                ],
               ),
-              NavigationRailDestination(
-                icon: Icon(Icons.download),
-                label: Text('下载'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.settings),
-                label: Text('设置'),
+              // 显示当前页面
+              Expanded(
+                child: LazyLoadIndexedStack(
+                  index: _selectedIndex,
+                  children: _mainPages,
+                ),
               ),
             ],
           ),
-          // 显示当前页面
-          Expanded(
-            child: LazyLoadIndexedStack(
-              index: _selectedIndex,
-              children: _mainPages,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
+
     // macOS 菜单栏
     if (Platform.isMacOS) {
       return PlatformMenuBar(
@@ -518,6 +418,109 @@ class MainStartPageState extends State<MainStartPage> {
       );
     }
     return mainContent;
+  }
+
+  // 打开URL
+  Future<void> _launchURL(String url) async {
+    try {
+      final Uri uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
+    }
+  }
+
+  // 检查更新
+  Future<void> _checkUpdate() async {
+    try {
+      LogUtil.log('正在检查更新', level: 'INFO');
+      final response = await DioClient().dio.get(
+        AppUrls.latestVersionApi,
+        options: Options(
+          headers: {
+            'User-Agent':
+                '$kAppNameAbb/${Platform.operatingSystem}/$gAppVersion+$gAppBuildNumber ${kDebugMode ? 'debug' : ''}',
+          },
+        ),
+      );
+      if (response.statusCode == 200) {
+        String rawVersionData = response.data.toString();
+        String cleanedVersionString = rawVersionData
+            .replaceAll("[", "")
+            .replaceAll("]", "");
+        final int latestVersion =
+            int.tryParse(cleanedVersionString) ?? gAppBuildNumber;
+        LogUtil.log('最新版本: $latestVersion');
+        if (latestVersion > gAppBuildNumber && mounted) {
+          _showUpdateDialog(latestVersion.toString());
+        }
+      }
+    } catch (e) {
+      LogUtil.log(e.toString(), level: 'ERROR');
+    }
+  }
+
+  // 获取更新日志
+  Future<List<String>> _getUpdateInfo() async {
+    try {
+      final response = await DioClient().dio.get(AppUrls.githubReleasesApi);
+      if (response.statusCode == 200) {
+        Map<String, dynamic> loaderData = response.data[0];
+        return [loaderData['name'], loaderData['body']];
+      }
+    } catch (e) {
+      LogUtil.log('获取更新日志失败: $e', level: 'ERROR');
+      return ['', '请前往 GitHub 查看更新日志'];
+    }
+    return ['', '请前往 GitHub 查看更新日志'];
+  }
+
+  // 显示更新对话框
+  Future<void> _showUpdateDialog(String latestVersion) async {
+    List<String> info = await _getUpdateInfo();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('发现新版本 ${info[0]}'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 300,
+          child: SingleChildScrollView(
+            child: Markdown(
+              data: info[1],
+              selectable: true,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              onTapLink: (text, href, title) {
+                if (href != null) _launchURL(href);
+              },
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              _launchURL(AppUrls.githubLatestRelease);
+            },
+            child: const Text('前往GitHub下载'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    );
   }
 
   // 显示关于对话框

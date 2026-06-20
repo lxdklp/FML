@@ -11,6 +11,18 @@ class JavaRuntime {
     required this.isJdk,
   });
 
+  Map<String, dynamic> toJson() => {
+    'info': info.toJson(),
+    'executable': executable,
+    'isJdk': isJdk,
+  };
+
+  factory JavaRuntime.fromJson(Map<String, dynamic> json) => JavaRuntime(
+    info: JavaInfo.fromJson(json['info'] as Map<String, dynamic>),
+    executable: json['executable'] as String,
+    isJdk: json['isJdk'] as bool,
+  );
+
   @override
   String toString() => '${isJdk ? 'JDK' : 'JRE'} ${info.version} @ $executable';
 }
