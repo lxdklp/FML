@@ -147,10 +147,10 @@ Future<String> refreshToken(
       return await CryptoUtil.encrypt(newAccessToken);
     } else {
       LogUtil.log('令牌刷新失败，状态码: ${response.statusCode}', level: 'WARNING');
-      return encryptedAccessToken;
+      return '';
     }
   } catch (e) {
     LogUtil.log('令牌刷新失败: $e', level: 'ERROR');
-    return encryptedAccessToken;
+    return '';
   }
 }

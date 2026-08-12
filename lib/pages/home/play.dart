@@ -44,10 +44,7 @@ class PlayPageState extends State<PlayPage> {
             });
           }
         },
-        onError: (String error) {
-          setState(() {
-          });
-        },
+        onError: _handleLaunchError,
       );
     }
     if (type == 'Fabric') {
@@ -62,10 +59,7 @@ class PlayPageState extends State<PlayPage> {
             });
           }
         },
-        onError: (String error) {
-          setState(() {
-          });
-        },
+        onError: _handleLaunchError,
       );
     }
     if (type == 'NeoForge') {
@@ -80,12 +74,32 @@ class PlayPageState extends State<PlayPage> {
             });
           }
         },
-        onError: (String error) {
-          setState(() {
-          });
-        },
+        onError: _handleLaunchError,
       );
     }
+  }
+
+  // 启动失败时弹窗提示并终止启动流程
+  void _handleLaunchError(String error) {
+    LogUtil.log('启动失败: $error', level: 'ERROR');
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('启动失败'),
+        content: Text(error),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

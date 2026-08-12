@@ -299,13 +299,22 @@ Future<void> neoforgeLauncher({
   if (accountInfo[0] == '1') {
     uuid = accountInfo[1];
     token = await microsoft_login.login(accountInfo[2]);
+    if (token.isEmpty) {
+      onError?.call('正版账号登录失败，请重新登录账号');
+      return;
+    }
   }
   if (accountInfo[0] == '2') {
-    if (await external_login.checkAuthlibInjector(gamePath)) {
-      onProgress?.call('AuthlibInjector已存在');
-    } else {
-      onProgress?.call('正在下载AuthlibInjector');
-      await external_login.downloadAuthlibInjector(gamePath);
+    try {
+      if (await external_login.checkAuthlibInjector(gamePath)) {
+        onProgress?.call('AuthlibInjector已存在');
+      } else {
+        onProgress?.call('正在下载AuthlibInjector');
+        await external_login.downloadAuthlibInjector(gamePath);
+      }
+    } catch (e) {
+      onError?.call('AuthlibInjector处理失败: $e');
+      return;
     }
     uuid = accountInfo[1];
     onProgress?.call('正在检查令牌');
@@ -323,6 +332,10 @@ Future<void> neoforgeLauncher({
         accountName,
         uuid,
       );
+      if (token.isEmpty) {
+        onError?.call('外置账号令牌刷新失败，请重新登录账号');
+        return;
+      }
     }
   }
   jvmArgs.addAll(['-cp', cp]);

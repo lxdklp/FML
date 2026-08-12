@@ -19,10 +19,13 @@ String _getLoginMode(String loginMode) {
 }
 
 // 获取微软账号令牌
-Future<String> _getMsToken(refreshToken) async {
+Future<String> _getMsToken(String refreshToken) async {
   final prefs = await SharedPreferences.getInstance();
   String decryptedRefreshToken = await CryptoUtil.decrypt(refreshToken);
-  while (true) {
+  const int maxRetries = 3;
+  int attempt = 0;
+  while (attempt < maxRetries) {
+    attempt++;
     try {
       final response = await DioClient().dio.post(
         'https://login.microsoftonline.com/consumers/oauth2/v2.0/token',
@@ -76,12 +79,8 @@ Future<String> _getMsToken(refreshToken) async {
             String errorType = errorData['error'] ?? '未知错误类型';
             String errorDetail = errorData['error_description'] ?? '';
             LogUtil.log('Dio异常: $errorType - $errorDetail', level: 'ERROR');
-            if (errorType == 'authorization_pending') {
-              LogUtil.log('用户未授权', level: 'INFO');
-              continue;
-            }
             if (errorType == 'slow_down') {
-              continue;
+              await Future.delayed(const Duration(seconds: 5));
             }
           } else {
             LogUtil.log(
@@ -104,7 +103,15 @@ Future<String> _getMsToken(refreshToken) async {
     } catch (e) {
       LogUtil.log('请求微软账号令牌发生其他错误: $e', level: 'ERROR');
     }
+    if (attempt < maxRetries) {
+      LogUtil.log(
+        '获取微软账号令牌失败,正在进行第 $attempt 次重试 (最多 $maxRetries 次)',
+        level: 'WARNING',
+      );
+    }
   }
+  LogUtil.log('多次尝试后仍无法获取微软账号令牌', level: 'ERROR');
+  return '';
 }
 
 // 获取 Xbox Live令牌
@@ -317,8 +324,24 @@ Future<String> _getMcToken(xstsToken) async {
 // 登录
 Future<String> login(String refreshToken) async {
   String msToken = await _getMsToken(refreshToken);
+  if (msToken.isEmpty) {
+    LogUtil.log('登录失败: 无法获取微软账号令牌', level: 'ERROR');
+    return '';
+  }
   String xblToken = await _getXboxLiveToken(msToken);
+  if (xblToken.isEmpty) {
+    LogUtil.log('登录失败: 无法获取Xbox Live令牌', level: 'ERROR');
+    return '';
+  }
   List<String> xstsToken = await _getXSTSToken(xblToken);
+  if (xstsToken[0].isEmpty || xstsToken[1].isEmpty) {
+    LogUtil.log('登录失败: 无法获取XSTS令牌', level: 'ERROR');
+    return '';
+  }
   String mcToken = await _getMcToken(xstsToken);
+  if (mcToken.isEmpty) {
+    LogUtil.log('登录失败: 无法获取Minecraft令牌', level: 'ERROR');
+    return '';
+  }
   return mcToken;
 }
