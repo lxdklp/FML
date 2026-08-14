@@ -17,6 +17,7 @@ import 'package:fml/constants.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download_page.dart';
 import 'package:fml/pages/home_page.dart';
+import 'package:fml/pages/friends_page.dart';
 import 'package:fml/pages/online_page.dart';
 import 'package:fml/pages/online/owner.dart';
 import 'package:fml/pages/setting_page.dart';
@@ -244,6 +245,7 @@ class MainStartPageState extends State<MainStartPage> {
   // 使页面仅被初始化一次
   final List<Widget> _mainPages = const [
     HomePage(),
+    FriendsPage(),
     OnlinePage(),
     DownloadPage(),
     SettingPage(),
@@ -306,6 +308,10 @@ class MainStartPageState extends State<MainStartPage> {
                   NavigationRailDestination(
                     icon: Icon(Icons.play_arrow),
                     label: Text('启动'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.people),
+                    label: Text('好友'),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.hub),
