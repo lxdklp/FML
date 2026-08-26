@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.9.0+12
 
 environment:
-  sdk: ^3.8.1
+  sdk: ^3.13.1
 
 dependencies:
   flutter:
@@ -40,6 +40,7 @@ dependencies:
   win32_registry: ^2.1.0
   open_filex: ^4.7.0
 
+  material_ui: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

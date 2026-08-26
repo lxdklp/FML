@@ -1,6 +1,6 @@
 <p align="center"><img src="./assets/img/icon/logo_transparent.png"  width="20%" /><img src="./assets/img/logo/flutter.png"  width="25%" /></p>
 <p align="center"> <img src=https://img.shields.io/badge/Windows%20%7C%20macOS%20%7C%20Linux-1?style=for-the-badge&label=Platform> <img src=https://img.shields.io/badge/GPLv3-1?style=for-the-badge&label=License> </p>
-<p align="center"> <img src=https://img.shields.io/badge/3.44.8-1?logo=flutter&logoColor=white&style=for-the-badge&label=Flutter> <img src=https://img.shields.io/badge/Dart-1?logo=dart&logoColor=white&style=for-the-badge&label=language> </p>
+<p align="center"> <img src=https://img.shields.io/badge/3.47.1-1?logo=flutter&logoColor=white&style=for-the-badge&label=Flutter> <img src=https://img.shields.io/badge/Dart-1?logo=dart&logoColor=white&style=for-the-badge&label=language> </p>
 <p align="center"><img src=https://img.shields.io/github/v/release/lxdklp/FML?style=for-the-badge> <img  src=https://img.shields.io/github/stars/lxdklp/FML?style=for-the-badge></p>
 
 # Flutter Minecraft Launcher

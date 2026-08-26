@@ -76,7 +76,7 @@ class OnlineCenterClient {
       await Future.delayed(const Duration(milliseconds: 100));
       await _sendPlayerPing();
       _startHeartbeat();
-      return Future.value();
+      return await Future.value();
     } catch (e) {
       _isConnected = false;
       _isConnecting = false;

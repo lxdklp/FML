@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 ///一个通用的从右向左滑动的路由切换动画
 class SlidePageRoute extends PageRouteBuilder {

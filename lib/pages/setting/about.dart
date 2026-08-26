@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' hide LicensePage;
+import 'package:material_ui/material_ui.dart' hide LicensePage;
 import 'package:fml/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 

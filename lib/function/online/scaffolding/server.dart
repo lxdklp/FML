@@ -37,7 +37,7 @@ class OnlineCenterServer {
       _server!.listen((socket) {
         _handleClient(socket);
       });
-      return Future.value();
+      return await Future.value();
     } catch (e) {
       LogUtil.log('TCP服务器启动失败: $e', level: 'ERROR');
       return Future.error(e);

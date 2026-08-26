@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:fml/constants.dart';
 import 'package:fml/pages/download/download_resources.dart';
 import 'package:fml/pages/download/download_version.dart';
