@@ -5,7 +5,9 @@
 
 # Flutter Minecraft Launcher
 
-一个由Flutter编写的Material Design 3风格的使用GPL3.0协议开源跨平台Vanilla/Fabric/NeoForge Minecraft Java启动器,支持Windows、macOS、Linux
+一个由Flutter编写的Material Design 3风格的使用GPL3.0协议开源跨平台Vanilla/Fabric/NeoForge/Forge Minecraft Java启动器,支持Windows、macOS、Linux
+
+支持独立安装 Forge Minecraft，以及安装 Modrinth 和 CurseForge 的 Forge 整合包。安装时直接使用设置中选择的 Java，不检查 Java 版本；未选择时使用系统 `java`。Forge 安装失败后可以重试，已校验的下载文件会自动复用。
 
 # 截屏
 

@@ -1,10 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path/path.dart' as p;
+import 'package:fml/function/java/java_launch_check.dart';
+
+import 'java_version_warning.dart';
 
 import 'package:fml/function/log.dart';
 import 'package:fml/function/launcher/fabric.dart';
 import 'package:fml/function/launcher/vanilla.dart';
 import 'package:fml/function/launcher/neoforge.dart';
+import 'package:fml/function/launcher/forge.dart';
 
 class PlayPage extends StatefulWidget {
   const PlayPage({super.key});
@@ -21,20 +26,46 @@ class PlayPageState extends State<PlayPage> {
 
   Future<void> _launch() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     String? selectedPath = prefs.getString('SelectedPath');
     String? selectedGame = prefs.getString('SelectedGame');
-    List<String>? gameConfig = prefs.getStringList('Config_${selectedPath}_$selectedGame');
+    List<String>? gameConfig = prefs.getStringList(
+      'Config_${selectedPath}_$selectedGame',
+    );
     String account = prefs.getString('SelectedAccount') ?? '';
     accountInfo = prefs.getStringList('Account_$account');
-    String? type = gameConfig != null ? gameConfig[4] : null;
+    String? type = gameConfig != null && gameConfig.length > 4
+        ? gameConfig[4]
+        : null;
     LogUtil.log(gameConfig.toString(), level: 'INFO');
     LogUtil.log(type.toString(), level: 'INFO');
     setState(() {
       _gameType = type ?? '';
     });
-    if (type == 'Vanilla'){
+    final java = configuredJavaExecutable(prefs);
+    if (['Vanilla', 'Fabric', 'Forge', 'NeoForge'].contains(type)) {
+      setState(() => _message = '正在检查 Java 版本...');
+      final check = await checkLaunchJava(
+        metadataPath: p.join(
+          prefs.getString('Path_$selectedPath') ?? '',
+          'versions',
+          selectedGame ?? '',
+          '$selectedGame.json',
+        ),
+        executable: java,
+      );
+      if (!mounted) return;
+      final approved = await confirmJavaLaunch(context, check);
+      if (!mounted) return;
+      if (!approved) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        return;
+      }
+    }
+    if (type == 'Vanilla') {
       await vanillaLauncher(
-      onProgress: (String message) {
+        javaExecutable: java,
+        onProgress: (String message) {
           setState(() {
             _message = message;
           });
@@ -49,6 +80,7 @@ class PlayPageState extends State<PlayPage> {
     }
     if (type == 'Fabric') {
       await fabricLauncher(
+        javaExecutable: java,
         onProgress: (String message) {
           setState(() {
             _message = message;
@@ -62,8 +94,22 @@ class PlayPageState extends State<PlayPage> {
         onError: _handleLaunchError,
       );
     }
+    if (type == 'Forge') {
+      await forgeLauncher(
+        javaExecutable: java,
+        onProgress: (message) {
+          if (!mounted) return;
+          setState(() {
+            _message = message;
+            if (message == '游戏启动完成') _launching = true;
+          });
+        },
+        onError: _handleLaunchError,
+      );
+    }
     if (type == 'NeoForge') {
       await neoforgeLauncher(
+        javaExecutable: java,
         onProgress: (String message) {
           setState(() {
             _message = message;
@@ -117,13 +163,13 @@ class PlayPageState extends State<PlayPage> {
         ),
       ),
       floatingActionButton: _launching
-      ? FloatingActionButton(
-            onPressed: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
-            child: const Icon(Icons.check),
-          )
-        : null,
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
+              child: const Icon(Icons.check),
+            )
+          : null,
     );
   }
 

@@ -1,3 +1,4 @@
+import 'package:fml/function/download_checksums.dart';
 import 'dart:io';
 import 'dart:convert';
 
@@ -31,6 +32,7 @@ class CurseforgeFabricModpackPage extends StatefulWidget {
 
 class CurseforgeFabricModpackPageState
     extends State<CurseforgeFabricModpackPage> {
+  final _checksums = DownloadChecksums();
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -334,6 +336,9 @@ class CurseforgeFabricModpackPageState
             fileInfo = await _getModFileInfo(projectId, fileId);
             if (fileInfo == null) {
               retryCount++;
+              if (retryCount >= DownloadUtils.maxAttempts) {
+                throw StateError('获取整合包文件信息失败 5 次: $projectId/$fileId');
+              }
               final delayMs = (300 * (1 << (retryCount - 1).clamp(0, 5))).clamp(
                 300,
                 10000,
@@ -372,7 +377,10 @@ class CurseforgeFabricModpackPageState
           }
           final targetPath =
               '$versionPath${Platform.pathSeparator}mods${Platform.pathSeparator}$fileName';
-          downloadTasks.add({'url': downloadUrl, 'path': targetPath});
+          final hashes = (fileInfo['hashes'] as List? ?? []).cast<Map>();
+          final sha = hashes.where((hash) => hash['algo'] == 1).firstOrNull?['value'] as String?;
+          if (sha == null || sha.isEmpty) throw StateError('整合包文件缺少 SHA 校验值: $fileName');
+          downloadTasks.add({'url': downloadUrl, 'path': targetPath, 'sha1': sha});
           completedCount++;
           final now = DateTime.now();
           if (now.difference(lastUpdateTime).inMilliseconds >= 200 ||
@@ -483,6 +491,7 @@ class CurseforgeFabricModpackPageState
         }
       } catch (e) {
         retry++;
+        if (retry >= DownloadUtils.maxAttempts) rethrow;
         final delayMs = (300 * (1 << ((retry - 1).clamp(0, 8)))).clamp(
           300,
           30000,
@@ -505,6 +514,7 @@ class CurseforgeFabricModpackPageState
       }
       final jsonString = await file.readAsString();
       final jsonData = jsonDecode(jsonString);
+      _checksums.addMetadata(jsonData, rewriteUrl: replaceWithMirror);
       if (jsonData['assetIndex'] != null) {
         if (jsonData['assetIndex']['url'] != null) {
           assetIndexURL = replaceWithMirror(jsonData['assetIndex']['url']);
@@ -551,6 +561,7 @@ class CurseforgeFabricModpackPageState
       }
       final jsonString = await file.readAsString();
       final jsonData = jsonDecode(jsonString);
+      _checksums.addMetadata(jsonData, rewriteUrl: replaceWithMirror);
       _assetHash.clear();
       if (jsonData['objects'] == null) {
         throw Exception('资产索引JSON中缺少objects字段');
@@ -587,8 +598,8 @@ class CurseforgeFabricModpackPageState
       final relativePath = librariesPath[i];
       final fullPath =
           '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
-      if (!File(fullPath).existsSync()) {
-        downloadTasks.add({'url': url, 'path': fullPath});
+      if (!await _checksums.validFile(fullPath, url)) {
+        downloadTasks.add(_checksums.task(url, fullPath));
       }
     }
     if (downloadTasks.isEmpty) {
@@ -623,9 +634,9 @@ class CurseforgeFabricModpackPageState
       final hashPrefix = hash.substring(0, 2);
       final assetPath =
           '$gamePath${Platform.pathSeparator}assets${Platform.pathSeparator}objects${Platform.pathSeparator}$hashPrefix${Platform.pathSeparator}$hash';
-      if (!File(assetPath).existsSync()) {
+      if (!await DownloadUtils.validFile(assetPath, sha1Hash: hash)) {
         final url = 'https://bmclapi2.bangbang93.com/assets/$hashPrefix/$hash';
-        downloadTasks.add({'url': url, 'path': assetPath});
+        downloadTasks.add({'url': url, 'path': assetPath, 'sha1': hash});
       }
     }
     if (downloadTasks.isEmpty) {
@@ -789,6 +800,7 @@ class CurseforgeFabricModpackPageState
       final response = await DioClient().dio.get(fabricVersionsUrl);
       if (response.statusCode == 200) {
         _fabricFullJson = response.data;
+        _checksums.addMetadata(_fabricFullJson, rewriteUrl: replaceWithMirror);
         Map<String, dynamic>? targetVersion;
         if (_fabricVersion.isNotEmpty) {
           for (var ver in _fabricFullJson) {
@@ -837,6 +849,7 @@ class CurseforgeFabricModpackPageState
       }
       final String jsonContent = await fabricJsonFile.readAsString();
       final Map<String, dynamic> loaderJson = jsonDecode(jsonContent);
+      _checksums.addMetadata(loaderJson, rewriteUrl: replaceWithMirror);
       _fabricDownloadTasks.clear();
       if (loaderJson.containsKey('loader') && loaderJson['loader'] != null) {
         final loaderInfo = loaderJson['loader'];
@@ -955,9 +968,8 @@ class CurseforgeFabricModpackPageState
       if (!directory.existsSync()) {
         directory.createSync(recursive: true);
       }
-      final file = File(fullPath);
-      if (!file.existsSync()) {
-        downloadTasks.add({'url': url, 'path': fullPath});
+      if (!await _checksums.validFile(fullPath, url)) {
+        downloadTasks.add(_checksums.task(url, fullPath));
         await LogUtil.log('添加 Fabric 下载任务: $url -> $fullPath', level: 'INFO');
       } else {
         await LogUtil.log('Fabric 文件已存在,跳过: $fullPath', level: 'INFO');
@@ -986,34 +998,17 @@ class CurseforgeFabricModpackPageState
   }
 
   // 文件下载
-  Future<void> _downloadFile(String path, String url) async {
-    bool success = false;
-    try {
-      await DownloadUtils.downloadFile(
-        url: url,
-        savePath: path,
-        onProgress: (progress) {
-          setState(() {
-            _progress = progress;
-          });
-        },
-        onSuccess: () {
-          success = true;
-        },
-        onError: (error) async {
-          await LogUtil.log('下载失败: $error, URL: $url', level: 'ERROR');
-        },
-      );
-      final file = File(path);
-      if (await file.exists()) {
-        success = true;
-      }
-      if (!success) {
-        throw Exception('下载失败: $url');
-      }
-    } catch (e) {
-      throw Exception('下载出错: $e');
-    }
+  Future<void> _downloadFile(String path, String? url) async {
+    if (url == null || url.isEmpty) throw StateError('缺少下载地址: $path');
+    await DownloadUtils.downloadFile(
+      url: url,
+      savePath: path,
+      sha1Hash: _checksums.sha1For(url),
+      sha512Hash: _checksums.sha512For(url),
+      onProgress: (progress) {
+        if (mounted) setState(() => _progress = progress);
+      },
+    );
   }
 
   // 复制overrides内容

@@ -1,3 +1,5 @@
+import 'package:fml/function/forge/forge_modpack.dart';
+import 'package:fml/pages/download/download_version/loader/download_forge.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,10 +9,7 @@ import 'package:fml/pages/download/curseforge/type/download_modpack/loader/curse
 import 'package:fml/pages/download/curseforge/type/download_modpack/loader/curseforge_neoforge_modpack.dart';
 
 class CurseforgeDownloadInfoPage extends StatefulWidget {
-  const CurseforgeDownloadInfoPage(
-    this.file, {
-    super.key,
-  });
+  const CurseforgeDownloadInfoPage(this.file, {super.key});
 
   final Map<String, dynamic> file;
 
@@ -48,6 +47,7 @@ class CurseforgeDownloadInfoPageState
       if (gameVersions != null) {
         for (var v in gameVersions) {
           final vStr = v.toString().toLowerCase();
+          if (vStr == 'forge') _loaders.add('forge');
           if (vStr == 'fabric') _loaders.add('fabric');
           if (vStr == 'neoforge') _loaders.add('neoforge');
         }
@@ -147,15 +147,13 @@ class CurseforgeDownloadInfoPageState
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           if (_gameName == null || _gameName!.isEmpty) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('请输入游戏名称')));
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('请输入游戏名称')));
             return;
           }
           if (_versionList.contains(_gameName)) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('该游戏名称已存在，请换一个名称')));
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('该游戏名称已存在，请换一个名称')));
             return;
           }
           if (_downloadUrl == null || _downloadUrl!.isEmpty) {
@@ -165,19 +163,33 @@ class CurseforgeDownloadInfoPageState
             return;
           }
           String? selectedLoader;
-          if (_loaders.contains('fabric')) {
+          if (_loaders.contains('forge')) {
+            selectedLoader = 'forge';
+          } else if (_loaders.contains('fabric')) {
             selectedLoader = 'fabric';
           } else if (_loaders.contains('neoforge')) {
             selectedLoader = 'neoforge';
           }
           if (selectedLoader == null) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('此整合包不支持 Fabric 或 NeoForge 加载器')),
+              const SnackBar(
+                content: Text('此整合包不支持 Forge、Fabric 或 NeoForge 加载器'),
+              ),
             );
             return;
           }
           LogUtil.log('开始下载整合包: $_fileName 类型: $selectedLoader', level: 'INFO');
-          if (selectedLoader == 'fabric') {
+          if (selectedLoader == 'forge') {
+            Navigator.of(context).push(
+              SlidePageRoute(
+                page: DownloadForgePage.modpack(
+                  name: _gameName!,
+                  url: _downloadUrl!,
+                  source: ForgePackSource.curseforge,
+                ),
+              ),
+            );
+          } else if (selectedLoader == 'fabric') {
             Navigator.of(context).push(
               SlidePageRoute(
                 page: CurseforgeFabricModpackPage(

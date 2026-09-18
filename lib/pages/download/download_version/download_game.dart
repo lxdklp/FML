@@ -4,7 +4,11 @@ import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/models/minecraft_version.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'dart:math';
+
+import 'package:fml/function/forge/forge_service.dart';
+import 'package:fml/pages/download/download_version/loader/download_forge.dart';
 
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download/download_version/loader/download_vanilla.dart';
@@ -20,9 +24,6 @@ class DownloadGamePage extends StatefulWidget {
   DownloadGamePageState createState() => DownloadGamePageState();
 }
 
-///
-/// TODO: Forge support
-///
 class DownloadGamePageState extends State<DownloadGamePage> {
   String _versionFolderName = '';
   late final TextEditingController _versionFolderController;
@@ -44,6 +45,10 @@ class DownloadGamePageState extends State<DownloadGamePage> {
   List<String> _neoforgeBetaVersions = [];
   String _selectedNeoForgeVersion = '';
   bool _showNeoForgeUnstable = false;
+  List<ForgeBuild> _forgeBuilds = [];
+  ForgeBuild? _selectedForgeBuild;
+  bool _forgeLoading = true;
+  String? _forgeError;
 
   @override
   void initState() {
@@ -62,6 +67,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
     _loadVersionList();
     _loadFabricList();
     _loadNeoForgeList();
+    _loadForgeList();
   }
 
   @override
@@ -155,6 +161,55 @@ class DownloadGamePageState extends State<DownloadGamePage> {
               ),
             ),
 
+            if (_selectedLoader == 'Forge') ...[
+              if (_forgeLoading)
+                const Card(
+                  child: ListTile(
+                    title: Text('正在加载 Forge 版本'),
+                    trailing: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_forgeError != null)
+                Card(
+                  child: ListTile(
+                    title: const Text('Forge 版本加载失败'),
+                    subtitle: Text(_forgeError!),
+                    trailing: IconButton(
+                      onPressed: _loadForgeList,
+                      icon: const Icon(Icons.refresh),
+                    ),
+                  ),
+                )
+              else if (_forgeBuilds.isEmpty)
+                const Card(
+                  child: ListTile(
+                    title: Text('当前 Minecraft 版本没有可用的 Forge 安装器'),
+                  ),
+                )
+              else
+                ..._forgeBuilds.map(
+                  (build) => Card(
+                    child: ListTile(
+                      title: Text(build.version),
+                      subtitle: Text(build.recommended ? '推荐版' : 'Forge'),
+                      selected:
+                          _selectedForgeBuild?.coordinate == build.coordinate,
+                      trailing:
+                          _selectedForgeBuild?.coordinate == build.coordinate
+                          ? const Icon(Icons.check)
+                          : null,
+                      onTap: () {
+                        setState(() => _selectedForgeBuild = build);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('已选择 Forge 版本: ${build.version}'),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+            ],
             if (_selectedLoader == 'Fabric') ...[
               SwitchListTile(
                 title: Text(
@@ -309,6 +364,26 @@ class DownloadGamePageState extends State<DownloadGamePage> {
               );
               break;
 
+            case "Forge":
+              if (_selectedForgeBuild == null) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('请先选择 Forge 版本')));
+                return;
+              }
+              Navigator.push(
+                context,
+                SlidePageRoute(
+                  page: DownloadForgePage(
+                    version: widget.version.id,
+                    url: widget.version.url,
+                    name: _versionFolderName,
+                    forgeBuild: _selectedForgeBuild!,
+                  ),
+                ),
+              );
+              break;
+
             case "NeoForge":
               if (_selectedNeoForgeVersion.isEmpty) {
                 ScaffoldMessenger.of(
@@ -339,6 +414,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
         DropdownMenuItem<String>(value: 'Vanilla', child: Text('不安装模组加载器')),
         DropdownMenuItem<String>(value: 'Fabric', child: Text('Fabric')),
         DropdownMenuItem<String>(value: 'NeoForge', child: Text('NeoForge')),
+        DropdownMenuItem<String>(value: 'Forge', child: Text('Forge')),
       ];
 
   int _compareVersions(String versionA, String versionB) {
@@ -354,6 +430,27 @@ class DownloadGamePageState extends State<DownloadGamePage> {
       }
     }
     return 0;
+  }
+
+  Future<void> _loadForgeList() async {
+    setState(() {
+      _forgeLoading = true;
+      _forgeError = null;
+    });
+    try {
+      final builds = await ForgeVersions.load(widget.version.id);
+      if (!mounted) return;
+      setState(() {
+        _forgeBuilds = builds;
+        _forgeLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _forgeError = e.toString();
+        _forgeLoading = false;
+      });
+    }
   }
 
   // 读取版本列表

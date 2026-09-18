@@ -1,3 +1,4 @@
+import 'package:fml/function/download_checksums.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -25,6 +26,7 @@ class NeoForgeModpackPage extends StatefulWidget {
 }
 
 class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
+  final _checksums = DownloadChecksums();
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -62,6 +64,7 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
 
   List<String> _modsPath = [];
   List<String> _modsUrl = [];
+  final Map<String, Map<String, String>> _modHashes = {};
 
   String? assetIndexURL;
   String? clientURL;
@@ -224,6 +227,14 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
         for (var fileInfo in filesList) {
           if (fileInfo['path'] != null) {
             _modsPath.add(fileInfo['path']);
+            final hashes = fileInfo['hashes'] as Map? ?? {};
+            _modHashes[fileInfo['path']] = {
+              for (final key in ['sha1', 'sha512'])
+                if (hashes[key] is String && (hashes[key] as String).isNotEmpty) key: hashes[key],
+            };
+            if (_modHashes[fileInfo['path']]!.isEmpty) {
+              throw FormatException('整合包文件缺少 SHA 校验值: ${fileInfo['path']}');
+            }
           }
           if (fileInfo['downloads'] != null &&
               fileInfo['downloads'] is List &&
@@ -268,6 +279,7 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
       int copiedCount = 0;
       for (int i = 0; i < _modsPath.length; i++) {
         final path = _modsPath[i];
+        final hashes = _modHashes[path]!;
         final url = i < _modsUrl.length ? _modsUrl[i] : '';
         final String fileName = path.split('/').last;
         String targetPath;
@@ -295,11 +307,15 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
         if (!await targetFile.parent.exists()) {
           await targetFile.parent.create(recursive: true);
         }
+        if (await DownloadUtils.validFile(targetPath, sha1Hash: hashes['sha1'], sha512Hash: hashes['sha512'])) {
+          copiedCount++;
+          continue;
+        }
         // 优先从本地复制
         final String localFilePath =
             '$extractPath${Platform.pathSeparator}${path.replaceAll('/', Platform.pathSeparator)}';
         final File localFile = File(localFilePath);
-        if (await localFile.exists()) {
+        if (await DownloadUtils.validFile(localFile.path, sha1Hash: hashes['sha1'], sha512Hash: hashes['sha512'])) {
           try {
             await localFile.copy(targetPath);
             copiedCount++;
@@ -307,16 +323,15 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
           } catch (e) {
             await LogUtil.log('复制文件失败: $fileName - $e', level: 'ERROR');
             if (url.isNotEmpty) {
-              downloadTasks.add({'url': url, 'path': targetPath});
+              downloadTasks.add({'url': url, 'path': targetPath, ...hashes});
+            } else {
+              rethrow;
             }
           }
         } else if (url.isNotEmpty) {
-          downloadTasks.add({'url': url, 'path': targetPath});
+          downloadTasks.add({'url': url, 'path': targetPath, ...hashes});
         } else {
-          await LogUtil.log(
-            '无法处理文件: $fileName - 本地不存在且下载URL为空',
-            level: 'ERROR',
-          );
+          throw StateError('无法下载文件: $fileName - 缺少下载地址且本地文件未通过 SHA 校验');
         }
       }
       await LogUtil.log(
@@ -410,6 +425,7 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
         }
       } catch (e) {
         retry++;
+        if (retry >= DownloadUtils.maxAttempts) rethrow;
         final delayMs = (300 * (1 << ((retry - 1).clamp(0, 8)))).clamp(
           300,
           30000,
@@ -432,6 +448,7 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
       }
       final jsonString = await file.readAsString();
       final jsonData = jsonDecode(jsonString);
+      _checksums.addMetadata(jsonData, rewriteUrl: replaceWithMirror);
       // 提取assetIndex URL和ID
       if (jsonData['assetIndex'] != null) {
         // 解析 URL
@@ -485,6 +502,7 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
       }
       final jsonString = await file.readAsString();
       final jsonData = jsonDecode(jsonString);
+      _checksums.addMetadata(jsonData, rewriteUrl: replaceWithMirror);
       _assetHash.clear();
       if (jsonData['objects'] == null) {
         throw Exception('资产索引JSON中缺少objects字段');
@@ -521,9 +539,8 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
       final relativePath = librariesPath[i];
       final fullPath =
           '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
-      final file = File(fullPath);
-      if (!file.existsSync()) {
-        downloadTasks.add({'url': url, 'path': fullPath});
+      if (!await _checksums.validFile(fullPath, url)) {
+        downloadTasks.add(_checksums.task(url, fullPath));
       }
     }
     final totalLibraries = downloadTasks.length;
@@ -564,10 +581,9 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
       if (!directory.existsSync()) {
         directory.createSync(recursive: true);
       }
-      final file = File(assetPath);
-      if (!file.existsSync()) {
+      if (!await DownloadUtils.validFile(assetPath, sha1Hash: hash)) {
         final url = 'https://bmclapi2.bangbang93.com/assets/$hashPrefix/$hash';
-        downloadTasks.add({'url': url, 'path': assetPath});
+        downloadTasks.add({'url': url, 'path': assetPath, 'sha1': hash});
       }
     }
     final totalAssets = downloadTasks.length;
@@ -775,6 +791,7 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
     if (_installerJson.isEmpty) return;
     try {
       final json = jsonDecode(_installerJson);
+      _checksums.addMetadata(json, rewriteUrl: replaceWithMirror);
       if (json['libraries'] != null && json['libraries'] is List) {
         await LogUtil.log('找到NeoForge libraries,开始解析...', level: 'INFO');
         for (var lib in json['libraries']) {
@@ -853,9 +870,8 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
       final relativePath = neoForgeLibrariesPath[i];
       final fullPath =
           '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
-      final file = File(fullPath);
-      if (!file.existsSync()) {
-        downloadTasks.add({'url': url, 'path': fullPath});
+      if (!await _checksums.validFile(fullPath, url)) {
+        downloadTasks.add(_checksums.task(url, fullPath));
       }
     }
     final totalLibraries = downloadTasks.length;
@@ -949,35 +965,17 @@ class NeoForgeModpackPageState extends State<NeoForgeModpackPage> {
   }
 
   // 文件下载
-  Future<void> _downloadFile(path, url) async {
-    bool success = false;
-    try {
-      await DownloadUtils.downloadFile(
-        url: url,
-        savePath: path,
-        onProgress: (progress) {
-          setState(() {
-            _progress = progress;
-          });
-        },
-        onSuccess: () {
-          success = true;
-        },
-        onError: (error) async {
-          await LogUtil.log('下载失败: $error, URL: $url', level: 'ERROR');
-        },
-      );
-      final file = File(path);
-      if (await file.exists()) {
-        success = true;
-      }
-      if (!success) {
-        throw Exception('下载失败: $url');
-      }
-    } catch (e) {
-      await LogUtil.log('下载异常: $e, URL: $url', level: 'ERROR');
-      throw Exception('下载出错: $e');
-    }
+  Future<void> _downloadFile(String path, String? url) async {
+    if (url == null || url.isEmpty) throw StateError('缺少下载地址: $path');
+    await DownloadUtils.downloadFile(
+      url: url,
+      savePath: path,
+      sha1Hash: _checksums.sha1For(url),
+      sha512Hash: _checksums.sha512For(url),
+      onProgress: (progress) {
+        if (mounted) setState(() => _progress = progress);
+      },
+    );
   }
 
   // 复制整合包内 overrides 内容

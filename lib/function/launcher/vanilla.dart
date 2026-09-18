@@ -1,9 +1,12 @@
 import 'dart:io';
+
 import 'package:fml/constants.dart';
-import 'package:fml/function/java/java_service.dart';
+import 'package:fml/function/java/java_launch_check.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'dart:convert';
 import 'dart:async';
+
 import 'package:fml/function/log.dart';
 import 'package:fml/function/launcher/login/microsoft_login.dart'
     as microsoft_login;
@@ -91,13 +94,14 @@ String _getLoginMode(String loginMode) {
 
 // 启动Vanilla
 Future<void> vanillaLauncher({
+  String? javaExecutable,
   ProgressCallback? onProgress,
   ErrorCallback? onError,
 }) async {
   onProgress?.call('正在准备启动');
   final prefs = await SharedPreferences.getInstance();
   // 游戏参数
-  final java = JavaService.javaSelectedPath;
+  final java = javaExecutable ?? configuredJavaExecutable(prefs);
   final selectedPath = prefs.getString('SelectedPath') ?? '';
   final gamePath = prefs.getString('Path_$selectedPath') ?? '';
   final game = prefs.getString('SelectedGame') ?? '';

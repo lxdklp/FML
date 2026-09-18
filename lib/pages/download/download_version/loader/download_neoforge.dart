@@ -1,3 +1,4 @@
+import 'package:fml/function/download_checksums.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -24,6 +25,7 @@ class DownloadNeoForgePage extends StatefulWidget {
 }
 
 class DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
+  final _checksums = DownloadChecksums();
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   double _progress = 0.0;
   bool _downloadJson = false;
@@ -140,6 +142,7 @@ class DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
       }
       final jsonString = await file.readAsString();
       final jsonData = jsonDecode(jsonString);
+      _checksums.addMetadata(jsonData, rewriteUrl: replaceWithMirror);
       // 提取assetIndex URL和ID
       if (jsonData['assetIndex'] != null) {
         // 解析 URL
@@ -196,6 +199,7 @@ class DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
       }
       final jsonString = await file.readAsString();
       final jsonData = jsonDecode(jsonString);
+      _checksums.addMetadata(jsonData, rewriteUrl: replaceWithMirror);
       _assetHash.clear();
       if (jsonData['objects'] == null) {
         throw Exception('资产索引JSON中缺少objects字段');
@@ -232,9 +236,9 @@ class DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
     List<Map<String, String>> downloadTasks = [];
     for (int i = 0; i < librariesURL.length; i++) {
       final fullPath = '$gamePath/libraries/${librariesPath[i]}';
-      if (File(fullPath).existsSync()) continue;
       final url = replaceWithMirror(librariesURL[i]);
-      downloadTasks.add({'url': url, 'path': fullPath});
+      if (await _checksums.validFile(fullPath, url)) continue;
+      downloadTasks.add(_checksums.task(url, fullPath));
     }
     if (downloadTasks.isEmpty) {
       await LogUtil.log('所有库文件已存在，无需下载', level: 'INFO');
@@ -267,9 +271,9 @@ class DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
       final prefix = hash.substring(0, 2);
       final relativePath = '$prefix/$hash';
       final fullPath = '$gamePath/assets/objects/$relativePath';
-      if (File(fullPath).existsSync()) continue;
+      if (await DownloadUtils.validFile(fullPath, sha1Hash: hash)) continue;
       final url = replaceWithMirror('https://resources.download.minecraft.net/$relativePath');
-      downloadTasks.add({'url': url, 'path': fullPath});
+      downloadTasks.add({'url': url, 'path': fullPath, 'sha1': hash});
     }
     if (downloadTasks.isEmpty) {
       await LogUtil.log('所有资源文件已存在，无需下载', level: 'INFO');
@@ -443,6 +447,7 @@ class DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
     if (_installerJson.isEmpty) return;
     try {
       final json = jsonDecode(_installerJson);
+      _checksums.addMetadata(json, rewriteUrl: replaceWithMirror);
       if (json['libraries'] != null && json['libraries'] is List) {
         await LogUtil.log('找到NeoForge libraries,开始解析...', level: 'INFO');
         for (var lib in json['libraries']) {
@@ -509,9 +514,9 @@ class DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
     for (int i = 0; i < neoForgeLibrariesURL.length; i++) {
       final fullPath = '$gamePath/libraries/${neoForgeLibrariesPath[i]}';
       // 跳过已存在的文件
-      if (File(fullPath).existsSync()) continue;
       final url = replaceWithMirror(neoForgeLibrariesURL[i]);
-      downloadTasks.add({'url': url, 'path': fullPath});
+      if (await _checksums.validFile(fullPath, url)) continue;
+      downloadTasks.add(_checksums.task(url, fullPath));
     }
     if (downloadTasks.isEmpty) {
       await LogUtil.log('所有NeoForge库文件已存在, 无需下载', level: 'INFO');
@@ -587,35 +592,17 @@ class DownloadNeoForgePageState extends State<DownloadNeoForgePage> {
   }
 
   // 文件下载
-  Future<void> _downloadFile(path, url) async {
-    bool success = false;
-    try {
-      await DownloadUtils.downloadFile(
-        url: url,
-        savePath: path,
-        onProgress: (progress) {
-          setState(() {
-            _progress = progress;
-          });
-        },
-        onSuccess: () {
-          success = true;
-        },
-        onError: (error) async {
-          await LogUtil.log('下载失败: $error, URL: $url', level: 'ERROR');
-        }
-      );
-      final file = File(path);
-      if (await file.exists()) {
-        success = true;
-      }
-      if (!success) {
-        throw Exception('下载失败: $url');
-      }
-    } catch (e) {
-      await LogUtil.log('下载异常: $e, URL: $url', level: 'ERROR');
-      throw Exception('下载出错: $e');
-    }
+  Future<void> _downloadFile(String path, String? url) async {
+    if (url == null || url.isEmpty) throw StateError('缺少下载地址: $path');
+    await DownloadUtils.downloadFile(
+      url: url,
+      savePath: path,
+      sha1Hash: _checksums.sha1For(url),
+      sha512Hash: _checksums.sha512For(url),
+      onProgress: (progress) {
+        if (mounted) setState(() => _progress = progress);
+      },
+    );
   }
 
   // 获取系统内存

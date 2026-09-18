@@ -23,7 +23,7 @@ class ModpackPageState extends State<ModpackPage> {
   List<dynamic> versionsList = [];
   List<dynamic> filteredVersionsList = [];
   Map<String, dynamic>? selectedVersion;
-  Set<String> availableLoaders = {'neoforge', 'fabric'};
+  Set<String> availableLoaders = {'neoforge', 'fabric', 'forge'};
   String? selectedLoader;
   Set<String> availableGameVersions = {};
   String? selectedGameVersion;
@@ -53,7 +53,8 @@ class ModpackPageState extends State<ModpackPage> {
           final versionLoaders = version['loaders'] as List?;
           if (versionLoaders == null) return false;
           return versionLoaders.contains('neoforge') ||
-              versionLoaders.contains('fabric');
+              versionLoaders.contains('fabric') ||
+              versionLoaders.contains('forge');
         }).toList();
         Set<String> gameVersions = {};
         for (var version in versions) {
@@ -76,7 +77,7 @@ class ModpackPageState extends State<ModpackPage> {
               level: 'INFO',
             );
           }
-          LogUtil.log('支持的加载器: neoforge, fabric', level: 'INFO');
+          LogUtil.log('支持的加载器: neoforge, fabric, forge', level: 'INFO');
           LogUtil.log(
             '支持的游戏版本: ${availableGameVersions.join(", ")}',
             level: 'INFO',
@@ -176,7 +177,7 @@ class ModpackPageState extends State<ModpackPage> {
               ),
             )
           : versionsList.isEmpty
-          ? const Center(child: Text('没有可用的 NeoForge 或 Fabric 版本'))
+          ? const Center(child: Text('没有可用的 Forge、NeoForge 或 Fabric 版本'))
           : Column(
               children: [
                 // 筛选器
@@ -233,6 +234,10 @@ class ModpackPageState extends State<ModpackPage> {
                                   const DropdownMenuItem(
                                     value: 'neoforge',
                                     child: Text('NeoForge'),
+                                  ),
+                                  const DropdownMenuItem(
+                                    value: 'forge',
+                                    child: Text('Forge'),
                                   ),
                                   const DropdownMenuItem(
                                     value: 'fabric',

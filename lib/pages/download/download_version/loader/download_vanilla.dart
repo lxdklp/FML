@@ -1,3 +1,4 @@
+import 'package:fml/function/download_checksums.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -26,6 +27,7 @@ class DownloadVanillaPage extends StatefulWidget {
 }
 
 class DownloadVanillaPageState extends State<DownloadVanillaPage> {
+  final _checksums = DownloadChecksums();
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   double _progress = 0.0;
   bool _downloadJson = false;
@@ -124,6 +126,7 @@ class DownloadVanillaPageState extends State<DownloadVanillaPage> {
       }
       final jsonString = await file.readAsString();
       final jsonData = jsonDecode(jsonString);
+      _checksums.addMetadata(jsonData, rewriteUrl: replaceWithMirror);
       // 提取assetIndex URL和ID
       if (jsonData['assetIndex'] != null) {
         // 解析 URL
@@ -183,6 +186,7 @@ class DownloadVanillaPageState extends State<DownloadVanillaPage> {
       }
       final jsonString = await file.readAsString();
       final jsonData = jsonDecode(jsonString);
+      _checksums.addMetadata(jsonData, rewriteUrl: replaceWithMirror);
       _assetHash.clear();
       if (jsonData['objects'] == null) {
         throw Exception('资产索引JSON中缺少objects字段');
@@ -221,9 +225,8 @@ class DownloadVanillaPageState extends State<DownloadVanillaPage> {
       final url = librariesURL[i];
       final relativePath = librariesPath[i];
       final fullPath = '$gamePath${Platform.pathSeparator}libraries${Platform.pathSeparator}$relativePath';
-      final file = File(fullPath);
-      if (!file.existsSync()) {
-        downloadTasks.add({'url': url, 'path': fullPath});
+      if (!await _checksums.validFile(fullPath, url)) {
+        downloadTasks.add(_checksums.task(url, fullPath));
       }
     }
     if (downloadTasks.isEmpty) {
@@ -266,10 +269,9 @@ class DownloadVanillaPageState extends State<DownloadVanillaPage> {
       if (!directory.existsSync()) {
         directory.createSync(recursive: true);
       }
-      final file = File(assetPath);
-      if (!file.existsSync()) {
+      if (!await DownloadUtils.validFile(assetPath, sha1Hash: hash)) {
         final url = 'https://bmclapi2.bangbang93.com/assets/$hashPrefix/$hash';
-        downloadTasks.add({'url': url, 'path': assetPath});
+        downloadTasks.add({'url': url, 'path': assetPath, 'sha1': hash});
       }
     }
     if (downloadTasks.isEmpty) {
@@ -410,35 +412,17 @@ class DownloadVanillaPageState extends State<DownloadVanillaPage> {
   }
 
   // 文件下载
-  Future<void> _downloadFile(path, url) async {
-    bool success = false;
-    try {
-      await DownloadUtils.downloadFile(
-        url: url,
-        savePath: path,
-        onProgress: (progress) {
-          setState(() {
-            _progress = progress;
-          });
-        },
-        onSuccess: () {
-          success = true;
-        },
-        onError: (error) async {
-          await LogUtil.log('下载失败: $error, URL: $url', level: 'ERROR');
-        }
-      );
-      final file = File(path);
-      if (await file.exists()) {
-        success = true;
-      }
-      if (!success) {
-        throw Exception('下载失败: $url');
-      }
-    } catch (e) {
-      await LogUtil.log('下载异常: $e, URL: $url', level: 'ERROR');
-      throw Exception('下载出错: $e');
-    }
+  Future<void> _downloadFile(String path, String? url) async {
+    if (url == null || url.isEmpty) throw StateError('缺少下载地址: $path');
+    await DownloadUtils.downloadFile(
+      url: url,
+      savePath: path,
+      sha1Hash: _checksums.sha1For(url),
+      sha512Hash: _checksums.sha512For(url),
+      onProgress: (progress) {
+        if (mounted) setState(() => _progress = progress);
+      },
+    );
   }
 
   // 获取系统内存

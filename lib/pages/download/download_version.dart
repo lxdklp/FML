@@ -1,11 +1,9 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:dio/dio.dart';
 import 'package:fml/constants.dart';
-import 'package:fml/function/dio_client.dart';
+import 'package:fml/function/minecraft_manifest.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/models/minecraft_version.dart';
 import 'package:intl/intl.dart';
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fml/pages/download/download_version/download_game.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -50,63 +48,7 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
   @override
   void initState() {
     super.initState();
-    _versionsFuture = _fetchAndParseVersionManifest();
-  }
-
-  ///
-  /// 获取版本清单并解析（BMCL API）
-  ///
-  Future<List<MinecraftVersion>> _fetchAndParseVersionManifest() async {
-    try {
-      final options = Options(responseType: ResponseType.plain);
-      LogUtil.log('开始请求版本清单', level: 'INFO');
-      final response = await DioClient().dio.get(
-        'https://bmclapi2.bangbang93.com/mc/game/version_manifest.json',
-        options: options,
-      );
-      if (response.statusCode == 200) {
-        dynamic responseData = response.data;
-        if (responseData is String) {
-          LogUtil.log("正在尝试将JSON String解析为JSON", level: 'INFO');
-          try {
-            responseData = jsonDecode(responseData);
-          } catch (e) {
-            LogUtil.log("JSON解析失败: $responseData\nerror: $e", level: 'ERROR');
-            throw FormatException('无效的JSON格式: $responseData');
-          }
-        }
-        if (responseData is! Map) {
-          LogUtil.log(
-            "响应数据格式不符合预期: 期望为包含'versions'字段的JSON对象, 实际为: ${responseData.runtimeType}",
-            level: 'ERROR',
-          );
-          throw const FormatException("响应数据格式不正确: 顶层JSON应为包含'versions'字段的对象");
-        }
-        final dynamic versionsField = (responseData)['versions'];
-        if (versionsField is! List) {
-          LogUtil.log(
-            "响应数据缺少'versions'字段或类型不正确: ${versionsField.runtimeType}",
-            level: 'ERROR',
-          );
-          throw const FormatException("响应数据格式不正确: 'versions'字段缺失或不是列表类型");
-        }
-        final List<dynamic> rawList = versionsField;
-        // 将JSON转换为Dart Model
-        final List<MinecraftVersion> versions = rawList
-            .map((json) => MinecraftVersion.fromJson(json))
-            .toList();
-        LogUtil.log('成功解析版本数据，共${versions.length}个版本', level: 'INFO');
-        return versions;
-      } else {
-        LogUtil.log(
-          '拉取版本时出错: ${response.statusMessage}, 状态码: ${response.statusCode}',
-        );
-        throw Exception('错误: ${response.statusMessage}');
-      }
-    } catch (e) {
-      LogUtil.log('拉取版本时出错, $e');
-      rethrow;
-    }
+    _versionsFuture = fetchMinecraftManifest();
   }
 
   // 打开URL
@@ -117,15 +59,13 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('发生错误: $e')));
     }
   }
 
@@ -143,35 +83,46 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
             // 错误处理
             if (snapshot.hasError || snapshot.data == null) {
               // 返回错误信息和重试按钮
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, fill: 1, size: 48),
-                  const SizedBox(height: kDefaultPadding),
-                  Text('Loading failed'),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: kDefaultPadding / 2,
-                      horizontal: kDefaultPadding * 2,
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(kDefaultPadding),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline, fill: 1, size: 48),
+                            const SizedBox(height: kDefaultPadding),
+                            const Text('版本列表加载失败'),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: kDefaultPadding / 2,
+                              ),
+                              child: Text(
+                                snapshot.error?.toString() ?? '没有可用的版本数据，请重试。',
+                                maxLines: 4,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => setState(() {
+                                _versionsFuture = fetchMinecraftManifest();
+                              }),
+                              child: const Text('重试'),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    child: Text(
-                      snapshot.error?.toString() ?? '数据为空',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                  // 重试按钮
-                  ElevatedButton(
-                    onPressed: () {
-                      if (!mounted) return;
-                      setState(() {
-                        LogUtil.log('正在尝试重新拉取版本');
-                        _versionsFuture = _fetchAndParseVersionManifest();
-                      });
-                    },
-                    child: const Text('重试'),
-                  ),
-                ],
+                  );
+                },
               );
             }
             // 数据加载成功，显示版本列表

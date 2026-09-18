@@ -1,3 +1,5 @@
+import 'package:fml/function/forge/forge_modpack.dart';
+import 'package:fml/pages/download/download_version/loader/download_forge.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -128,21 +130,30 @@ class DownloadInfoState extends State<DownloadInfo> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           if (_gameName == null || _gameName!.isEmpty) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('请输入游戏名称')));
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('请输入游戏名称')));
             return;
           }
           if (_versionList.contains(_gameName)) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('该游戏名称已存在，请换一个名称')));
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('该游戏名称已存在，请换一个名称')));
             return;
           }
           if (_downloadUrl == null || _downloadUrl!.isEmpty) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('下载地址获取失败')));
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('下载地址获取失败')));
+            return;
+          }
+          if ((widget.version['loaders'] as List? ?? []).contains('forge')) {
+            Navigator.of(context).push(
+              SlidePageRoute(
+                page: DownloadForgePage.modpack(
+                  name: _gameName!,
+                  url: _downloadUrl!,
+                  source: ForgePackSource.modrinth,
+                ),
+              ),
+            );
             return;
           }
           if (widget.version['loaders']?.join(", ") == 'fabric') {
