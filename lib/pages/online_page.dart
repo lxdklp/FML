@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/function/download.dart';
+import 'package:fml/function/github_proxy.dart';
 import 'package:fml/pages/online/owner.dart';
 import 'package:fml/pages/online/member.dart';
 
@@ -317,9 +318,9 @@ class OnlinePageState extends State<OnlinePage> {
       ).showSnackBar(SnackBar(content: Text('获取Github API失败: $e')));
       return;
     }
-    downloadUrl = 'https://edgeone.gh-proxy.org/$downloadUrl';
-    LogUtil.log('开始下载: $downloadUrl', level: 'INFO');
     final prefs = await SharedPreferences.getInstance();
+    downloadUrl = GithubProxy.downloadUrl(downloadUrl, prefs);
+    LogUtil.log('开始下载: $downloadUrl', level: 'INFO');
     final name = prefs.getString('SelectedPath') ?? '';
     final path = prefs.getString('Path_$name') ?? '';
     final Directory easytierDir = Directory(

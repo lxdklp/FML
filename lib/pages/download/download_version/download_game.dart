@@ -17,9 +17,7 @@ import 'package:fml/pages/download/download_version/loader/download_neoforge.dar
 
 class DownloadGamePage extends StatefulWidget {
   const DownloadGamePage({super.key, required this.version});
-
   final MinecraftVersion version;
-
   @override
   DownloadGamePageState createState() => DownloadGamePageState();
 }
@@ -27,17 +25,14 @@ class DownloadGamePage extends StatefulWidget {
 class DownloadGamePageState extends State<DownloadGamePage> {
   String _versionFolderName = '';
   late final TextEditingController _versionFolderController;
-
   final _formKey = GlobalKey<FormState>();
   // 用于跟踪Form是否有效
   bool _isFormValid = false;
-
   String _selectedLoader = 'Vanilla';
   List<String> _versionList = [];
   List<String> _fabricVersionList = [];
   final List<bool> _fabricStableList = [];
   List<dynamic> _fabricJson = [];
-
   bool _showUnstable = false;
   String _selectedFabricVersion = '';
   Map<String, dynamic>? _selectedFabricLoader;
@@ -56,14 +51,12 @@ class DownloadGamePageState extends State<DownloadGamePage> {
     _versionFolderController = TextEditingController();
     _versionFolderController.text = widget.version.id;
     _versionFolderName = widget.version.id;
-
     //检查一次初始文本是否有效
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
         _isFormValid = _formKey.currentState?.validate() ?? false;
       });
     });
-
     _loadVersionList();
     _loadFabricList();
     _loadNeoForgeList();
@@ -80,7 +73,6 @@ class DownloadGamePageState extends State<DownloadGamePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('安装 ${widget.version.id}')),
-
       body: Padding(
         padding: const EdgeInsets.all(kDefaultPadding),
         child: ListView(
@@ -92,7 +84,6 @@ class DownloadGamePageState extends State<DownloadGamePage> {
               ),
               child: Form(
                 key: _formKey,
-
                 child: TextFormField(
                   autofocus: true,
                   controller: _versionFolderController,
@@ -100,39 +91,30 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                     labelText: '版本名称',
                     border: const OutlineInputBorder(),
                   ),
-
                   // 实时验证输入内容
                   autovalidateMode: AutovalidateMode.onUserInteraction,
-
                   onChanged: (value) => setState(() {
                     _versionFolderName = value;
-
                     // 更新状态变量
                     _isFormValid = _formKey.currentState!.validate();
                   }),
-
                   // 检测文本输入是否有效
                   validator: (String? value) {
-                    // TODO:添加更多检测，包装一个检查路径的Util
-
                     // 判断是否为空
                     if (value == null || value.isEmpty) {
                       return '文件夹名称不能为空';
                     }
-
                     // 判断是否已经存在
                     final String folderName = value.trim();
                     if (_versionList.contains(folderName)) {
                       return "已存在名为 '$folderName' 的文件夹！";
                     }
-
                     // 所有检查通过
                     return null;
                   },
                 ),
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.symmetric(
                 vertical: kDefaultPadding / 2,
@@ -149,7 +131,6 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                     underline: const SizedBox(), // 去除底部下划线
                     value: _selectedLoader,
                     hint: const Text('选择模组加载器'),
-
                     items: modLoadersDropdownMenuItems,
                     onChanged: (value) {
                       setState(() {
@@ -160,7 +141,6 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                 ],
               ),
             ),
-
             if (_selectedLoader == 'Forge') ...[
               if (_forgeLoading)
                 const Card(
@@ -223,14 +203,12 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                   });
                 },
               ),
-
               if (_showUnstable)
                 // 分割线
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: kDefaultPadding / 2),
                   child: Divider(height: 1),
                 ),
-
               ..._fabricVersionList
                   .where(
                     (version) =>
@@ -275,14 +253,12 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                   });
                 },
               ),
-
               if (_showNeoForgeUnstable)
                 // 分割线
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: kDefaultPadding / 2),
                   child: Divider(height: 1),
                 ),
-
               ..._neoForgeStableVersions.map(
                 (version) => Card(
                   child: ListTile(
@@ -321,14 +297,12 @@ class DownloadGamePageState extends State<DownloadGamePage> {
           ],
         ),
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           // 表单检测无效时直接禁用点击
           if (!_isFormValid) {
             return;
           }
-
           switch (_selectedLoader) {
             case "Vanilla":
               Navigator.push(
@@ -342,7 +316,6 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                 ),
               );
               break;
-
             case "Fabric":
               if (_selectedFabricVersion.isEmpty) {
                 ScaffoldMessenger.of(
@@ -363,7 +336,6 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                 ),
               );
               break;
-
             case "Forge":
               if (_selectedForgeBuild == null) {
                 ScaffoldMessenger.of(
@@ -383,7 +355,6 @@ class DownloadGamePageState extends State<DownloadGamePage> {
                 ),
               );
               break;
-
             case "NeoForge":
               if (_selectedNeoForgeVersion.isEmpty) {
                 ScaffoldMessenger.of(
@@ -458,19 +429,15 @@ class DownloadGamePageState extends State<DownloadGamePage> {
     final prefs = await SharedPreferences.getInstance();
     final selectedPath = prefs.getString('SelectedPath') ?? '';
     final gameList = prefs.getStringList('Game_$selectedPath') ?? [];
-
     if (!mounted) return;
-
     setState(() {
       _versionList = gameList;
       _isFormValid = _formKey.currentState?.validate() ?? false;
     });
   }
-
   // 读取Fabric版本列表
   Future<void> _loadFabricList() async {
     LogUtil.log('加载${widget.version.id} Fabric版本列表', level: 'INFO');
-
     try {
       // 请求BMCLAPI Fabric
       final response = await DioClient().dio.get(
@@ -486,9 +453,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
             _fabricStableList.add(isStable);
           }
         }
-
         if (!mounted) return;
-
         setState(() {
           _fabricVersionList = versions;
           _fabricJson = loaderData;
@@ -502,7 +467,6 @@ class DownloadGamePageState extends State<DownloadGamePage> {
   // 加载NeoForge
   Future<void> _loadNeoForgeList() async {
     LogUtil.log('加载${widget.version.id} NeoForge版本列表', level: 'INFO');
-
     try {
       final response = await DioClient().dio.get(
         'https://bmclapi2.bangbang93.com/maven/net/neoforged/neoforge/maven-metadata.xml',
@@ -534,7 +498,6 @@ class DownloadGamePageState extends State<DownloadGamePage> {
         } catch (e) {
           LogUtil.log('版本号解析错误: $e', level: 'ERROR');
         }
-
         // 过滤版本
         if (mcVersionPrefix.isNotEmpty) {
           stableVersions = stableVersions
@@ -547,9 +510,7 @@ class DownloadGamePageState extends State<DownloadGamePage> {
         // 按版本号排序
         stableVersions.sort((a, b) => _compareVersions(b, a));
         betaVersions.sort((a, b) => _compareVersions(b, a));
-
         if (!mounted) return;
-
         setState(() {
           _neoForgeStableVersions = stableVersions;
           _neoforgeBetaVersions = betaVersions;

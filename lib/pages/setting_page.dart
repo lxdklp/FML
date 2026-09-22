@@ -3,13 +3,13 @@ import 'package:fml/constants.dart';
 import 'package:fml/models/page/navigation_drawer_item.dart';
 import 'package:fml/pages/setting/theme.dart';
 import 'package:fml/pages/setting/java.dart';
+import 'package:fml/pages/setting/proxy.dart';
 import 'package:fml/pages/setting/translate.dart';
 import 'package:fml/pages/setting/log_viewer.dart';
 import 'package:fml/pages/setting/about.dart';
 
 class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
-
   @override
   SettingPageState createState() => SettingPageState();
 }
@@ -30,6 +30,13 @@ class SettingPageState extends State<SettingPage> {
       destination: NavigationDrawerDestination(
         icon: Icon(Icons.code),
         label: Text('Java管理'),
+      ),
+    ),
+    NavigationDrawerItem(
+      page: ProxyPage(),
+      destination: NavigationDrawerDestination(
+        icon: Icon(Icons.network_ping),
+        label: Text('GitHub 加速'),
       ),
     ),
     NavigationDrawerItem(
@@ -58,7 +65,6 @@ class SettingPageState extends State<SettingPage> {
   @override
   Widget build(BuildContext context) {
     ThemeData theme = Theme.of(context);
-
     return Material(
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -68,10 +74,8 @@ class SettingPageState extends State<SettingPage> {
             150.0,
             320.0,
           );
-
           return Row(
             mainAxisAlignment: MainAxisAlignment.start,
-
             children: [
               Container(
                 decoration: BoxDecoration(
@@ -79,7 +83,6 @@ class SettingPageState extends State<SettingPage> {
                     left: BorderSide(color: theme.dividerColor.withAlpha(100)),
                   ),
                 ),
-
                 // 用SizedBox包裹NavigationDrawer避免宽度过大
                 child: SizedBox(
                   width: sidebarWidth,
@@ -89,12 +92,10 @@ class SettingPageState extends State<SettingPage> {
                       if (_selectedIndex == index) return;
                       // 移除当前上下文中的所有焦点，避免视觉残留
                       FocusScope.of(context).unfocus();
-
                       setState(() {
                         _selectedIndex = index;
                       });
                     },
-
                     children: [
                       Padding(
                         // 将文字与Destination对齐
@@ -109,14 +110,12 @@ class SettingPageState extends State<SettingPage> {
                           style: theme.textTheme.headlineMedium,
                         ),
                       ),
-
                       // Destinations
                       for (var item in _settingPageItems) item.destination,
                     ],
                   ),
                 ),
               ),
-
               // 显示当前选择的页面
               Expanded(
                 child: IndexedStack(
