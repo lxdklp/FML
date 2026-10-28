@@ -4,6 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:system_info2/system_info2.dart';
+import 'package:fml/function/slide_page_route.dart';
+import 'package:fml/pages/home/management/patchpack.dart';
+import 'package:path/path.dart' as p;
 
 class GameSettingsTab extends StatefulWidget {
   final String gamePath;
@@ -320,6 +323,27 @@ class GameSettingsTabState extends State<GameSettingsTab> {
                       subtitle: Text(widget.gamePath),
                       trailing: const Icon(Icons.open_in_new),
                       onTap: () => _launchURL(widget.gamePath),
+                    ),
+                  ),
+                  Card(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: ListTile(
+                      leading: const Icon(Icons.install_desktop),
+                      title: const Text('安装补丁包'),
+                      subtitle: const Text('安装本地汉化或其他补丁包'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(
+                          page: PatchPackPage(
+                            gamePath: widget.gamePath,
+                            gameName: p.basename(widget.gamePath),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   if (widget.hasScreenshots)

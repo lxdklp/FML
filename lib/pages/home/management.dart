@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+import 'package:path/path.dart' as p;
 import 'package:fml/pages/home/management/game_settings.dart';
 import 'package:fml/pages/home/management/mod_management.dart';
 import 'package:fml/pages/home/management/resourcepack_management.dart';
@@ -56,14 +57,7 @@ class ManagementPageState extends State<ManagementPage>
     final path = prefs.getString('SelectedPath') ?? '';
     final game = prefs.getString('SelectedGame') ?? '';
     final gamePath = prefs.getString('Path_$path') ?? '';
-    final fullPath =
-        '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game';
-    String finalGamePath;
-    if (Platform.isWindows) {
-      finalGamePath = fullPath.substring(0, 2) + fullPath.substring(3);
-    } else {
-      finalGamePath = fullPath;
-    }
+    final finalGamePath = p.join(gamePath, 'versions', game);
     setState(() {
       _gamePath = finalGamePath;
     });

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:archive/archive.dart';
 import 'package:dio/dio.dart';
@@ -101,6 +102,14 @@ class ForgeModpackInstaller {
         }
       }
     });
+    await File(p.join(installer.instancePath, 'fml-modpack.json')).writeAsString(
+      jsonEncode({
+        'name': manifest['name'],
+        'version': manifest[
+          source == ForgePackSource.modrinth ? 'versionId' : 'version'
+        ],
+      }),
+    );
   }
 
   String _packPath(String path) {
@@ -110,6 +119,7 @@ class ForgeModpackInstaller {
       '${installer.name}.jar',
       'forge-installer.jar',
       'forge-modpack.zip',
+      'fml-modpack.json',
     ];
     final result = safeChild(installer.instancePath, path);
     final relative = p.relative(result, from: installer.instancePath);

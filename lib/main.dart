@@ -17,6 +17,7 @@ import 'package:fml/constants.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download_page.dart';
 import 'package:fml/pages/home_page.dart';
+import 'package:fml/pages/home/management/patchpack.dart';
 import 'package:fml/pages/friends_page.dart';
 import 'package:fml/pages/online_page.dart';
 import 'package:fml/pages/online/owner.dart';
@@ -338,6 +339,11 @@ class MainStartPageState extends State<MainStartPage> {
           ),
         );
       },
+    );
+
+    mainContent = PatchPackDropTarget(
+      onDrop: (path) => openPatchPack(context, archivePath: path),
+      child: mainContent,
     );
 
     // macOS 菜单栏
