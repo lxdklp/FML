@@ -1,3 +1,5 @@
+import 'dart:ui' show FontWeight;
+
 ///
 /// 应用常量
 ///
@@ -23,10 +25,10 @@ late final String gAppModrinthUserAgent;
 /// 字体字重
 ///
 class AppFontWeights {
-  static const double bodyWght = 520; // 正文
-  static const double labelWght = 520; // 标签/按钮
-  static const double titleWght = 700; // 标题
-  static const double headlineWght = 850; // 更大标题
+  static const FontWeight body = FontWeight.w500; // 正文
+  static const FontWeight label = FontWeight.w500; // 标签/按钮
+  static const FontWeight title = FontWeight.w700; // 标题
+  static const FontWeight headline = FontWeight.w800; // 更大标题
 }
 
 ///

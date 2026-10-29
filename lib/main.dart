@@ -159,44 +159,49 @@ class FMLBaseAppState extends State<FMLBaseApp> {
     await prefs.setInt('themeColor', colorValue);
   }
 
-  // 可变字体权重
-  TextTheme _withVariableWeights(TextTheme base) {
-    TextStyle setW(TextStyle? s, double w) => (s ?? const TextStyle()).copyWith(
-      fontFamily: 'NotoSans',
-      fontVariations: [FontVariation('wght', w)],
-    );
+  // 使用标准字重，让系统字体匹配可用的字重。
+  TextTheme _withFontWeights(TextTheme base, String? fontFamily) {
+    TextStyle setW(TextStyle? s, FontWeight weight) => (s ?? const TextStyle())
+        .copyWith(fontFamily: fontFamily, fontWeight: weight);
     return base.copyWith(
-      bodySmall: setW(base.bodySmall, AppFontWeights.bodyWght),
-      bodyMedium: setW(base.bodyMedium, AppFontWeights.bodyWght),
-      bodyLarge: setW(base.bodyLarge, AppFontWeights.bodyWght),
-      labelSmall: setW(base.labelSmall, AppFontWeights.labelWght),
-      labelMedium: setW(base.labelMedium, AppFontWeights.labelWght),
-      labelLarge: setW(base.labelLarge, AppFontWeights.labelWght),
-      titleSmall: setW(base.titleSmall, AppFontWeights.titleWght),
-      titleMedium: setW(base.titleMedium, AppFontWeights.titleWght),
-      titleLarge: setW(base.titleLarge, AppFontWeights.titleWght),
-      headlineSmall: setW(base.headlineSmall, AppFontWeights.headlineWght),
-      headlineMedium: setW(base.headlineMedium, AppFontWeights.headlineWght),
-      headlineLarge: setW(base.headlineLarge, AppFontWeights.headlineWght),
-      displaySmall: setW(base.displaySmall, AppFontWeights.headlineWght),
-      displayMedium: setW(base.displayMedium, AppFontWeights.headlineWght),
-      displayLarge: setW(base.displayLarge, AppFontWeights.headlineWght),
+      bodySmall: setW(base.bodySmall, AppFontWeights.body),
+      bodyMedium: setW(base.bodyMedium, AppFontWeights.body),
+      bodyLarge: setW(base.bodyLarge, AppFontWeights.body),
+      labelSmall: setW(base.labelSmall, AppFontWeights.label),
+      labelMedium: setW(base.labelMedium, AppFontWeights.label),
+      labelLarge: setW(base.labelLarge, AppFontWeights.label),
+      titleSmall: setW(base.titleSmall, AppFontWeights.title),
+      titleMedium: setW(base.titleMedium, AppFontWeights.title),
+      titleLarge: setW(base.titleLarge, AppFontWeights.title),
+      headlineSmall: setW(base.headlineSmall, AppFontWeights.headline),
+      headlineMedium: setW(base.headlineMedium, AppFontWeights.headline),
+      headlineLarge: setW(base.headlineLarge, AppFontWeights.headline),
+      displaySmall: setW(base.displaySmall, AppFontWeights.headline),
+      displayMedium: setW(base.displayMedium, AppFontWeights.headline),
+      displayLarge: setW(base.displayLarge, AppFontWeights.headline),
     );
   }
 
   ThemeData _buildTheme(Brightness brightness) {
+    final fontFamily = switch (defaultTargetPlatform) {
+      TargetPlatform.windows => 'Microsoft YaHei',  // Windows 微软雅黑
+      TargetPlatform.macOS => 'PingFang SC',        // macOS 苹方
+      _ => null,                                    // Linux 不指定字体
+    };
     final scheme = ColorScheme.fromSeed(
       seedColor: _themeColor,
       brightness: brightness,
     );
-    final baseTypography = Typography.material2021();
+    final baseTypography = Typography.material2021(
+      platform: defaultTargetPlatform,
+    );
     final raw = brightness == Brightness.dark
         ? baseTypography.white
         : baseTypography.black;
-    final textTheme = _withVariableWeights(raw);
+    final textTheme = _withFontWeights(raw, fontFamily);
     return ThemeData(
       useMaterial3: true,
-      fontFamily: 'NotoSans',
+      fontFamily: fontFamily,
       colorScheme: scheme,
       textTheme: textTheme,
       appBarTheme: AppBarTheme(

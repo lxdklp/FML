@@ -45,9 +45,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/img/icon/
+    - assets/img/icon/logo_transparent.png
     - assets/img/logo/flutter.png
-  fonts:
-    - family: NotoSans
-      fonts:
-        - asset: assets/fonts/NotoSansCJKsc-VF.ttf

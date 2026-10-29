@@ -169,16 +169,6 @@ class AboutPageState extends State<AboutPage> {
                 ),
 
                 ListTile(
-                  title: const Text('Noto CJK fonts'),
-                  subtitle: const Text(
-                    '软件字体\nhttps://github.com/notofonts/noto-cjk',
-                  ),
-                  trailing: const Icon(Icons.open_in_new),
-                  onTap: () =>
-                      _launchURL('https://github.com/notofonts/noto-cjk'),
-                ),
-
-                ListTile(
                   title: const Text('GNU General Public License Version 3'),
                   subtitle: const Text(
                     '开源协议\nhttps://www.gnu.org/licenses/gpl-3.0.html',
