@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/function/dio_client.dart';
+import 'package:fml/function/resource_translation.dart';
 import 'package:fml/constants.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download/modrinth/type/mod.dart';
@@ -29,8 +30,11 @@ class InfoPageState extends State<InfoPage> {
   String? error;
   String body = '';
   int bodyTranslated = 0;
+  bool _isTranslating = false;
+  CancelToken? _translationCancelToken;
   bool _autoTranslate = true;
   bool _enableGoogleTranslate = true;
+  bool _googleTranslateDirect = false;
   String _googleTranslateClient = 'at';
 
   // 项目类型映射
@@ -44,8 +48,15 @@ class InfoPageState extends State<InfoPage> {
   @override
   void initState() {
     super.initState();
-    _fetchProjectDetails();
-    _getTranslateConfig();
+    _getTranslateConfig().then((_) {
+      if (mounted) _fetchProjectDetails();
+    });
+  }
+
+  @override
+  void dispose() {
+    _translationCancelToken?.cancel();
+    super.dispose();
   }
 
   // 获取翻译设置
@@ -54,9 +65,12 @@ class InfoPageState extends State<InfoPage> {
     bool autoTranslate = prefs.getBool('autoTranslate') ?? true;
     bool enableGoogleTranslate = prefs.getBool('enableGoogleTranslate') ?? true;
     int googleTranslateClient = prefs.getInt('googleTranslateClient') ?? 0;
+    final googleTranslateDirect = prefs.getBool('googleTranslateDirect') ?? false;
+    if (!mounted) return;
     setState(() {
       _autoTranslate = autoTranslate;
       _enableGoogleTranslate = enableGoogleTranslate;
+      _googleTranslateDirect = googleTranslateDirect;
       if (googleTranslateClient == 0) {
         _googleTranslateClient = 'at';
       } else if (googleTranslateClient == 1) {
@@ -182,6 +196,7 @@ class InfoPageState extends State<InfoPage> {
 
   // 详细信息翻译
   Future<void> _getTranslatedBody() async {
+    if (isLoading || _isTranslating) return;
     final originalBody = projectDetails['body'] ?? '';
     if (bodyTranslated == 1) {
       setState(() {
@@ -190,34 +205,41 @@ class InfoPageState extends State<InfoPage> {
       });
       return;
     }
-    final translated = await DioClient().dio.post(
-      'https://translate.lxdklp.top/translate_a/single',
-      data: {
-        'client': _googleTranslateClient,
-        'sl': 'auto',
-        'tl': 'zh-CN',
-        'dt': 't',
-        'q': originalBody,
-      },
-      options: Options(
-        contentType: Headers.formUrlEncodedContentType,
-        headers: {'User-Agent': gAppModrinthUserAgent},
-        validateStatus: (status) => status != null,
-      ),
-    );
-    LogUtil.log('详细信息翻译响应状态: ${translated.statusCode}, 状态代码: ${translated.data['code'] ?? -1}', level: 'INFO');
-    if (translated.statusCode == 200 && translated.data is Map<String, dynamic> && translated.data['code'] == 0) {
-      final transData = translated.data as Map<String, dynamic>;
-      String translatedBody = transData['text']?.toString() ?? '';
-      // 尽力修复被 Google 翻译破坏的 Markdown 格式 (´_ゝ`)
-      translatedBody = translatedBody.replaceAllMapped(
-        RegExp(r'\[\s*(.*?)\s*\]\s*\(\s*(.*?)\s*\)'),
-        (match) => '[${match[1]}](${match[2]})'
+    if (originalBody.toString().trim().isEmpty) return;
+    setState(() => _isTranslating = true);
+    final cancelToken = CancelToken();
+    _translationCancelToken = cancelToken;
+    try {
+      final text = await translateResourceDetails(
+        dio: DioClient().dio,
+        text: originalBody.toString(),
+        client: _googleTranslateClient,
+        userAgent: gAppModrinthUserAgent,
+        cancelToken: cancelToken,
+        direct: _googleTranslateDirect,
       );
+      // 尽力修复被 Google 翻译破坏的 Markdown 格式 (´_ゝ`)
+      final translatedBody = text.replaceAllMapped(
+        RegExp(r'\[\s*(.*?)\s*\]\s*\(\s*(.*?)\s*\)'),
+        (match) => '[${match[1]}](${match[2]})',
+      );
+      if (!mounted) return;
       setState(() {
         body = translatedBody;
         bodyTranslated = 1;
       });
+    } catch (e) {
+      if (e is DioException && CancelToken.isCancel(e)) return;
+      final message = e is ResourceTranslationException
+          ? e.message
+          : '翻译失败，请稍后重试';
+      LogUtil.log('详细信息翻译失败: $message', level: 'ERROR');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('详细信息翻译失败：$message')));
+    } finally {
+      _translationCancelToken = null;
+      if (mounted) setState(() => _isTranslating = false);
     }
   }
 
@@ -561,10 +583,21 @@ class InfoPageState extends State<InfoPage> {
           if (_enableGoogleTranslate) ... [
             FloatingActionButton(
               heroTag: 'translate',
-              onPressed: () async {
-                _getTranslatedBody();
-              },
-              child: const Icon(Icons.translate),
+              tooltip: _isTranslating
+                  ? '正在翻译'
+                  : bodyTranslated == 1
+                  ? '显示原文'
+                  : '翻译详细信息',
+              onPressed: isLoading || _isTranslating || body.isEmpty
+                  ? null
+                  : _getTranslatedBody,
+              child: _isTranslating
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.translate),
             ),
           ],
           const SizedBox(height: 16),

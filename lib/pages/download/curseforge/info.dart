@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:fml/function/dio_client.dart';
+import 'package:fml/function/resource_translation.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:html/parser.dart' as html_parser;
@@ -34,8 +35,11 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
   String projectDocument = '';
   String originalProjectDocument = '';
   int projectDocumentTranslated = 0;
+  bool _isTranslating = false;
+  CancelToken? _translationCancelToken;
   bool _autoTranslate = true;
   bool _enableGoogleTranslate = true;
+  bool _googleTranslateDirect = false;
   String _googleTranslateClient = 'at';
 
   // 项目类型映射
@@ -49,8 +53,15 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
   @override
   void initState() {
     super.initState();
-    _fetchProjectDetails();
-    _getTranslateConfig();
+    _getTranslateConfig().then((_) {
+      if (mounted) _fetchProjectDetails();
+    });
+  }
+
+  @override
+  void dispose() {
+    _translationCancelToken?.cancel();
+    super.dispose();
   }
 
   // 获取翻译设置
@@ -59,9 +70,12 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
     bool autoTranslate = prefs.getBool('autoTranslate') ?? true;
     bool enableGoogleTranslate = prefs.getBool('enableGoogleTranslate') ?? true;
     int googleTranslateClient = prefs.getInt('googleTranslateClient') ?? 0;
+    final googleTranslateDirect = prefs.getBool('googleTranslateDirect') ?? false;
+    if (!mounted) return;
     setState(() {
       _autoTranslate = autoTranslate;
       _enableGoogleTranslate = enableGoogleTranslate;
+      _googleTranslateDirect = googleTranslateDirect;
       if (googleTranslateClient == 0) {
         _googleTranslateClient = 'at';
       } else if (googleTranslateClient == 1) {
@@ -195,6 +209,7 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
 
   // 详细信息翻译
   Future<void> _getTranslatedBody() async {
+    if (isLoading || _isTranslating) return;
     if (projectDocumentTranslated == 1) {
       setState(() {
         projectDocument = originalProjectDocument;
@@ -202,29 +217,36 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
       });
       return;
     }
-    final translated = await DioClient().dio.post(
-      'https://translate.lxdklp.top/translate_a/single',
-      data: {
-        'client': _googleTranslateClient,
-        'sl': 'auto',
-        'tl': 'zh-CN',
-        'dt': 't',
-        'q': originalProjectDocument,
-      },
-      options: Options(
-        contentType: Headers.formUrlEncodedContentType,
-        headers: {'User-Agent': gAppModrinthUserAgent},
-        validateStatus: (status) => status != null,
-      ),
-    );
-    LogUtil.log('详细信息翻译响应状态: ${translated.statusCode}, 状态代码: ${translated.data['code'] ?? -1}', level: 'INFO');
-    if (translated.statusCode == 200 && translated.data is Map<String, dynamic> && translated.data['code'] == 0) {
-      final transData = translated.data as Map<String, dynamic>;
-      String translatedBody = transData['text']?.toString() ?? '';
+    if (originalProjectDocument.trim().isEmpty) return;
+    setState(() => _isTranslating = true);
+    final cancelToken = CancelToken();
+    _translationCancelToken = cancelToken;
+    try {
+      final translatedBody = await translateResourceDetails(
+        dio: DioClient().dio,
+        text: originalProjectDocument,
+        client: _googleTranslateClient,
+        userAgent: gAppModrinthUserAgent,
+        cancelToken: cancelToken,
+        direct: _googleTranslateDirect,
+      );
+      if (!mounted) return;
       setState(() {
         projectDocument = translatedBody;
         projectDocumentTranslated = 1;
       });
+    } catch (e) {
+      if (e is DioException && CancelToken.isCancel(e)) return;
+      final message = e is ResourceTranslationException
+          ? e.message
+          : '翻译失败，请稍后重试';
+      LogUtil.log('详细信息翻译失败: $message', level: 'ERROR');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('详细信息翻译失败：$message')));
+    } finally {
+      _translationCancelToken = null;
+      if (mounted) setState(() => _isTranslating = false);
     }
   }
 
@@ -569,10 +591,21 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
           if (_enableGoogleTranslate) ... [
             FloatingActionButton(
               heroTag: 'translate',
-              onPressed: () async {
-                _getTranslatedBody();
-              },
-              child: const Icon(Icons.translate),
+              tooltip: _isTranslating
+                  ? '正在翻译'
+                  : projectDocumentTranslated == 1
+                  ? '显示原文'
+                  : '翻译详细信息',
+              onPressed: isLoading || _isTranslating || projectDocument.isEmpty
+                  ? null
+                  : _getTranslatedBody,
+              child: _isTranslating
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.translate),
             ),
           ],
           const SizedBox(height: 16),
