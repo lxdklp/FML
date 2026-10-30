@@ -13,7 +13,7 @@ on:
         type: boolean
 
 env:
-    FLUTTER_VERSION: '3.47.4'
+    FLUTTER_VERSION: '3.47.9'
 
 jobs:
     build-windows:
@@ -31,14 +31,7 @@ jobs:
             - name: 安装依赖
               run: flutter pub get
             - name: 构建 Windows 版本
-              run: flutter build windows --release --split-debug-info=build/symbols/windows-x64
-            - name: 保存 Windows Dart 调试符号
-              uses: actions/upload-artifact@v7
-              with:
-                name: ${{ github.job }}-dart-symbols-${{ github.sha }}-${{ github.run_attempt }}
-                path: build/symbols/windows-x64/
-                if-no-files-found: error
-                retention-days: 90
+              run: flutter build windows --release
             - name: 打包 Windows 构建产物
               shell: pwsh
               run: |
@@ -125,14 +118,7 @@ jobs:
             - name: 安装依赖
               run: flutter pub get
             - name: 构建 Linux (x64) 版本
-              run: flutter build linux --release --split-debug-info=build/symbols/linux-x64
-            - name: 保存 Linux (x64) Dart 调试符号
-              uses: actions/upload-artifact@v7
-              with:
-                name: ${{ github.job }}-dart-symbols-${{ github.sha }}-${{ github.run_attempt }}
-                path: build/symbols/linux-x64/
-                if-no-files-found: error
-                retention-days: 90
+              run: flutter build linux --release
             - name: 安装打包工具
               run: |
                 sudo apt-get update
@@ -206,14 +192,7 @@ jobs:
             - name: 安装依赖
               run: flutter pub get
             - name: 构建 Linux (arm64) 版本
-              run: flutter build linux --release --split-debug-info=build/symbols/linux-arm64
-            - name: 保存 Linux (arm64) Dart 调试符号
-              uses: actions/upload-artifact@v7
-              with:
-                name: ${{ github.job }}-dart-symbols-${{ github.sha }}-${{ github.run_attempt }}
-                path: build/symbols/linux-arm64/
-                if-no-files-found: error
-                retention-days: 90
+              run: flutter build linux --release
             - name: 安装打包工具
               run: |
                 sudo apt-get update
@@ -283,14 +262,7 @@ jobs:
             - name: 安装依赖
               run: flutter pub get
             - name: 构建 macOS (universal) 版本
-              run: flutter build macos --release --split-debug-info=build/symbols/macos-universal
-            - name: 保存 macOS (universal) Dart 调试符号
-              uses: actions/upload-artifact@v7
-              with:
-                name: ${{ github.job }}-dart-symbols-${{ github.sha }}-${{ github.run_attempt }}
-                path: build/symbols/macos-universal/
-                if-no-files-found: error
-                retention-days: 90
+              run: flutter build macos --release
             - name: 创建 dmg 镜像
               run: |
                 set -e
@@ -352,14 +324,7 @@ jobs:
             - name: 安装依赖
               run: flutter pub get
             - name: 构建 macOS (arm64) 版本
-              run: flutter build macos --release --split-debug-info=build/symbols/macos-arm64
-            - name: 保存 macOS (arm64) Dart 调试符号
-              uses: actions/upload-artifact@v7
-              with:
-                name: ${{ github.job }}-dart-symbols-${{ github.sha }}-${{ github.run_attempt }}
-                path: build/symbols/macos-arm64/
-                if-no-files-found: error
-                retention-days: 90
+              run: flutter build macos --release
             - name: 创建 dmg 镜像
               run: |
                 set -e
@@ -414,7 +379,6 @@ jobs:
             - name: 下载所有构建产物
               uses: actions/download-artifact@v8
               with:
-                pattern: '*-release'
                 path: artifacts
             - name: 创建 GitHub Release
               uses: softprops/action-gh-release@v3
