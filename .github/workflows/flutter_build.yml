@@ -17,17 +17,43 @@ env:
 
 jobs:
     build-windows:
-        name: 构建 Windows
-        runs-on: windows-latest
+        name: 构建 Windows (${{ matrix.arch }})
+        runs-on: ${{ matrix.runner }}
+        env:
+            INNO_SETUP_VERSION: '7.1.1'
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - arch: x64
+                      runner: windows-latest
+                      installer_arch: x64compatible
+                    - arch: arm64
+                      runner: windows-11-arm
+                      installer_arch: arm64
+        defaults:
+            run:
+                shell: pwsh
         steps:
             - name: 签出代码
               uses: actions/checkout@v6
-            - name: 配置 Flutter
+            - name: 配置 Flutter (x64)
+              if: matrix.arch == 'x64'
               uses: subosito/flutter-action@v2
               with:
                 flutter-version: ${{ env.FLUTTER_VERSION }}
                 channel: 'stable'
                 cache: true
+            - name: 从官方仓库配置 Flutter (arm64)
+              if: matrix.arch == 'arm64'
+              run: |
+                $flutterRoot = Join-Path $env:RUNNER_TEMP 'flutter'
+                git clone --depth 1 --branch $env:FLUTTER_VERSION https://github.com/flutter/flutter.git $flutterRoot
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+                "$flutterRoot\bin" >> $env:GITHUB_PATH
+                "FLUTTER_ROOT=$flutterRoot" >> $env:GITHUB_ENV
+                & "$flutterRoot\bin\flutter.bat" --version
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             - name: 安装依赖
               run: flutter pub get
             - name: 构建 Windows 版本
@@ -38,27 +64,32 @@ jobs:
                 $VERSION = (Select-String -Path pubspec.yaml -Pattern '^version:' | ForEach-Object { $_.Line -replace 'version:\s*', '' -replace '\+.*', '' }).Trim()
                 Write-Host "VERSION=$VERSION"
                 # 创建 zip 包
-                Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "FML-Windows-$VERSION-x64.zip"
+                Compress-Archive -Path build/windows/${{ matrix.arch }}/runner/Release/* -DestinationPath "FML-Windows-$VERSION-${{ matrix.arch }}.zip"
+            - name: 安装 Inno Setup 7 (64 位)
+              run: |
+                $innoVersion = $env:INNO_SETUP_VERSION
+                $releaseTag = 'is-' + $innoVersion.Replace('.', '_')
+                $installer = Join-Path $env:RUNNER_TEMP "innosetup-$innoVersion-x64.exe"
+                $innoRoot = Join-Path $env:RUNNER_TEMP 'inno-setup-x64'
+                $url = "https://github.com/jrsoftware/issrc/releases/download/$releaseTag/innosetup-$innoVersion-x64.exe"
+                Invoke-WebRequest -Uri $url -OutFile $installer
+                $install = Start-Process -FilePath $installer -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/CURRENTUSER', "/DIR=`"$innoRoot`"" -Wait -PassThru
+                if ($install.ExitCode -ne 0) {
+                  throw "Inno Setup installation failed with exit code $($install.ExitCode)"
+                }
+                $isccPath = Join-Path $innoRoot 'ISCC.exe'
+                if (-not (Test-Path -LiteralPath $isccPath)) {
+                  throw "64-bit ISCC.exe not found at $isccPath"
+                }
+                if ('${{ matrix.arch }}' -eq 'arm64' -and -not (Test-Path -LiteralPath (Join-Path $innoRoot 'islzma-Arm64EC.dll'))) {
+                  throw 'Inno Setup ARM64EC compression component not found'
+                }
+                "ISCC_PATH=$isccPath" >> $env:GITHUB_ENV
             - name: 使用 Inno Setup 创建 Windows 安装程序
               shell: pwsh
               run: |
                 $VERSION = (Select-String -Path pubspec.yaml -Pattern '^version:' | ForEach-Object { $_.Line -replace 'version:\s*', '' -replace '\+.*', '' }).Trim()
                 Write-Host "VERSION=$VERSION"
-                # 通过 Chocolatey 安装 Inno Setup
-                Write-Host "Installing Inno Setup via Chocolatey..."
-                choco install innosetup -y --no-progress
-                Write-Host "Inno Setup installed"
-                # 定位 ISCC.exe
-                $isccPath = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-                if (-not (Test-Path $isccPath)) {
-                  Write-Host "ISCC not at default path, searching..."
-                  $found = Get-ChildItem -Path "C:\Program Files (x86)" -Recurse -Filter "ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-                  if ($found) { $isccPath = $found.FullName }
-                }
-                if (-not (Test-Path $isccPath)) {
-                  throw "ISCC.exe not found after Chocolatey install"
-                }
-                Write-Host "Found ISCC at: $isccPath"
                 # 创建 Inno Setup 脚本
                 $issContent = "[Setup]`n"
                 $issContent += "AppName=FML`n"
@@ -66,14 +97,15 @@ jobs:
                 $issContent += "DefaultDirName={autopf}\FML`n"
                 $issContent += "DefaultGroupName=FML`n"
                 $issContent += "OutputDir=.`n"
-                $issContent += "OutputBaseFilename=FML-Windows-$VERSION-x64-setup`n"
+                $issContent += "OutputBaseFilename=FML-Windows-$VERSION-${{ matrix.arch }}-setup`n"
+                $issContent += "SetupArchitecture=x64`n"
                 $issContent += "Compression=lzma2`n"
                 $issContent += "SolidCompression=yes`n"
-                $issContent += "ArchitecturesAllowed=x64compatible`n"
-                $issContent += "ArchitecturesInstallIn64BitMode=x64compatible`n"
+                $issContent += "ArchitecturesAllowed=${{ matrix.installer_arch }}`n"
+                $issContent += "ArchitecturesInstallIn64BitMode=${{ matrix.installer_arch }}`n"
                 $issContent += "`n"
                 $issContent += "[Files]`n"
-                $issContent += "Source: `"build\windows\x64\runner\Release\*`"; DestDir: `"{app}`"; Flags: ignoreversion recursesubdirs`n"
+                $issContent += "Source: `"build\windows\${{ matrix.arch }}\runner\Release\*`"; DestDir: `"{app}`"; Flags: ignoreversion recursesubdirs`n"
                 $issContent += "`n"
                 $issContent += "[Icons]`n"
                 $issContent += "Name: `"{group}\FML`"; Filename: `"{app}\fml.exe`"`n"
@@ -85,7 +117,7 @@ jobs:
                 Write-Host "创建 setup.iss"
                 # 运行 ISCC.exe 创建安装程序
                 Write-Host "运行 ISCC.exe 创建安装程序..."
-                & "$isccPath" "setup.iss"
+                & "$env:ISCC_PATH" "setup.iss"
                 if ($LASTEXITCODE -ne 0) {
                   throw "ISCC.exe failed with exit code $LASTEXITCODE"
                 }
@@ -93,133 +125,82 @@ jobs:
             - name: 上传 Windows 构建产物
               uses: actions/upload-artifact@v7
               with:
-                name: windows-release
+                name: windows-${{ matrix.arch }}-release
                 path: |
-                  FML-Windows-*-x64.zip
-                  FML-Windows-*-x64-setup.exe
+                  FML-Windows-*-${{ matrix.arch }}.zip
+                  FML-Windows-*-${{ matrix.arch }}-setup.exe
+                if-no-files-found: error
                 retention-days: 7
 
-    build-linux-x64:
-        name: 构建 Linux (x64)
-        runs-on: ubuntu-latest
+    build-linux:
+        name: 构建 Linux (${{ matrix.arch }})
+        runs-on: ${{ matrix.runner }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - arch: x64
+                      runner: ubuntu-latest
+                      deb_arch: amd64
+                      appimage_arch: x86_64
+                    - arch: arm64
+                      runner: ubuntu-24.04-arm
+                      deb_arch: arm64
+                      appimage_arch: aarch64
         steps:
             - name: 签出代码
               uses: actions/checkout@v6
-            - name: 配置 Linux (x64)
+            - name: 配置 Linux (${{ matrix.arch }})
               run: |
                 sudo apt-get update
                 sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
-            - name: 配置 Flutter
+            - name: 配置 Flutter (x64)
+              if: matrix.arch == 'x64'
               uses: subosito/flutter-action@v2
               with:
                 flutter-version: ${{ env.FLUTTER_VERSION }}
                 channel: 'stable'
                 cache: true
-            - name: 安装依赖
-              run: flutter pub get
-            - name: 构建 Linux (x64) 版本
-              run: flutter build linux --release
-            - name: 安装打包工具
-              run: |
-                sudo apt-get update
-                sudo apt-get install -y libfuse2 zip
-            - name: 打包 Linux (x64) 构建产物
+            - name: 从官方仓库配置 Flutter (arm64)
+              if: matrix.arch == 'arm64'
               run: |
                 set -e
-                VERSION=$(grep "^version:" pubspec.yaml | head -n1 | sed 's/.*version:[[:space:]]*//; s/+.*//; s/^[[:space:]]*//; s/[[:space:]]*$//')
-                BUNDLE_DIR=build/linux/x64/release/bundle
-                # 在工作区根目录创建 zip
-                cd $BUNDLE_DIR && zip -r "$GITHUB_WORKSPACE/FML-Linux-${VERSION}-x64.zip" . && cd "$GITHUB_WORKSPACE"
-                # 创建 .deb 包
-                mkdir -p deb_pkg/DEBIAN
-                mkdir -p deb_pkg/usr/bin
-                mkdir -p deb_pkg/usr/share/applications
-                mkdir -p deb_pkg/usr/share/fml
-                cp -r $BUNDLE_DIR/* deb_pkg/usr/share/fml/
-                printf 'Package: fml\nVersion: %s\nSection: utils\nPriority: optional\nArchitecture: amd64\nMaintainer: lxdklp\nDescription: FML Application\n' "$VERSION" > deb_pkg/DEBIAN/control
-                printf '#!/bin/bash\nexec /usr/share/fml/fml "$@"\n' > deb_pkg/usr/bin/fml
-                chmod +x deb_pkg/usr/bin/fml
-                printf '[Desktop Entry]\nName=FML\nExec=/usr/share/fml/fml\nType=Application\nCategories=Utility;\n' > deb_pkg/usr/share/applications/fml.desktop
-                dpkg-deb --build deb_pkg FML-Linux-${VERSION}-x64.deb
-                # 创建 AppImage
-                mkdir -p AppDir/usr/bin
-                mkdir -p AppDir/usr/share/applications
-                mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-                cp -r $BUNDLE_DIR/* AppDir/usr/bin/
-                # Copy icon to AppDir root (required by appimagetool)
-                if [ -f "assets/img/icon/icon.png" ]; then
-                  cp assets/img/icon/icon.png AppDir/fml.png
-                else
-                  touch AppDir/fml.png
-                fi
-                cp AppDir/fml.png AppDir/usr/share/icons/hicolor/256x256/apps/fml.png
-                printf '[Desktop Entry]\nName=FML\nExec=fml\nIcon=fml\nType=Application\nCategories=Utility;\n' > AppDir/fml.desktop
-                cp AppDir/fml.desktop AppDir/usr/share/applications/
-                printf '#!/bin/bash\nexec $APPDIR/usr/bin/fml "$@"\n' > AppDir/AppRun
-                chmod +x AppDir/AppRun
-                curl -L -o appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-                chmod +x appimagetool
-                ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir FML-Linux-${VERSION}-x64.AppImage
-            - name: 上传 Linux (x64) 构建产物
-              uses: actions/upload-artifact@v7
-              with:
-                name: linux-x64-release
-                path: |
-                  FML-Linux-*-x64.zip
-                  FML-Linux-*-x64.deb
-                  FML-Linux-*-x64.AppImage
-                retention-days: 7
-
-    build-linux-arm64:
-        name: 构建 Linux (arm64)
-        runs-on: ubuntu-24.04-arm
-        steps:
-            - name: 签出代码
-              uses: actions/checkout@v6
-            - name: 配置 Linux (arm64)
-              run: |
-                sudo apt-get update
-                sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libfuse2
-            - name: 配置 Flutter
-              run: |
-                set -e
-                echo "Cloning Flutter stable channel into $HOME/flutter"
-                git clone https://github.com/flutter/flutter.git -b stable --depth 1 $HOME/flutter
-                echo "$HOME/flutter/bin" >> $GITHUB_PATH
-                export PATH="$HOME/flutter/bin:$PATH"
+                git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+                echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+                export PATH="$RUNNER_TEMP/flutter/bin:$PATH"
                 flutter --version
                 flutter precache --linux
             - name: 安装依赖
               run: flutter pub get
-            - name: 构建 Linux (arm64) 版本
+            - name: 构建 Linux (${{ matrix.arch }}) 版本
               run: flutter build linux --release
             - name: 安装打包工具
               run: |
                 sudo apt-get update
                 sudo apt-get install -y libfuse2 zip
-            - name: 打包 Linux (arm64) 构建产物
+            - name: 打包 Linux (${{ matrix.arch }}) 构建产物
               run: |
                 set -e
                 VERSION=$(grep "^version:" pubspec.yaml | head -n1 | sed 's/.*version:[[:space:]]*//; s/+.*//; s/^[[:space:]]*//; s/[[:space:]]*$//')
-                BUNDLE_DIR=build/linux/arm64/release/bundle
+                BUNDLE_DIR=build/linux/${{ matrix.arch }}/release/bundle
                 # 在工作区根目录创建 zip
-                cd $BUNDLE_DIR && zip -r "$GITHUB_WORKSPACE/FML-Linux-${VERSION}-arm64.zip" . && cd "$GITHUB_WORKSPACE"
+                cd "$BUNDLE_DIR" && zip -r "$GITHUB_WORKSPACE/FML-Linux-${VERSION}-${{ matrix.arch }}.zip" . && cd "$GITHUB_WORKSPACE"
                 # 创建 .deb 包
                 mkdir -p deb_pkg/DEBIAN
                 mkdir -p deb_pkg/usr/bin
                 mkdir -p deb_pkg/usr/share/applications
                 mkdir -p deb_pkg/usr/share/fml
-                cp -r $BUNDLE_DIR/* deb_pkg/usr/share/fml/
-                printf 'Package: fml\nVersion: %s\nSection: utils\nPriority: optional\nArchitecture: arm64\nMaintainer: lxdklp\nDescription: FML Application\n' "$VERSION" > deb_pkg/DEBIAN/control
+                cp -r "$BUNDLE_DIR/"* deb_pkg/usr/share/fml/
+                printf 'Package: fml\nVersion: %s\nSection: utils\nPriority: optional\nArchitecture: ${{ matrix.deb_arch }}\nMaintainer: lxdklp\nDescription: FML Application\n' "$VERSION" > deb_pkg/DEBIAN/control
                 printf '#!/bin/bash\nexec /usr/share/fml/fml "$@"\n' > deb_pkg/usr/bin/fml
                 chmod +x deb_pkg/usr/bin/fml
                 printf '[Desktop Entry]\nName=FML\nExec=/usr/share/fml/fml\nType=Application\nCategories=Utility;\n' > deb_pkg/usr/share/applications/fml.desktop
-                dpkg-deb --build deb_pkg FML-Linux-${VERSION}-arm64.deb
+                dpkg-deb --build deb_pkg "FML-Linux-${VERSION}-${{ matrix.arch }}.deb"
                 # 创建 AppImage
                 mkdir -p AppDir/usr/bin
                 mkdir -p AppDir/usr/share/applications
                 mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-                cp -r $BUNDLE_DIR/* AppDir/usr/bin/
+                cp -r "$BUNDLE_DIR/"* AppDir/usr/bin/
                 # Copy icon to AppDir root (required by appimagetool)
                 if [ -f "assets/img/icon/icon.png" ]; then
                   cp assets/img/icon/icon.png AppDir/fml.png
@@ -229,24 +210,35 @@ jobs:
                 cp AppDir/fml.png AppDir/usr/share/icons/hicolor/256x256/apps/fml.png
                 printf '[Desktop Entry]\nName=FML\nExec=fml\nIcon=fml\nType=Application\nCategories=Utility;\n' > AppDir/fml.desktop
                 cp AppDir/fml.desktop AppDir/usr/share/applications/
-                printf '#!/bin/bash\nexec $APPDIR/usr/bin/fml "$@"\n' > AppDir/AppRun
+                # 在生成的脚本运行时展开变量。
+                # shellcheck disable=SC2016
+                printf '#!/bin/bash\nexec "$APPDIR/usr/bin/fml" "$@"\n' > AppDir/AppRun
                 chmod +x AppDir/AppRun
-                curl -L -o appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-aarch64.AppImage
+                curl -L -o appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${{ matrix.appimage_arch }}.AppImage
                 chmod +x appimagetool
-                ARCH=aarch64 ./appimagetool --appimage-extract-and-run AppDir FML-Linux-${VERSION}-arm64.AppImage
-            - name: 上传 Linux (arm64) 构建产物
+                ARCH=${{ matrix.appimage_arch }} ./appimagetool --appimage-extract-and-run AppDir "FML-Linux-${VERSION}-${{ matrix.arch }}.AppImage"
+            - name: 上传 Linux (${{ matrix.arch }}) 构建产物
               uses: actions/upload-artifact@v7
               with:
-                name: linux-arm64-release
+                name: linux-${{ matrix.arch }}-release
                 path: |
-                  FML-Linux-*-arm64.zip
-                  FML-Linux-*-arm64.deb
-                  FML-Linux-*-arm64.AppImage
+                  FML-Linux-*-${{ matrix.arch }}.zip
+                  FML-Linux-*-${{ matrix.arch }}.deb
+                  FML-Linux-*-${{ matrix.arch }}.AppImage
+                if-no-files-found: error
                 retention-days: 7
 
-    build-macos-universal:
-        name: 构建 macOS (universal)
+    build-macos:
+        name: 构建 macOS (${{ matrix.arch }})
         runs-on: macos-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - arch: universal
+                      arm64_only: --no-enable-macos-arm64-only
+                    - arch: arm64
+                      arm64_only: --enable-macos-arm64-only
         steps:
             - name: 签出代码
               uses: actions/checkout@v6
@@ -257,11 +249,11 @@ jobs:
                 flutter-version: ${{ env.FLUTTER_VERSION }}
                 channel: 'stable'
                 cache: true
-            - name: 配置 macOS (universal) 构建
-              run: flutter config --no-enable-macos-arm64-only
+            - name: 配置 macOS (${{ matrix.arch }}) 构建
+              run: flutter config ${{ matrix.arm64_only }}
             - name: 安装依赖
               run: flutter pub get
-            - name: 构建 macOS (universal) 版本
+            - name: 构建 macOS (${{ matrix.arch }}) 版本
               run: flutter build macos --release
             - name: 创建 dmg 镜像
               run: |
@@ -288,7 +280,7 @@ jobs:
                 fi
                 echo "Found app bundle: $APP_DIR"
                 APP_NAME=$(basename "$APP_DIR" .app)
-                OUT_NAME="FML-macOS-${VERSION}-universal.dmg"
+                OUT_NAME="FML-macOS-${VERSION}-${{ matrix.arch }}.dmg"
                 echo "Creating DMG: $OUT_NAME"
                 # 创建一个暂存文件夹
                 DMG_STAGE="dmg_stage"
@@ -299,78 +291,17 @@ jobs:
                 ls -la "$DMG_STAGE"
                 hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_STAGE" -ov -format UDZO "$OUT_NAME"
                 rm -rf "$DMG_STAGE"
-            - name: 上传 macOS (universal) 构建产物
+            - name: 上传 macOS (${{ matrix.arch }}) 构建产物
               uses: actions/upload-artifact@v7
               with:
-                name: macos-universal-release
-                path: FML-macOS-*-universal.dmg
-                retention-days: 7
-
-    build-macos-arm64:
-        name: 构建 macOS (arm64)
-        runs-on: macos-latest
-        steps:
-            - name: 签出代码
-              uses: actions/checkout@v6
-
-            - name: 配置 Flutter
-              uses: subosito/flutter-action@v2
-              with:
-                flutter-version: ${{ env.FLUTTER_VERSION }}
-                channel: 'stable'
-                cache: true
-            - name: 配置 macOS (arm64) 构建
-              run: flutter config --enable-macos-arm64-only
-            - name: 安装依赖
-              run: flutter pub get
-            - name: 构建 macOS (arm64) 版本
-              run: flutter build macos --release
-            - name: 创建 dmg 镜像
-              run: |
-                set -e
-                VERSION=$(grep "^version:" pubspec.yaml | head -n1 | sed 's/.*version:[[:space:]]*//; s/+.*//; s/^[[:space:]]*//; s/[[:space:]]*$//')
-                RELEASE_DIR="build/macos/Build/Products/Release"
-                echo "Looking for .app in: $RELEASE_DIR"
-                echo "Release dir contents:"
-                ls -la "$RELEASE_DIR" || true
-                # 查找 .app 包
-                APP_DIR=$(find "$RELEASE_DIR" -maxdepth 1 -name "*.app" -type d | head -n1)
-                if [ -z "$APP_DIR" ]; then
-                  echo "No .app found via find. Trying known paths..."
-                  if [ -d "$RELEASE_DIR/Runner.app" ]; then
-                    APP_DIR="$RELEASE_DIR/Runner.app"
-                  elif [ -d "$RELEASE_DIR/mcb.app" ]; then
-                    APP_DIR="$RELEASE_DIR/fml.app"
-                  elif [ -d "$RELEASE_DIR/FML.app" ]; then
-                    APP_DIR="$RELEASE_DIR/FML.app"
-                  else
-                    echo "Unable to find .app to package. Failing step." >&2
-                    exit 1
-                  fi
-                fi
-                echo "Found app bundle: $APP_DIR"
-                APP_NAME=$(basename "$APP_DIR" .app)
-                OUT_NAME="FML-macOS-${VERSION}-arm64.dmg"
-                echo "Creating DMG: $OUT_NAME"
-                # 创建一个暂存文件夹
-                DMG_STAGE="dmg_stage"
-                mkdir -p "$DMG_STAGE"
-                cp -R "$APP_DIR" "$DMG_STAGE/"
-                ln -s /Applications "$DMG_STAGE/Applications"
-                echo "DMG stage contents:"
-                ls -la "$DMG_STAGE"
-                hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_STAGE" -ov -format UDZO "$OUT_NAME"
-                rm -rf "$DMG_STAGE"
-            - name: 上传 macOS (arm64) 构建产物
-              uses: actions/upload-artifact@v7
-              with:
-                name: macos-arm64-release
-                path: FML-macOS-*-arm64.dmg
+                name: macos-${{ matrix.arch }}-release
+                path: FML-macOS-*-${{ matrix.arch }}.dmg
+                if-no-files-found: error
                 retention-days: 7
 
     release:
       name: 创建发布
-      needs: [build-windows, build-linux-x64, build-linux-arm64, build-macos-universal, build-macos-arm64]
+      needs: [build-windows, build-linux, build-macos]
       runs-on: ubuntu-latest
       if: startsWith(github.ref, 'refs/tags/v') && github.event.inputs.skip_release != 'true'
       permissions:
@@ -384,16 +315,12 @@ jobs:
               uses: softprops/action-gh-release@v3
               with:
                 files: |
-                  artifacts/windows-release/FML-Windows-*.zip
-                  artifacts/windows-release/FML-Windows-*-setup.exe
-                  artifacts/linux-x64-release/FML-Linux-*-x64.zip
-                  artifacts/linux-x64-release/FML-Linux-*-x64.deb
-                  artifacts/linux-x64-release/FML-Linux-*-x64.AppImage
-                  artifacts/linux-arm64-release/FML-Linux-*-arm64.zip
-                  artifacts/linux-arm64-release/FML-Linux-*-arm64.deb
-                  artifacts/linux-arm64-release/FML-Linux-*-arm64.AppImage
-                  artifacts/macos-universal-release/FML-macOS-*-universal.dmg
-                  artifacts/macos-arm64-release/FML-macOS-*-arm64.dmg
+                  artifacts/windows-*-release/FML-Windows-*.zip
+                  artifacts/windows-*-release/FML-Windows-*-setup.exe
+                  artifacts/linux-*-release/FML-Linux-*.zip
+                  artifacts/linux-*-release/FML-Linux-*.deb
+                  artifacts/linux-*-release/FML-Linux-*.AppImage
+                  artifacts/macos-*-release/FML-macOS-*.dmg
                 draft: false
                 prerelease: false
                 generate_release_notes: true
