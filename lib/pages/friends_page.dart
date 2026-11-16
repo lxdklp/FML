@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/function/launcher/login/microsoft_login.dart'
@@ -82,8 +82,8 @@ class FriendsPageState extends State<FriendsPage> {
       _loading = true;
       _error = '';
     });
-    final prefs = await SharedPreferences.getInstance();
-    final accountType = prefs.getString('SelectedAccountType') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final accountType = (await prefs.getString('SelectedAccountType')) ?? '';
     if (accountType != '1') {
       setState(() {
         _isOnlineAccount = false;
@@ -91,9 +91,9 @@ class FriendsPageState extends State<FriendsPage> {
       });
       return;
     }
-    final accountName = prefs.getString('SelectedAccountName') ?? '';
+    final accountName = (await prefs.getString('SelectedAccountName')) ?? '';
     final accountInfo =
-        prefs.getStringList('online_account_$accountName') ?? [];
+        (await prefs.getStringList('online_account_$accountName')) ?? [];
     if (accountInfo.length < 3) {
       setState(() {
         _isOnlineAccount = true;

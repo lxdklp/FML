@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/constants.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 
 class TranslatePage extends StatefulWidget {
   const TranslatePage({super.key});
@@ -16,14 +16,14 @@ class TranslatePageState extends State<TranslatePage> {
   int _googleTranslateClient = 0;
 
   Future<void> _readConfig() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final bool autoTranslate = prefs.getBool('autoTranslate') ?? true;
+    final AppConfig prefs = await AppConfig.getInstance();
+    final bool autoTranslate = (await prefs.getBool('autoTranslate')) ?? true;
     final bool enableGoogleTranslate =
-        prefs.getBool('enableGoogleTranslate') ?? true;
+        (await prefs.getBool('enableGoogleTranslate')) ?? true;
     final int googleTranslateClient =
-        prefs.getInt('googleTranslateClient') ?? 0;
+        (await prefs.getInt('googleTranslateClient')) ?? 0;
     final bool googleTranslateDirect =
-        prefs.getBool('googleTranslateDirect') ?? false;
+        (await prefs.getBool('googleTranslateDirect')) ?? false;
     if (!mounted) return;
     setState(() {
       _autoTranslate = autoTranslate;
@@ -34,22 +34,22 @@ class TranslatePageState extends State<TranslatePage> {
   }
 
   Future<void> _setAutoTranslate() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final AppConfig prefs = await AppConfig.getInstance();
     await prefs.setBool('autoTranslate', _autoTranslate);
   }
 
   Future<void> _setEnableGoogleTranslate() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final AppConfig prefs = await AppConfig.getInstance();
     await prefs.setBool('enableGoogleTranslate', _enableGoogleTranslate);
   }
 
   Future<void> _setGoogleTranslateClient() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final AppConfig prefs = await AppConfig.getInstance();
     await prefs.setInt('googleTranslateClient', _googleTranslateClient);
   }
 
   Future<void> _setGoogleTranslateDirect(bool value) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final AppConfig prefs = await AppConfig.getInstance();
     await prefs.setBool('googleTranslateDirect', value);
   }
 

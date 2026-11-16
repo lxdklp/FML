@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/function/crypto_util.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 
 // 登录模式
 String _getLoginMode(String loginMode) {
@@ -20,7 +20,7 @@ String _getLoginMode(String loginMode) {
 
 // 获取微软账号令牌
 Future<String> _getMsToken(String refreshToken) async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = await AppConfig.getInstance();
   String decryptedRefreshToken = await CryptoUtil.decrypt(refreshToken);
   const int maxRetries = 3;
   int attempt = 0;
@@ -45,17 +45,17 @@ Future<String> _getMsToken(String refreshToken) async {
           String accessToken = data['access_token'] ?? '';
           String newRefreshToken = data['refresh_token'] ?? '';
           if (accessToken.isNotEmpty && newRefreshToken.isNotEmpty) {
-            final accountName = prefs.getString('SelectedAccountName') ?? '';
-            final accountType = prefs.getString('SelectedAccountType') ?? '';
+            final accountName = (await prefs.getString('SelectedAccountName')) ?? '';
+            final accountType = (await prefs.getString('SelectedAccountType')) ?? '';
             final accountInfo =
-                prefs.getStringList(
+                (await prefs.getStringList(
                   '${_getLoginMode(accountType)}_account_$accountName',
-                ) ??
+                )) ??
                 [];
             String encryptedRefreshToken = await CryptoUtil.encrypt(
               newRefreshToken,
             );
-            prefs.setStringList(
+            await prefs.setStringList(
               '${_getLoginMode(accountType)}_account_$accountName',
               [accountInfo[0], accountInfo[1], encryptedRefreshToken],
             );

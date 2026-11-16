@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/constants.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 
 class LogSettingPage extends StatefulWidget {
   const LogSettingPage({super.key});
@@ -15,9 +15,9 @@ class LogSettingPageState extends State<LogSettingPage> {
 
   // 读取日志配置信息
   Future<void> _readLogConfig() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final int logLevel = prefs.getInt('logLevel') ?? 0;
-    final bool autoClearLog = prefs.getBool('autoClearLog') ?? true;
+    final AppConfig prefs = await AppConfig.getInstance();
+    final int logLevel = (await prefs.getInt('logLevel')) ?? 0;
+    final bool autoClearLog = (await prefs.getBool('autoClearLog')) ?? true;
 
     setState(() {
       _logLevel = logLevel;
@@ -27,13 +27,13 @@ class LogSettingPageState extends State<LogSettingPage> {
 
   // 保存日志等级配置
   Future<void> _saveLogLevel() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final AppConfig prefs = await AppConfig.getInstance();
     await prefs.setInt('logLevel', _logLevel);
   }
 
   // 保存日志自动清理配置
   Future<void> _saveAutoClearLog() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final AppConfig prefs = await AppConfig.getInstance();
     await prefs.setBool('autoClearLog', _autoClearLog);
   }
 

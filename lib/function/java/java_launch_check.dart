@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 
 import 'java_service.dart';
 import 'java_utils.dart';
 import 'models/java_info.dart';
 
-String configuredJavaExecutable(SharedPreferences prefs) {
+Future<String> configuredJavaExecutable(AppConfig prefs) async {
   final selected =
-      prefs.getString('javaSelectedPath') ?? JavaService.javaSelectedPath;
+      (await prefs.getString('javaSelectedPath')) ?? JavaService.javaSelectedPath;
   return selected.isEmpty ? 'java' : selected;
 }
 

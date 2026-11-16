@@ -2,7 +2,7 @@ import 'package:fml/function/forge/forge_modpack.dart';
 import 'package:fml/pages/download/download_version/loader/download_forge.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/function/slide_page_route.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download/modrinth/type/download_modpack/loader/modrinth_fabric_modpack.dart';
@@ -56,9 +56,9 @@ class DownloadInfoState extends State<DownloadInfo> {
 
   // 读取版本列表
   Future<void> _loadVersionList() async {
-    final prefs = await SharedPreferences.getInstance();
-    final selectedPath = prefs.getString('SelectedPath') ?? '';
-    final gameList = prefs.getStringList('Game_$selectedPath') ?? [];
+    final prefs = await AppConfig.getInstance();
+    final selectedPath = (await prefs.getString('SelectedPath')) ?? '';
+    final gameList = (await prefs.getStringList('Game_$selectedPath')) ?? [];
     setState(() {
       _versionList = gameList;
     });

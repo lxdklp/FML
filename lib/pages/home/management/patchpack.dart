@@ -4,7 +4,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:fml/function/log.dart';
@@ -14,10 +14,10 @@ import 'package:fml/function/slide_page_route.dart';
 
 // 打开补丁包安装页面
 Future<void> openPatchPack(BuildContext context, {String? archivePath}) async {
-  final prefs = await SharedPreferences.getInstance();
-  final selectedPath = prefs.getString('SelectedPath');
-  final game = prefs.getString('SelectedGame');
-  final base = prefs.getString('Path_$selectedPath');
+  final prefs = await AppConfig.getInstance();
+  final selectedPath = (await prefs.getString('SelectedPath'));
+  final game = (await prefs.getString('SelectedGame'));
+  final base = (await prefs.getString('Path_$selectedPath'));
   if (!context.mounted) return;
   if (base == null ||
       base.isEmpty ||

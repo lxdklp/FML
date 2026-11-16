@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:archive/archive.dart';
 import 'package:dio/dio.dart';
@@ -152,9 +152,9 @@ class CurseforgeFabricModpackPageState
 
   // 文件夹创建
   Future<void> _createGameDirectories() async {
-    final prefs = await SharedPreferences.getInstance();
-    final selectedGamePath = prefs.getString('SelectedPath') ?? '';
-    final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final selectedGamePath = (await prefs.getString('SelectedPath')) ?? '';
+    final gamePath = (await prefs.getString('Path_$selectedGamePath')) ?? '';
     final directory = Directory(
       '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}',
     );
@@ -588,9 +588,9 @@ class CurseforgeFabricModpackPageState
       await LogUtil.log('库文件列表为空，无法下载库文件', level: 'ERROR');
       return;
     }
-    final prefs = await SharedPreferences.getInstance();
-    final selectedGamePath = prefs.getString('SelectedPath') ?? '';
-    final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final selectedGamePath = (await prefs.getString('SelectedPath')) ?? '';
+    final gamePath = (await prefs.getString('Path_$selectedGamePath')) ?? '';
     // 构建下载任务列表
     List<Map<String, String>> downloadTasks = [];
     for (int i = 0; i < librariesURL.length; i++) {
@@ -625,9 +625,9 @@ class CurseforgeFabricModpackPageState
 
   // 下载资源
   Future<void> _downloadAssets() async {
-    final prefs = await SharedPreferences.getInstance();
-    final selectedGamePath = prefs.getString('SelectedPath') ?? '';
-    final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final selectedGamePath = (await prefs.getString('SelectedPath')) ?? '';
+    final gamePath = (await prefs.getString('Path_$selectedGamePath')) ?? '';
     // 构建下载任务列表
     List<Map<String, String>> downloadTasks = [];
     for (final hash in _assetHash) {
@@ -746,9 +746,9 @@ class CurseforgeFabricModpackPageState
       });
       return;
     }
-    final prefs = await SharedPreferences.getInstance();
-    final selectedGamePath = prefs.getString('SelectedPath') ?? '';
-    final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final selectedGamePath = (await prefs.getString('SelectedPath')) ?? '';
+    final gamePath = (await prefs.getString('Path_$selectedGamePath')) ?? '';
     final nativesDir =
         '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}${Platform.pathSeparator}natives';
     final nativesDirObj = Directory(nativesDir);
@@ -836,9 +836,9 @@ class CurseforgeFabricModpackPageState
   // 解析 Fabric Loader Json
   Future<void> _parseFabricLoaderJson() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final selectedGamePath = prefs.getString('SelectedPath') ?? '';
-      final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
+      final prefs = await AppConfig.getInstance();
+      final selectedGamePath = (await prefs.getString('SelectedPath')) ?? '';
+      final gamePath = (await prefs.getString('Path_$selectedGamePath')) ?? '';
       final versionPath =
           '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}';
       final fabricJsonFile = File(
@@ -953,9 +953,9 @@ class CurseforgeFabricModpackPageState
       });
       return;
     }
-    final prefs = await SharedPreferences.getInstance();
-    final selectedGamePath = prefs.getString('SelectedPath') ?? '';
-    final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final selectedGamePath = (await prefs.getString('SelectedPath')) ?? '';
+    final gamePath = (await prefs.getString('Path_$selectedGamePath')) ?? '';
     List<Map<String, String>> downloadTasks = [];
     for (var task in _fabricDownloadTasks) {
       final relativePath = task['path']!;
@@ -1081,9 +1081,9 @@ class CurseforgeFabricModpackPageState
 
   // 游戏配置文件创建
   Future<void> _writeGameConfig() async {
-    final prefs = await SharedPreferences.getInstance();
-    _name = prefs.getString('SelectedPath') ?? '';
-    List<String> gameList = prefs.getStringList('Game_$_name') ?? [];
+    final prefs = await AppConfig.getInstance();
+    _name = (await prefs.getString('SelectedPath')) ?? '';
+    List<String> gameList = (await prefs.getStringList('Game_$_name')) ?? [];
     List<String> defaultConfig = [
       '${_mem ~/ 2}',
       '0',
@@ -1104,9 +1104,9 @@ class CurseforgeFabricModpackPageState
 
   // 下载逻辑
   Future<void> _startDownload() async {
-    final prefs = await SharedPreferences.getInstance();
-    final selectedGamePath = prefs.getString('SelectedPath') ?? '';
-    final gamePath = prefs.getString('Path_$selectedGamePath') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final selectedGamePath = (await prefs.getString('SelectedPath')) ?? '';
+    final gamePath = (await prefs.getString('Path_$selectedGamePath')) ?? '';
     final versionPath =
         '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}${widget.name}';
     try {

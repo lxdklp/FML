@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/constants.dart';
 import 'package:fml/function/github_proxy.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 
 class ProxyPage extends StatefulWidget {
   const ProxyPage({super.key});
@@ -12,7 +12,7 @@ class ProxyPage extends StatefulWidget {
 
 class ProxyPageState extends State<ProxyPage> {
   final _customController = TextEditingController();
-  SharedPreferences? _prefs;
+  AppConfig? _prefs;
   bool _enabled = true;
   bool _saving = false;
   String _selected = GithubProxy.prefixes.first;
@@ -26,23 +26,26 @@ class ProxyPageState extends State<ProxyPage> {
 
   Future<void> _load() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await AppConfig.getInstance();
+      final enabled = await prefs.getBool(GithubProxy.enabledKey) ?? true;
+      final selected = await GithubProxy.selectedPrefix(prefs);
+      final custom = await prefs.getString(GithubProxy.customKey) ?? '';
       if (!mounted) return;
       setState(() {
         _prefs = prefs;
-        _enabled = prefs.getBool(GithubProxy.enabledKey) ?? true;
-        _selected = GithubProxy.selectedPrefix(prefs);
-        _customController.text = prefs.getString(GithubProxy.customKey) ?? '';
+        _enabled = enabled;
+        _selected = selected;
+        _customController.text = custom;
       });
     } catch (_) {
       if (mounted) setState(() => _error = '读取设置失败，请重新打开此页面');
     }
   }
 
-  Future<void> _save(Future<bool> Function() write) async {
+  Future<void> _save(Future<void> Function() write) async {
     setState(() => _saving = true);
     try {
-      if (!await write()) throw StateError('保存失败');
+      await write();
       await _load();
     } catch (_) {
       if (!mounted) return;

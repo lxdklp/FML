@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:fml/function/java/java_launch_check.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 
 import 'dart:convert';
 
@@ -187,16 +187,16 @@ Future<void> neoforgeLauncher({
   ErrorCallback? onError,
 }) async {
   onProgress?.call('正在准备启动');
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = await AppConfig.getInstance();
   // 游戏参数
-  final java = javaExecutable ?? configuredJavaExecutable(prefs);
-  final selectedPath = prefs.getString('SelectedPath') ?? '';
-  final gamePath = prefs.getString('Path_$selectedPath') ?? '';
-  final game = prefs.getString('SelectedGame') ?? '';
+  final java = javaExecutable ?? await configuredJavaExecutable(prefs);
+  final selectedPath = (await prefs.getString('SelectedPath')) ?? '';
+  final gamePath = (await prefs.getString('Path_$selectedPath')) ?? '';
+  final game = (await prefs.getString('SelectedGame')) ?? '';
   final nativesPath =
       '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}natives';
-  final version = prefs.getString('version') ?? '';
-  final cfg = prefs.getStringList('Config_${selectedPath}_$game') ?? [];
+  final version = (await prefs.getString('version')) ?? '';
+  final cfg = (await prefs.getStringList('Config_${selectedPath}_$game')) ?? [];
   final jsonPath =
       '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}$game.json';
   final neoForgeConfig = await loadNeoForgeConfig(gamePath, game);
@@ -250,12 +250,12 @@ Future<void> neoforgeLauncher({
   LogUtil.log('使用mainClass: $mainClass', level: 'INFO');
   LogUtil.log('类路径库数量: ${libraries.length}', level: 'INFO');
   // 账号信息
-  final accountName = prefs.getString('SelectedAccountName') ?? '';
-  final accountType = prefs.getString('SelectedAccountType') ?? '';
+  final accountName = (await prefs.getString('SelectedAccountName')) ?? '';
+  final accountType = (await prefs.getString('SelectedAccountType')) ?? '';
   final accountInfo =
-      prefs.getStringList(
+      (await prefs.getStringList(
         '${_getLoginMode(accountType)}_account_$accountName',
-      ) ??
+      )) ??
       [];
   final assetIndex = await getAssetIndex(jsonPath) ?? '';
   // 基础JVM参数

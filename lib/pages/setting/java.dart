@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
@@ -62,9 +61,7 @@ class JavaPageState extends State<JavaPage> {
 
                         try {
                           // 在子线程获取数据
-                          final searchResults = await Isolate.run(
-                            () => JavaUtils.searchPotentialJavaExecutables(),
-                          );
+                          final searchResults = await JavaUtils.searchPotentialJavaExecutables();
 
                           // 将javaRuntimes转换为Map
                           final Map<String, JavaRuntime> runtimeMap = {
@@ -391,7 +388,7 @@ class JavaPageState extends State<JavaPage> {
         JavaRuntime(info: info, executable: resolvedPath, isJdk: isJdk),
       );
 
-      JavaService.updateJavaRuntimes(JavaService.javaRuntimes);
+      await JavaService.updateJavaRuntimes(JavaService.javaRuntimes);
 
       if (mounted) Navigator.of(context).pop();
 

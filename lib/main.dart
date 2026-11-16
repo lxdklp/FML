@@ -1,3 +1,8 @@
+import 'package:fml/function/config/account_credentials.dart';
+import 'package:fml/function/config/game_config_validator.dart';
+import 'package:fml/function/crypto_util.dart';
+import 'package:fml/pages/startup/game_config_check.dart';
+
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -9,7 +14,7 @@ import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/function/dio_client.dart';
 import 'package:lazy_load_indexed_stack/lazy_load_indexed_stack.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
@@ -27,7 +32,41 @@ import 'package:window_manager/window_manager.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
-  await initVersionInfo();
+  try {
+    await AppConfig.initialize();
+    await AccountCredentials.bindDevice(
+      AppConfig.instance,
+      await CryptoUtil.deviceFingerprint(),
+    );
+    await initVersionInfo();
+  } catch (error) {
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('无法打开配置'),
+                  const SizedBox(height: 16),
+                  SelectableText(error.toString()),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => windowManager.close(),
+                    child: const Text('关闭'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await windowManager.show();
+    return;
+  }
   // 设置窗口标题
   WindowOptions windowOptions = WindowOptions(
     center: true,
@@ -42,8 +81,6 @@ void main() async {
 
   await initLogs();
 
-  JavaService.initFuture = JavaService.init();
-
   runApp(const FMLBaseApp());
 }
 
@@ -56,15 +93,15 @@ Future<void> initVersionInfo() async {
   gAppDefaultUserAgent = 'FML/$gAppVersion';
   gAppModrinthUserAgent = 'lxdklp/FML/$gAppVersion (fml.lxdklp.top)';
 
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = await AppConfig.getInstance();
   await prefs.setString('version', gAppVersion);
   await prefs.setInt('build', gAppBuildNumber);
 }
 
 // 日志
 Future<void> initLogs() async {
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  final bool autoClearLog = prefs.getBool('autoClearLog') ?? true;
+  final AppConfig prefs = await AppConfig.getInstance();
+  final bool autoClearLog = (await prefs.getBool('autoClearLog')) ?? true;
   if (autoClearLog) {
     await LogUtil.clearLogs();
   }
@@ -100,9 +137,9 @@ class FMLBaseAppState extends State<FMLBaseApp> {
 
   // 加载主题
   Future<void> _loadThemePrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    final modeStr = prefs.getString('themeMode');
-    final colorInt = prefs.getInt('themeColor');
+    final prefs = await AppConfig.getInstance();
+    final modeStr = (await prefs.getString('themeMode'));
+    final colorInt = (await prefs.getInt('themeColor'));
     if (colorInt != null) {
       // 从存储的整数值创建颜色对象
       _themeColor = Color.fromARGB(
@@ -131,7 +168,7 @@ class FMLBaseAppState extends State<FMLBaseApp> {
     setState(() {
       _themeMode = themeMode;
     });
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppConfig.getInstance();
     String modeStr;
     switch (themeMode) {
       case ThemeMode.dark:
@@ -150,7 +187,7 @@ class FMLBaseAppState extends State<FMLBaseApp> {
     setState(() {
       _themeColor = color;
     });
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppConfig.getInstance();
     int colorValue =
         (((color.a * 255.0).round() & 0xFF) << 24) |
         (((color.r * 255.0).round() & 0xFF) << 16) |
@@ -184,9 +221,9 @@ class FMLBaseAppState extends State<FMLBaseApp> {
 
   ThemeData _buildTheme(Brightness brightness) {
     final fontFamily = switch (defaultTargetPlatform) {
-      TargetPlatform.windows => 'Microsoft YaHei',  // Windows 微软雅黑
-      TargetPlatform.macOS => 'PingFang SC',        // macOS 苹方
-      _ => null,                                    // Linux 不指定字体
+      TargetPlatform.windows => 'Microsoft YaHei', // Windows 微软雅黑
+      TargetPlatform.macOS => 'PingFang SC', // macOS 苹方
+      _ => null, // Linux 不指定字体
     };
     final scheme = ColorScheme.fromSeed(
       seedColor: _themeColor,
@@ -247,6 +284,8 @@ class MainStartPage extends StatefulWidget {
 
 class MainStartPageState extends State<MainStartPage> {
   int _selectedIndex = 0;
+  bool _startupComplete = false;
+  String? _startupError;
 
   // 使页面仅被初始化一次
   final List<Widget> _mainPages = const [
@@ -261,89 +300,106 @@ class MainStartPageState extends State<MainStartPage> {
   void initState() {
     super.initState();
 
-    _checkUpdate();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _runStartup());
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // 主界面内容
-    Widget mainContent = FutureBuilder(
-      future: JavaService.initFuture,
-
-      builder: (context, snapshot) {
-        // 在初始化未完成时显示CircularProgressIndicator
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        // 加载完成但没有Java，显示Dialog
-        if (JavaService.javaRuntimes.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => AlertDialog(
-                title: const Text('未检测到 Java'),
-                content: const Text(
-                  '未检测到 Java 环境或者 Java 环境未正确配置，请先安装 Java 后再打开启动器',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => _launchURL(AppUrls.javaDownload),
-                    child: const Text('打开Java下载页面'),
-                  ),
-                ],
+  Future<void> _runStartup() async {
+    try {
+      final validator = GameConfigValidator(AppConfig.instance);
+      final issues = await validator.scan();
+      if (!mounted) return;
+      await showGameConfigCheck(context, validator, issues);
+      JavaService.initFuture = JavaService.init();
+      await JavaService.initFuture;
+      if (!mounted) return;
+      if (JavaService.javaRuntimes.isEmpty) {
+        final configure = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('未检测到 Java'),
+            content: const Text('请在设置中选择 Java, 或安装 Java 后重新打开启动器。'),
+            actions: [
+              TextButton(
+                onPressed: () => _launchURL(AppUrls.javaDownload),
+                child: const Text('打开 Java 下载页面'),
               ),
-            );
-          });
-        }
-
-        return Scaffold(
-          appBar: AppBar(title: const Text(kAppName)),
-          body: Row(
-            children: [
-              NavigationRail(
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: (int index) {
-                  setState(() => _selectedIndex = index);
-                },
-                labelType: NavigationRailLabelType.all,
-                destinations: const [
-                  NavigationRailDestination(
-                    icon: Icon(Icons.play_arrow),
-                    label: Text('启动'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.people),
-                    label: Text('好友'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.hub),
-                    label: Text('联机'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.download),
-                    label: Text('下载'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.settings),
-                    label: Text('设置'),
-                  ),
-                ],
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('前往设置'),
               ),
-              // 显示当前页面
-              Expanded(
-                child: LazyLoadIndexedStack(
-                  index: _selectedIndex,
-                  children: _mainPages,
-                ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('稍后配置'),
               ),
             ],
           ),
         );
-      },
+        if (configure == true) _selectedIndex = 4;
+      }
+      if (!mounted) return;
+      setState(() => _startupComplete = true);
+      await _checkUpdate();
+    } catch (error) {
+      if (mounted) setState(() => _startupError = error.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_startupComplete) {
+      return Scaffold(
+        body: Center(
+          child: _startupError == null
+              ? const CircularProgressIndicator()
+              : Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SelectableText('启动检查失败: $_startupError'),
+                ),
+        ),
+      );
+    }
+    Widget mainContent = Scaffold(
+      appBar: AppBar(title: const Text(kAppName)),
+      body: Row(
+        children: [
+          NavigationRail(
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: (int index) {
+              setState(() => _selectedIndex = index);
+            },
+            labelType: NavigationRailLabelType.all,
+            destinations: const [
+              NavigationRailDestination(
+                icon: Icon(Icons.play_arrow),
+                label: Text('启动'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.people),
+                label: Text('好友'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.hub),
+                label: Text('联机'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.download),
+                label: Text('下载'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.settings),
+                label: Text('设置'),
+              ),
+            ],
+          ),
+          // 显示当前页面
+          Expanded(
+            child: LazyLoadIndexedStack(
+              index: _selectedIndex,
+              children: _mainPages,
+            ),
+          ),
+        ],
+      ),
     );
 
     mainContent = PatchPackDropTarget(
@@ -370,7 +426,7 @@ class MainStartPageState extends State<MainStartPage> {
                   LogicalKeyboardKey.comma,
                   meta: true,
                 ),
-                onSelected: () => setState(() => _selectedIndex = 3),
+                onSelected: () => setState(() => _selectedIndex = 4),
               ),
               PlatformMenuItem(
                 label: '退出',
@@ -416,7 +472,7 @@ class MainStartPageState extends State<MainStartPage> {
                   LogicalKeyboardKey.digit4,
                   meta: true,
                 ),
-                onSelected: () => setState(() => _selectedIndex = 3),
+                onSelected: () => setState(() => _selectedIndex = 4),
               ),
             ],
           ),
@@ -445,15 +501,13 @@ class MainStartPageState extends State<MainStartPage> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('发生错误: $e')));
     }
   }
 
@@ -505,7 +559,7 @@ class MainStartPageState extends State<MainStartPage> {
   // 显示更新对话框
   Future<void> _showUpdateDialog(String latestVersion) async {
     List<String> info = await _getUpdateInfo();
-    showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('发现新版本 ${info[0]}'),

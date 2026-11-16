@@ -1,5 +1,7 @@
+import 'package:fml/function/config/account_credentials.dart';
+import 'package:fml/pages/home/account/new_account.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:path/path.dart' as p;
 import 'package:fml/function/java/java_launch_check.dart';
 
@@ -25,15 +27,46 @@ class PlayPageState extends State<PlayPage> {
   bool _launching = false;
 
   Future<void> _launch() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppConfig.getInstance();
     if (!mounted) return;
-    String? selectedPath = prefs.getString('SelectedPath');
-    String? selectedGame = prefs.getString('SelectedGame');
-    List<String>? gameConfig = prefs.getStringList(
+    final accountType = await prefs.getString('SelectedAccountType') ?? '';
+    final accountName = await prefs.getString('SelectedAccountName') ?? '';
+    final accountKey = accountType == '1'
+        ? 'online_account_$accountName'
+        : 'external_account_$accountName';
+    final storedAccount = await prefs.getStringList(accountKey);
+    if (AccountCredentials.needsLogin(storedAccount, accountType)) {
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => NewAccountPage(
+            initialType: accountType,
+            serverUrl:
+                accountType == '2' &&
+                    storedAccount != null &&
+                    storedAccount.length > 3
+                ? storedAccount[2]
+                : null,
+            username:
+                accountType == '2' &&
+                    storedAccount != null &&
+                    storedAccount.length > 3
+                ? storedAccount[3]
+                : null,
+          ),
+        ),
+      );
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+    String? selectedPath = (await prefs.getString('SelectedPath'));
+    String? selectedGame = (await prefs.getString('SelectedGame'));
+    List<String>? gameConfig = (await prefs.getStringList(
       'Config_${selectedPath}_$selectedGame',
-    );
-    String account = prefs.getString('SelectedAccount') ?? '';
-    accountInfo = prefs.getStringList('Account_$account');
+    ));
+    String account = (await prefs.getString('SelectedAccount')) ?? '';
+    accountInfo = (await prefs.getStringList('Account_$account'));
     String? type = gameConfig != null && gameConfig.length > 4
         ? gameConfig[4]
         : null;
@@ -42,12 +75,12 @@ class PlayPageState extends State<PlayPage> {
     setState(() {
       _gameType = type ?? '';
     });
-    final java = configuredJavaExecutable(prefs);
+    final java = await configuredJavaExecutable(prefs);
     if (['Vanilla', 'Fabric', 'Forge', 'NeoForge'].contains(type)) {
       setState(() => _message = '正在检查 Java 版本...');
       final check = await checkLaunchJava(
         metadataPath: p.join(
-          prefs.getString('Path_$selectedPath') ?? '',
+          (await prefs.getString('Path_$selectedPath')) ?? '',
           'versions',
           selectedGame ?? '',
           '$selectedGame.json',
@@ -136,6 +169,36 @@ class PlayPageState extends State<PlayPage> {
         title: const Text('启动失败'),
         content: Text(error),
         actions: [
+          if (error.contains('重新登录'))
+            TextButton(
+              onPressed: () async {
+                final prefs = AppConfig.instance;
+                final type = await prefs.getString('SelectedAccountType');
+                final name = await prefs.getString('SelectedAccountName') ?? '';
+                final account = await prefs.getStringList(
+                  'external_account_$name',
+                );
+                if (!mounted) return;
+                final navigator = Navigator.of(this.context);
+                navigator.pop();
+                await navigator.pushReplacement(
+                  MaterialPageRoute<void>(
+                    builder: (_) => NewAccountPage(
+                      initialType: type,
+                      serverUrl:
+                          type == '2' && account != null && account.length > 3
+                          ? account[2]
+                          : null,
+                      username:
+                          type == '2' && account != null && account.length > 3
+                          ? account[3]
+                          : null,
+                    ),
+                  ),
+                );
+              },
+              child: const Text('重新登录'),
+            ),
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
@@ -176,6 +239,8 @@ class PlayPageState extends State<PlayPage> {
   @override
   void initState() {
     super.initState();
-    _launch();
+    _launch().catchError((Object error) {
+      if (mounted) _handleLaunchError(error.toString());
+    });
   }
 }

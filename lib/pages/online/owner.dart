@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_gbk2utf8/flutter_gbk2utf8.dart';
 import 'package:fml/function/log.dart';
@@ -117,8 +117,8 @@ class OwnerPageState extends State<OwnerPage> {
   Future<void> _initMachineId() async {
     if (_machineId != null) return;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      var machineId = prefs.getString('machine_id');
+      final prefs = await AppConfig.getInstance();
+      var machineId = (await prefs.getString('machine_id'));
       if (machineId == null) {
         machineId = const Uuid().v4();
         await prefs.setString('machine_id', machineId);
@@ -140,9 +140,9 @@ class OwnerPageState extends State<OwnerPage> {
   // 获取 easytier ID
   Future<void> _getEasytierId() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final name = prefs.getString('SelectedPath') ?? '';
-      final path = prefs.getString('Path_$name') ?? '';
+      final prefs = await AppConfig.getInstance();
+      final name = (await prefs.getString('SelectedPath')) ?? '';
+      final path = (await prefs.getString('Path_$name')) ?? '';
       final String cli = ('$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-cli');
       final proc = await Process.run(
         cli,
@@ -284,8 +284,8 @@ class OwnerPageState extends State<OwnerPage> {
   // 加载玩家名称
   Future<void> _loadPlayerName() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final name = prefs.getString('SelectedAccountName');
+      final prefs = await AppConfig.getInstance();
+      final name = (await prefs.getString('SelectedAccountName'));
       if (name != null && name.isNotEmpty) {
         setState(() {
           _playerName = name;
@@ -305,16 +305,16 @@ class OwnerPageState extends State<OwnerPage> {
 
   // 读取App版本
   Future<String> _loadAppVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final version = prefs.getString('version') ?? "1.0.0";
+    final prefs = await AppConfig.getInstance();
+    final version = (await prefs.getString('version')) ?? "1.0.0";
     return version;
   }
 
   // 检测核心版本
   Future<String> _checkCoreVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString('SelectedPath') ?? '';
-    final path = prefs.getString('Path_$name') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final name = (await prefs.getString('SelectedPath')) ?? '';
+    final path = (await prefs.getString('Path_$name')) ?? '';
     final String core = ('$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-core');
     try {
       final ProcessResult proc = await Process.run(core, ['--version']);
@@ -365,9 +365,9 @@ class OwnerPageState extends State<OwnerPage> {
     int maxRetries = 5;
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        final prefs = await SharedPreferences.getInstance();
-        final name = prefs.getString('SelectedPath') ?? '';
-        final path = prefs.getString('Path_$name') ?? '';
+        final prefs = await AppConfig.getInstance();
+        final name = (await prefs.getString('SelectedPath')) ?? '';
+        final path = (await prefs.getString('Path_$name')) ?? '';
         final String core = ('$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-core');
         int scaffoldingPort = _tcpServerPort;
         int minecraftPort = _port;
@@ -480,9 +480,9 @@ class OwnerPageState extends State<OwnerPage> {
       return;
     }
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final name = prefs.getString('SelectedPath') ?? '';
-      final path = prefs.getString('Path_$name') ?? '';
+      final prefs = await AppConfig.getInstance();
+      final name = (await prefs.getString('SelectedPath')) ?? '';
+      final path = (await prefs.getString('Path_$name')) ?? '';
       final String cli = ('$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-cli');
       LogUtil.log('正在请求EasyTier进行端口转发', level: 'INFO');
       LogUtil.log('转发tcp服务器: 0.0.0.0:$_tcpServerPort 10.144.144.1:$_tcpServerPort', level: 'INFO');
@@ -698,9 +698,9 @@ class OwnerPageState extends State<OwnerPage> {
   Future<void> _refreshPeerList() async {
     if (!_isEasyTierRunning) return;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final name = prefs.getString('SelectedPath') ?? '';
-      final path = prefs.getString('Path_$name') ?? '';
+      final prefs = await AppConfig.getInstance();
+      final name = (await prefs.getString('SelectedPath')) ?? '';
+      final path = (await prefs.getString('Path_$name')) ?? '';
       final String cli = ('$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-cli');
       final result = await Process.run(
         cli,

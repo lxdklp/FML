@@ -1,4 +1,4 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 
 class GithubProxy {
   static const enabledKey = 'githubProxyEnabled';
@@ -28,18 +28,18 @@ class GithubProxy {
     return '${trimmed.replaceFirst(RegExp(r'/+$'), '')}/';
   }
 
-  static String selectedPrefix(SharedPreferences prefs) {
-    final selected = prefs.getString(prefixKey);
+  static Future<String> selectedPrefix(AppConfig prefs) async {
+    final selected = (await prefs.getString(prefixKey));
     return selected == custom || prefixes.contains(selected)
         ? selected!
         : prefixes.first;
   }
 
-  static String downloadUrl(String url, SharedPreferences prefs) {
-    if (url.isEmpty || !(prefs.getBool(enabledKey) ?? true)) return url;
-    final selected = selectedPrefix(prefs);
+  static Future<String> downloadUrl(String url, AppConfig prefs) async {
+    if (url.isEmpty || !((await prefs.getBool(enabledKey)) ?? true)) return url;
+    final selected = await selectedPrefix(prefs);
     final prefix = selected == custom
-        ? normalizePrefix(prefs.getString(customKey) ?? '')
+        ? normalizePrefix((await prefs.getString(customKey)) ?? '')
         : selected;
     return prefix == null ? url : '$prefix$url';
   }

@@ -3,7 +3,7 @@ import 'package:fml/constants.dart';
 import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/models/minecraft_version.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 
 import 'dart:math';
 
@@ -426,9 +426,9 @@ class DownloadGamePageState extends State<DownloadGamePage> {
 
   // 读取版本列表
   Future<void> _loadVersionList() async {
-    final prefs = await SharedPreferences.getInstance();
-    final selectedPath = prefs.getString('SelectedPath') ?? '';
-    final gameList = prefs.getStringList('Game_$selectedPath') ?? [];
+    final prefs = await AppConfig.getInstance();
+    final selectedPath = (await prefs.getString('SelectedPath')) ?? '';
+    final gameList = (await prefs.getStringList('Game_$selectedPath')) ?? [];
     if (!mounted) return;
     setState(() {
       _versionList = gameList;

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:crypto/crypto.dart';
 import 'package:encrypt/encrypt.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -17,20 +18,30 @@ class CryptoUtil {
       String deviceId;
       if (Platform.isMacOS) {
         final macInfo = await _deviceInfoPlugin.macOsInfo;
-        deviceId = macInfo.systemGUID ?? 'macos_fallback_id';
+        deviceId = macInfo.systemGUID ?? '';
       } else if (Platform.isWindows) {
         final windowsInfo = await _deviceInfoPlugin.windowsInfo;
         deviceId = windowsInfo.deviceId;
       } else if (Platform.isLinux) {
         final linuxInfo = await _deviceInfoPlugin.linuxInfo;
-        deviceId = linuxInfo.machineId ?? 'linux_fallback_id';
+        deviceId = linuxInfo.machineId ?? '';
       } else {
-        deviceId = '1145141919810';
+        deviceId = '';
       }
+      if (deviceId.trim().isEmpty) throw StateError('无法获取设备标识, 请重新登录');
+      _cachedDeviceId = deviceId;
       return deviceId;
     } catch (e) {
       LogUtil.log('获取设备ID失败: $e', level: 'ERROR');
-      return '1145141919810';
+      throw StateError('无法获取设备标识, 不能保存登录凭据');
+    }
+  }
+
+  static Future<String?> deviceFingerprint() async {
+    try {
+      return sha256.convert(utf8.encode(await getDeviceId())).toString();
+    } catch (_) {
+      return null;
     }
   }
 
@@ -60,7 +71,7 @@ class CryptoUtil {
       return encrypted.base64;
     } catch (e) {
       LogUtil.log('加密失败: $e', level: 'ERROR');
-      return plainText;
+      throw StateError('无法加密登录凭据');
     }
   }
 
@@ -78,7 +89,7 @@ class CryptoUtil {
       return decrypted;
     } catch (e) {
       LogUtil.log('解密失败: $e', level: 'ERROR');
-      return encryptedText;
+      throw StateError('登录凭据无法解密, 请重新登录');
     }
   }
 }

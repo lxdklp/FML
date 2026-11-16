@@ -65,6 +65,15 @@ jobs:
                 Write-Host "VERSION=$VERSION"
                 # 创建 zip 包
                 Compress-Archive -Path build/windows/${{ matrix.arch }}/runner/Release/* -DestinationPath "FML-Windows-$VERSION-${{ matrix.arch }}.zip"
+            - name: 打包 Windows 便携版
+              run: |
+                $version = (Select-String -Path pubspec.yaml -Pattern '^version:' | ForEach-Object { $_.Line -replace 'version:\s*', '' -replace '\+.*', '' }).Trim()
+                $stage = Join-Path $env:RUNNER_TEMP 'fml-portable-windows'
+                New-Item -ItemType Directory -Path $stage -Force | Out-Null
+                Copy-Item -Path build/windows/${{ matrix.arch }}/runner/Release/* -Destination $stage -Recurse
+                New-Item -ItemType Directory -Path "$stage/FML-data" -Force | Out-Null
+                [IO.File]::WriteAllText("$stage/FML-data/settings.json", '{}', [Text.UTF8Encoding]::new($false))
+                Compress-Archive -Path "$stage/*" -DestinationPath "FML-Windows-$version-${{ matrix.arch }}-portable.zip"
             - name: 安装 Inno Setup 7 (64 位)
               run: |
                 $innoVersion = $env:INNO_SETUP_VERSION
@@ -128,6 +137,7 @@ jobs:
                 name: windows-${{ matrix.arch }}-release
                 path: |
                   FML-Windows-*-${{ matrix.arch }}.zip
+                  FML-Windows-*-${{ matrix.arch }}-portable.zip
                   FML-Windows-*-${{ matrix.arch }}-setup.exe
                 if-no-files-found: error
                 retention-days: 7
@@ -217,12 +227,24 @@ jobs:
                 curl -L -o appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${{ matrix.appimage_arch }}.AppImage
                 chmod +x appimagetool
                 ARCH=${{ matrix.appimage_arch }} ./appimagetool --appimage-extract-and-run AppDir "FML-Linux-${VERSION}-${{ matrix.arch }}.AppImage"
+            - name: 打包 Linux 便携版
+              run: |
+                set -e
+                VERSION=$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)
+                STAGE="$RUNNER_TEMP/fml-portable-linux"
+                mkdir -p "$STAGE"
+                cp -a "build/linux/${{ matrix.arch }}/release/bundle/." "$STAGE/"
+                mkdir -p "$STAGE/FML-data"
+                printf '{}' > "$STAGE/FML-data/settings.json"
+                cd "$STAGE"
+                zip -r -y "$GITHUB_WORKSPACE/FML-Linux-${VERSION}-${{ matrix.arch }}-portable.zip" .
             - name: 上传 Linux (${{ matrix.arch }}) 构建产物
               uses: actions/upload-artifact@v7
               with:
                 name: linux-${{ matrix.arch }}-release
                 path: |
                   FML-Linux-*-${{ matrix.arch }}.zip
+                  FML-Linux-*-${{ matrix.arch }}-portable.zip
                   FML-Linux-*-${{ matrix.arch }}.deb
                   FML-Linux-*-${{ matrix.arch }}.AppImage
                 if-no-files-found: error
@@ -291,11 +313,24 @@ jobs:
                 ls -la "$DMG_STAGE"
                 hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_STAGE" -ov -format UDZO "$OUT_NAME"
                 rm -rf "$DMG_STAGE"
+            - name: 打包 macOS 便携版
+              run: |
+                set -e
+                VERSION=$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)
+                APP_DIR=$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' -type d | head -n1)
+                test -n "$APP_DIR"
+                STAGE="$RUNNER_TEMP/fml-portable-macos"
+                mkdir -p "$STAGE/FML-data"
+                ditto "$APP_DIR" "$STAGE/$(basename "$APP_DIR")"
+                printf '{}' > "$STAGE/FML-data/settings.json"
+                ditto -c -k --sequesterRsrc "$STAGE" "FML-macOS-${VERSION}-${{ matrix.arch }}-portable.zip"
             - name: 上传 macOS (${{ matrix.arch }}) 构建产物
               uses: actions/upload-artifact@v7
               with:
                 name: macos-${{ matrix.arch }}-release
-                path: FML-macOS-*-${{ matrix.arch }}.dmg
+                path: |
+                  FML-macOS-*-${{ matrix.arch }}.dmg
+                  FML-macOS-*-${{ matrix.arch }}-portable.zip
                 if-no-files-found: error
                 retention-days: 7
 
@@ -321,6 +356,7 @@ jobs:
                   artifacts/linux-*-release/FML-Linux-*.deb
                   artifacts/linux-*-release/FML-Linux-*.AppImage
                   artifacts/macos-*-release/FML-macOS-*.dmg
+                  artifacts/macos-*-release/FML-macOS-*-portable.zip
                 draft: false
                 prerelease: false
                 generate_release_notes: true

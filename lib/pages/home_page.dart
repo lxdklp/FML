@@ -1,6 +1,8 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/function/slide_page_route.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 
 import 'package:fml/pages/home/account.dart';
 import 'package:fml/pages/home/version.dart';
@@ -20,23 +22,45 @@ class HomePageState extends State<HomePage> {
   String _selectedGame = '未知版本';
   String _selectedPath = '未知文件夹';
   String? _gameVersion;
+  StreamSubscription<Set<String>>? _configSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadGameInfo();
+    _configSubscription = AppConfig.instance.changes.listen((keys) {
+      if (keys.any(
+        (key) => const {
+          'SelectedPath',
+          'SelectedGame',
+          'SelectedAccountName',
+          'SelectedAccountType',
+        }.contains(key),
+      )) {
+        _loadGameInfo();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _configSubscription?.cancel();
+    super.dispose();
   }
 
   // 读取游戏信息
   Future<void> _loadGameInfo() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _selectedAccountName = prefs.getString('SelectedAccountName') ?? '未选择账号';
-      _selectedAccountType = prefs.getString('SelectedAccountType') ?? '4';
-      _selectedGame = prefs.getString('SelectedGame') ?? '未选择版本';
-      _selectedPath = prefs.getString('SelectedPath') ?? '未选择文件夹';
-      _gameVersion = '选择的文件夹:$_selectedPath\n选择的版本:$_selectedGame ';
-    });
+    final prefs = await AppConfig.getInstance();
+
+    _selectedAccountName =
+        (await prefs.getString('SelectedAccountName')) ?? '未选择账号';
+    _selectedAccountType =
+        (await prefs.getString('SelectedAccountType')) ?? '4';
+    _selectedGame = (await prefs.getString('SelectedGame')) ?? '未选择版本';
+    _selectedPath = (await prefs.getString('SelectedPath')) ?? '未选择文件夹';
+    _gameVersion = '选择的文件夹:$_selectedPath\n选择的版本:$_selectedGame ';
+    if (!mounted) return;
+    setState(() {});
   }
 
   // 登录模式
@@ -59,7 +83,6 @@ class HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    _loadGameInfo();
     return Scaffold(
       appBar: AppBar(),
       body: Center(
@@ -121,15 +144,13 @@ class HomePageState extends State<HomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           if (_selectedAccountName == '未选择账号') {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('请先选择账号')));
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('请先选择账号')));
             return;
           }
           if (_selectedGame == '未选择版本') {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('请先选择游戏版本')));
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('请先选择游戏版本')));
             return;
           } else {
             Navigator.push(context, SlidePageRoute(page: const PlayPage()));

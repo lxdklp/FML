@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:fml/pages/home/management/game_settings.dart';
@@ -53,10 +53,10 @@ class ManagementPageState extends State<ManagementPage>
 
   // 加载游戏路径
   Future<void> _loadGamePath() async {
-    final prefs = await SharedPreferences.getInstance();
-    final path = prefs.getString('SelectedPath') ?? '';
-    final game = prefs.getString('SelectedGame') ?? '';
-    final gamePath = prefs.getString('Path_$path') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final path = (await prefs.getString('SelectedPath')) ?? '';
+    final game = (await prefs.getString('SelectedGame')) ?? '';
+    final gamePath = (await prefs.getString('Path_$path')) ?? '';
     final finalGamePath = p.join(gamePath, 'versions', game);
     setState(() {
       _gamePath = finalGamePath;
@@ -72,10 +72,10 @@ class ManagementPageState extends State<ManagementPage>
 
   // 检查各个管理文件夹
   Future<void> _checkDirectory() async {
-    final prefs = await SharedPreferences.getInstance();
-    final selectedPath = prefs.getString('SelectedPath') ?? '';
-    final game = prefs.getString('SelectedGame') ?? '';
-    final gamePath = prefs.getString('Path_$selectedPath') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final selectedPath = (await prefs.getString('SelectedPath')) ?? '';
+    final game = (await prefs.getString('SelectedGame')) ?? '';
+    final gamePath = (await prefs.getString('Path_$selectedPath')) ?? '';
     final path =
         '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game';
     // 检查存档文件夹

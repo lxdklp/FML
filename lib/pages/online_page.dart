@@ -6,7 +6,7 @@ import 'package:fml/function/dio_client.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:archive/archive.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/function/download.dart';
 import 'package:fml/function/github_proxy.dart';
@@ -52,9 +52,9 @@ class OnlinePageState extends State<OnlinePage> {
 
   // 检查核心是否存在
   Future<void> _checkCoreExists() async {
-    final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString('SelectedPath') ?? '';
-    final path = prefs.getString('Path_$name') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final name = (await prefs.getString('SelectedPath')) ?? '';
+    final path = (await prefs.getString('Path_$name')) ?? '';
     if (Platform.isWindows) {
       final File core = File(
         '$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-core.exe',
@@ -74,9 +74,9 @@ class OnlinePageState extends State<OnlinePage> {
 
   // 检测核心版本
   Future<void> _checkCoreVersion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString('SelectedPath') ?? '';
-    final path = prefs.getString('Path_$name') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final name = (await prefs.getString('SelectedPath')) ?? '';
+    final path = (await prefs.getString('Path_$name')) ?? '';
     final String core =
         ('$path${Platform.pathSeparator}easytier${Platform.pathSeparator}easytier-core');
     try {
@@ -318,11 +318,11 @@ class OnlinePageState extends State<OnlinePage> {
       ).showSnackBar(SnackBar(content: Text('获取Github API失败: $e')));
       return;
     }
-    final prefs = await SharedPreferences.getInstance();
-    downloadUrl = GithubProxy.downloadUrl(downloadUrl, prefs);
+    final prefs = await AppConfig.getInstance();
+    downloadUrl = await GithubProxy.downloadUrl(downloadUrl, prefs);
     LogUtil.log('开始下载: $downloadUrl', level: 'INFO');
-    final name = prefs.getString('SelectedPath') ?? '';
-    final path = prefs.getString('Path_$name') ?? '';
+    final name = (await prefs.getString('SelectedPath')) ?? '';
+    final path = (await prefs.getString('Path_$name')) ?? '';
     final Directory easytierDir = Directory(
       '$path${Platform.pathSeparator}easytier',
     );

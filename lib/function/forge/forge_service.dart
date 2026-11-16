@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:fml/function/dio_client.dart';
 import 'package:fml/function/download.dart';
 import 'package:fml/function/java/java_launch_check.dart';
@@ -266,9 +266,9 @@ class ForgeInstaller {
       }
       vanilla = await jsonUrl(versionUrl!);
       if (vanilla['id'] != minecraft) throw StateError('Minecraft 版本信息不匹配');
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await AppConfig.getInstance();
       // Installation uses the configured executable without probing its version.
-      java = configuredJavaExecutable(prefs);
+      java = await configuredJavaExecutable(prefs);
       await File(p.join(instancePath, '$name.json'))
           .writeAsString(jsonEncode(vanilla));
     });

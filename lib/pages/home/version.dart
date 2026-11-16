@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/function/slide_page_route.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 
 import 'package:fml/pages/home/version/add_path.dart';
 import 'package:fml/pages/home/version/selected_game.dart';
@@ -23,16 +23,17 @@ class VersionPageState extends State<VersionPage> {
 
   // 读取游戏文件夹列表
   Future<void> _loadPaths() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _pathList = prefs.getStringList('PathList') ?? [];
-    });
+    final prefs = await AppConfig.getInstance();
+
+      _pathList = (await prefs.getStringList('PathList')) ?? [];
+      if (!mounted) return;
+      setState(() {});
   }
 
   // 获取文件夹路径
   Future<String?> _getPath(String name) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('Path_$name');
+    final prefs = await AppConfig.getInstance();
+    return (await prefs.getString('Path_$name'));
   }
 
   // 添加文件夹后刷新

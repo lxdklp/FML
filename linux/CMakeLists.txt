@@ -126,3 +126,17 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+# 生成正式运行文件清单, 便携导出不扫描安装目录中的其他文件.
+include("${CMAKE_CURRENT_SOURCE_DIR}/flutter/ephemeral/generated_config.cmake")
+install(CODE "
+  execute_process(
+    COMMAND \"${FLUTTER_ROOT}/bin/cache/dart-sdk/bin/dart\"
+      \"${CMAKE_CURRENT_SOURCE_DIR}/../tool/runtime_manifest.dart\"
+      \"${CMAKE_INSTALL_PREFIX}\"
+    RESULT_VARIABLE manifest_result
+  )
+  if(NOT manifest_result EQUAL 0)
+    message(FATAL_ERROR \"生成运行文件清单失败\")
+  endif()
+" COMPONENT Runtime)

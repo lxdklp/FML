@@ -1,9 +1,9 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
+
 import 'dart:convert';
 
 class LogUtil {
-
   // 解析调用信息
   static String _resolveCaller() {
     final stack = StackTrace.current.toString().split('\n');
@@ -28,14 +28,13 @@ class LogUtil {
   static Future<void> log(String message, {String level = 'INFO'}) async {
     final caller = _resolveCaller();
     debugPrint('[$level] [$caller] $message');
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppConfig.getInstance();
     // 过滤日志
-    final int logLevel = prefs.getInt('logLevel') ?? 0;
+    final int logLevel = (await prefs.getInt('logLevel')) ?? 0;
     if ((level == 'INFO' && logLevel > 0) ||
         (level == 'WARNING' && logLevel > 1)) {
       return;
     }
-    List<String> logs = prefs.getStringList('logs') ?? [];
     // 创建日志条目
     final timestamp = DateTime.now().toIso8601String();
     final logEntry = jsonEncode({
@@ -44,20 +43,19 @@ class LogUtil {
       'caller': caller,
       'message': message,
     });
-    logs.add(logEntry);
-    await prefs.setStringList('logs', logs);
+    await prefs.updateStringList('logs', (logs) => logs..add(logEntry));
   }
 
   // 获取所有日志
   static Future<List<Map<String, dynamic>>> getLogs() async {
-    final prefs = await SharedPreferences.getInstance();
-    final logs = prefs.getStringList('logs') ?? [];
+    final prefs = await AppConfig.getInstance();
+    final logs = (await prefs.getStringList('logs')) ?? [];
     return logs.map((log) => jsonDecode(log) as Map<String, dynamic>).toList();
   }
 
   // 清除所有日志
   static Future<void> clearLogs() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppConfig.getInstance();
     await prefs.remove('logs');
   }
 }

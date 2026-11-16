@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dio/dio.dart';
 
@@ -621,16 +621,14 @@ Future<List<String>> _getProfile(context, mcToken) async {
 
 // 保存账号
 Future<void> _saveAccount(context, List<String> account) async {
-  final prefs = await SharedPreferences.getInstance();
-  List<String> accounts = prefs.getStringList('online_accounts_list') ?? [];
-  accounts.add(account[1]);
-  await prefs.setStringList('online_accounts_list', accounts);
+  final prefs = await AppConfig.getInstance();
   String encryptedRefreshToken = await CryptoUtil.encrypt(account[2]);
-  await prefs.setStringList('online_account_${account[1]}', [
-    '1',
-    account[0],
-    encryptedRefreshToken,
-  ]);
+  await prefs.edit((data) {
+    final accounts = List<String>.from(data['online_accounts_list'] as List? ?? []);
+    if (!accounts.contains(account[1])) accounts.add(account[1]);
+    data['online_accounts_list'] = accounts;
+    data['online_account_${account[1]}'] = ['1', account[0], encryptedRefreshToken];
+  });
 }
 
 // 登录
@@ -657,7 +655,7 @@ Future<void> login(
             if (hasMc) {
               List<String> profile = await _getProfile(context, mcToken);
               if (profile[0].isNotEmpty && profile[1].isNotEmpty) {
-                _saveAccount(context, [profile[0], profile[1], msToken[1]]);
+                await _saveAccount(context, [profile[0], profile[1], msToken[1]]);
                 await onlineCallback(3);
               } else {
                 await onlineCallback(4);

@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:fml/function/dio_client.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/function/crypto_util.dart';
@@ -166,27 +166,18 @@ Future<void> _saveAccount(
   String accessToken,
   String clientToken,
 ) async {
-  final prefs = await SharedPreferences.getInstance();
-  List<String> accounts = prefs.getStringList('AccountsList') ?? [];
-  if (!accounts.contains(name)) {
-    accounts.add(name);
-    await prefs.setStringList('external_accounts_list', accounts);
-    LogUtil.log('添加账号到列表: $name', level: 'INFO');
-  } else {
-    LogUtil.log('账号已存在，更新账号信息: $name', level: 'INFO');
-  }
+  final prefs = await AppConfig.getInstance();
   String encryptedPassword = await CryptoUtil.encrypt(password);
   String encryptedAccessToken = await CryptoUtil.encrypt(accessToken);
   String encryptedClientToken = await CryptoUtil.encrypt(clientToken);
-  await prefs.setStringList('external_account_$name', [
-    '2',
-    uuid,
-    serverUrl,
-    username,
-    encryptedPassword,
-    encryptedAccessToken,
-    encryptedClientToken,
-  ]);
+  await prefs.edit((data) {
+    final accounts = List<String>.from(data['external_accounts_list'] as List? ?? []);
+    if (!accounts.contains(name)) accounts.add(name);
+    data['external_accounts_list'] = accounts;
+    data['external_account_$name'] = [
+      '2', uuid, serverUrl, username, encryptedPassword, encryptedAccessToken, encryptedClientToken,
+    ];
+  });
   LogUtil.log('账号保存成功: $name, UUID: $uuid', level: 'INFO');
 }
 

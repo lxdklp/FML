@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:fml/function/log.dart';
 
 class OfflineAccountManagementPage extends StatefulWidget {
@@ -38,8 +38,8 @@ class OfflineAccountManagementPageState extends State<OfflineAccountManagementPa
 
   // 读取账号信息
   Future<Map<String, String>> _getAccountInfo(String name) async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList('offline_account_$name') ?? [];
+    final prefs = await AppConfig.getInstance();
+    final list = (await prefs.getStringList('offline_account_$name')) ?? [];
     if (list.isEmpty) {
       return {
         'uuid': '',
@@ -70,7 +70,7 @@ class OfflineAccountManagementPageState extends State<OfflineAccountManagementPa
 
   // 保存账号信息
   Future<void> _saveAccountInfo() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppConfig.getInstance();
     final list = [
       '0',  // 登录模式
       _isCustomUUID ? _uuid : _uuid, // 保持原始UUID不变
@@ -82,12 +82,12 @@ class OfflineAccountManagementPageState extends State<OfflineAccountManagementPa
   }
   // 删除账号
   Future<void> _deleteAccount() async {
-    final prefs = await SharedPreferences.getInstance();
-    final accounts = prefs.getStringList('offline_accounts_list') ?? [];
+    final prefs = await AppConfig.getInstance();
+    final accounts = (await prefs.getStringList('offline_accounts_list')) ?? [];
     accounts.remove(widget.accountName);
     await prefs.setStringList('offline_accounts_list', accounts);
     await prefs.remove('offline_account_${widget.accountName}');
-    if (widget.accountName == prefs.getString('SelectedAccount')) {
+    if (widget.accountName == (await prefs.getString('SelectedAccount'))) {
       await prefs.remove('SelectedAccount');
     }
     LogUtil.log('已删除账号: ${widget.accountName}', level: 'INFO');

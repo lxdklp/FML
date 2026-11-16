@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:material_ui/material_ui.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:fml/function/log.dart';
 
 class AddPathPage extends StatefulWidget {
@@ -73,8 +73,8 @@ class AddPathPageState extends State<AddPathPage> {
 
   // 保存游戏路径
   Future<void> _saveGamePath(String path, String name) async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String> paths = prefs.getStringList('PathList') ?? [];
+    final prefs = await AppConfig.getInstance();
+    List<String> paths = (await prefs.getStringList('PathList')) ?? [];
     if (paths.contains(name)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -6,7 +6,7 @@ import 'package:fml/function/slide_page_route.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:share_plus/share_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:fml/constants.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download/curseforge/type/mod.dart';
@@ -66,11 +66,11 @@ class CurseforgeInfoPageState extends State<CurseforgeInfoPage> {
 
   // 获取翻译设置
   Future<void> _getTranslateConfig() async{
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool autoTranslate = prefs.getBool('autoTranslate') ?? true;
-    bool enableGoogleTranslate = prefs.getBool('enableGoogleTranslate') ?? true;
-    int googleTranslateClient = prefs.getInt('googleTranslateClient') ?? 0;
-    final googleTranslateDirect = prefs.getBool('googleTranslateDirect') ?? false;
+    final AppConfig prefs = await AppConfig.getInstance();
+    bool autoTranslate = (await prefs.getBool('autoTranslate')) ?? true;
+    bool enableGoogleTranslate = (await prefs.getBool('enableGoogleTranslate')) ?? true;
+    int googleTranslateClient = (await prefs.getInt('googleTranslateClient')) ?? 0;
+    final googleTranslateDirect = (await prefs.getBool('googleTranslateDirect')) ?? false;
     if (!mounted) return;
     setState(() {
       _autoTranslate = autoTranslate;

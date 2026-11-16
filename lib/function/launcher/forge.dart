@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:fml/function/forge/forge_metadata.dart';
 import 'package:fml/function/java/java_launch_check.dart';
 import 'package:fml/function/log.dart';
@@ -108,12 +108,12 @@ Future<void> forgeLauncher({
 }) async {
   try {
     onProgress?.call('正在准备 Forge');
-    final prefs = await SharedPreferences.getInstance();
-    final selectedPath = prefs.getString('SelectedPath') ?? '';
-    final root = prefs.getString('Path_$selectedPath') ?? '';
-    final name = prefs.getString('SelectedGame') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final selectedPath = (await prefs.getString('SelectedPath')) ?? '';
+    final root = (await prefs.getString('Path_$selectedPath')) ?? '';
+    final name = (await prefs.getString('SelectedGame')) ?? '';
     final instance = safeChild(p.join(root, 'versions'), name);
-    final config = prefs.getStringList('Config_${selectedPath}_$name') ?? [];
+    final config = (await prefs.getStringList('Config_${selectedPath}_$name')) ?? [];
     if (config.length < 5) throw StateError('游戏配置不完整，请重新安装 Forge');
     final vanilla = jsonDecode(
       await File(p.join(instance, '$name.json')).readAsString(),
@@ -121,7 +121,7 @@ Future<void> forgeLauncher({
     final forge = jsonDecode(
       await File(p.join(instance, 'Forge.json')).readAsString(),
     ) as Map;
-    final java = javaExecutable ?? configuredJavaExecutable(prefs);
+    final java = javaExecutable ?? await configuredJavaExecutable(prefs);
     final libraries = <String>[];
     for (final lib in mergedLibraries(vanilla, forge)) {
       if (!rulesAllow(lib['rules'])) continue;
@@ -134,15 +134,15 @@ Future<void> forgeLauncher({
       libraries.add(path);
     }
     libraries.add(p.join(instance, '$name.jar'));
-    final accountName = prefs.getString('SelectedAccountName') ?? '';
-    final type = prefs.getString('SelectedAccountType') ?? '';
+    final accountName = (await prefs.getString('SelectedAccountName')) ?? '';
+    final type = (await prefs.getString('SelectedAccountType')) ?? '';
     final prefix = switch (type) {
       '0' => 'offline',
       '1' => 'online',
       '2' => 'external',
       _ => 'unknown',
     };
-    final account = prefs.getStringList('${prefix}_account_$accountName') ?? [];
+    final account = (await prefs.getStringList('${prefix}_account_$accountName')) ?? [];
     if (account.length <
         (type == '2'
             ? 7
@@ -204,7 +204,7 @@ Future<void> forgeLauncher({
       'classpath_separator': Platform.isWindows ? ';' : ':',
       'classpath': libraries.join(Platform.isWindows ? ';' : ':'),
       'launcher_name': 'FML',
-      'launcher_version': prefs.getString('version') ?? '1.9.0',
+      'launcher_version': (await prefs.getString('version')) ?? '1.9.0',
       'resolution_width': config[2],
       'resolution_height': config[3],
       'clientid': '',

@@ -1,13 +1,13 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'package:fml/function/log.dart';
 
 Future<void> saveOffineAccount(BuildContext context,String name) async {
   String uuid = md5.convert(utf8.encode('OfflinePlayer:$name')).toString();
-  final prefs = await SharedPreferences.getInstance();
-  List<String> accounts = prefs.getStringList('offline_accounts_list') ?? [];
+  final prefs = await AppConfig.getInstance();
+  List<String> accounts = (await prefs.getStringList('offline_accounts_list')) ?? [];
   if (accounts.contains(name)) {
     LogUtil.log('账号 $name 已存在', level: 'ERROR');
     return;

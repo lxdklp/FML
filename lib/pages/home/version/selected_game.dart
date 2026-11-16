@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:fml/function/log.dart';
 
 class SelectedGamePage extends StatefulWidget {
@@ -23,23 +23,24 @@ class SelectedGamePageState extends State<SelectedGamePage> {
 
   // 读取游戏列表
   Future<void> _loadGames() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _gameList = prefs.getStringList('Game_${widget.path}') ?? [];
-    });
+    final prefs = await AppConfig.getInstance();
+
+      _gameList = (await prefs.getStringList('Game_${widget.path}')) ?? [];
+      if (!mounted) return;
+      setState(() {});
   }
 
   // 获取文件夹路径
   Future<String?> _getPath(String path, String game) async {
-    final prefs = await SharedPreferences.getInstance();
-    String? folder = prefs.getString('Path_$path');
+    final prefs = await AppConfig.getInstance();
+    String? folder = (await prefs.getString('Path_$path'));
     var name = folder! + Platform.pathSeparator + game;
     return name;
   }
 
   // 选择版本
   Future<void> _selectGame(String name) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppConfig.getInstance();
     await prefs.setString('SelectedPath', widget.path);
     await prefs.setString('SelectedGame', name);
     if (!mounted) return;
@@ -71,19 +72,19 @@ class SelectedGamePageState extends State<SelectedGamePage> {
   // 删除文件夹
   Future<void> _deletePath() async {
     try {
-    final prefs = await SharedPreferences.getInstance();
-    final path = prefs.getString('SelectedPath') ?? '';
-    final gamePath = prefs.getString('Path_$path') ?? '';
-    final pathList = prefs.getStringList('PathList') ?? [];
+    final prefs = await AppConfig.getInstance();
+    final path = (await prefs.getString('SelectedPath')) ?? '';
+    final gamePath = (await prefs.getString('Path_$path')) ?? '';
+    final pathList = (await prefs.getStringList('PathList')) ?? [];
     pathList.remove(widget.path);
     await prefs.setStringList('PathList', pathList);
     await prefs.remove('Game_${widget.path}');
-    final keys = prefs.getKeys();
+    final keys = (await prefs.getKeys());
     final configKeys = keys.where((k) => k.startsWith('Config_${widget.path}')).toList();
     for (final k in configKeys) {
       await prefs.remove(k);
     }
-    if (widget.path == prefs.getString('SelectedPath')) {
+    if (widget.path == (await prefs.getString('SelectedPath'))) {
       await prefs.remove('SelectedPath');
       await prefs.remove('SelectedGame');
     }

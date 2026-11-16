@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:fml/constants.dart';
@@ -105,9 +105,9 @@ class _DownloadForgePageState extends State<DownloadForgePage> {
       if (instanceNameError(widget.name) case final String error) {
         throw FormatException(error);
       }
-      final prefs = await SharedPreferences.getInstance();
-      _selectedPath ??= prefs.getString('SelectedPath') ?? '';
-      _gamePath ??= prefs.getString('Path_$_selectedPath') ?? '';
+      final prefs = await AppConfig.getInstance();
+      _selectedPath ??= (await prefs.getString('SelectedPath')) ?? '';
+      _gamePath ??= (await prefs.getString('Path_$_selectedPath')) ?? '';
       if (_gamePath!.isEmpty) throw StateError('请先选择游戏文件夹');
       final folder = Directory(
         safeChild(p.join(_gamePath!, 'versions'), widget.name),
@@ -120,7 +120,7 @@ class _DownloadForgePageState extends State<DownloadForgePage> {
         'pack': widget.packUrl,
       });
       if (!_ownsDirectory) {
-        if ((prefs.getStringList('Game_$_selectedPath') ?? []).contains(
+        if (((await prefs.getStringList('Game_$_selectedPath')) ?? []).contains(
               widget.name,
             ) ||
             (await folder.exists() &&
@@ -153,17 +153,13 @@ class _DownloadForgePageState extends State<DownloadForgePage> {
           bytes ~/= 16384;
         }
         final memory = (bytes ~/ (1024 * 1024 * 2)).clamp(1024, 8192);
-        if (!await prefs.setStringList(
+        await prefs.setStringList(
           'Config_${_selectedPath}_${widget.name}',
           ['$memory', '0', '854', '480', 'Forge', ''],
-        )) {
-          throw StateError('无法保存游戏配置');
-        }
-        final games = prefs.getStringList('Game_$_selectedPath') ?? [];
+        );
+        final games = (await prefs.getStringList('Game_$_selectedPath')) ?? [];
         if (!games.contains(widget.name)) games.add(widget.name);
-        if (!await prefs.setStringList('Game_$_selectedPath', games)) {
-          throw StateError('无法保存游戏列表');
-        }
+        await prefs.setStringList('Game_$_selectedPath', games);
       });
       if (mounted) setState(() => _complete = true);
       try {

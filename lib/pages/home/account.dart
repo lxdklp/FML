@@ -1,6 +1,7 @@
+import 'package:fml/function/config/account_credentials.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/function/slide_page_route.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/home/account/new_account.dart';
 import 'package:fml/pages/home/account/offline_account_management.dart';
@@ -25,27 +26,30 @@ class AccountPageState extends State<AccountPage> {
 
   // 读取本地账号列表
   Future<void> _loadAccounts() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _offlineAccounts = prefs.getStringList('offline_accounts_list') ?? [];
-      _onlineAccounts = prefs.getStringList('online_accounts_list') ?? [];
-      _externalAccounts = prefs.getStringList('external_accounts_list') ?? [];
-    });
+    final prefs = await AppConfig.getInstance();
+
+    _offlineAccounts =
+        (await prefs.getStringList('offline_accounts_list')) ?? [];
+    _onlineAccounts = (await prefs.getStringList('online_accounts_list')) ?? [];
+    _externalAccounts =
+        (await prefs.getStringList('external_accounts_list')) ?? [];
+    if (!mounted) return;
+    setState(() {});
   }
 
   // 账号信息
   Future<Map<String, dynamic>> _getAccountInfo(String name, String type) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppConfig.getInstance();
     List<String>? accountData;
     switch (type) {
       case '0':
-        accountData = prefs.getStringList('offline_account_$name');
+        accountData = (await prefs.getStringList('offline_account_$name'));
         break;
       case '1':
-        accountData = prefs.getStringList('online_account_$name');
+        accountData = (await prefs.getStringList('online_account_$name'));
         break;
       case '2':
-        accountData = prefs.getStringList('external_account_$name');
+        accountData = (await prefs.getStringList('external_account_$name'));
         break;
     }
     if (accountData == null || accountData.isEmpty) {
@@ -53,7 +57,11 @@ class AccountPageState extends State<AccountPage> {
     }
 
     // 基本信息
-    Map<String, dynamic> info = {'loginMode': type, 'uuid': accountData[1]};
+    Map<String, dynamic> info = {
+      'loginMode': type,
+      'uuid': accountData[1],
+      'needsLogin': AccountCredentials.needsLogin(accountData, type),
+    };
     switch (type) {
       case '0':
         info['isCustomUUID'] = accountData[2];
@@ -98,38 +106,40 @@ class AccountPageState extends State<AccountPage> {
 
   // 删除账号
   Future<void> _deleteAccount(String name, String type) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await AppConfig.getInstance();
     if (type == '0') {
-      final accountList = prefs.getStringList('offline_accounts_list') ?? [];
+      final accountList =
+          (await prefs.getStringList('offline_accounts_list')) ?? [];
       accountList.remove(name);
       await prefs.setStringList('offline_accounts_list', accountList);
       await prefs.remove('offline_account_$name');
       LogUtil.log('已删除离线账号: $name', level: 'INFO');
     }
     if (type == '1') {
-      final accountList = prefs.getStringList('online_accounts_list') ?? [];
+      final accountList =
+          (await prefs.getStringList('online_accounts_list')) ?? [];
       accountList.remove(name);
       await prefs.setStringList('online_accounts_list', accountList);
       await prefs.remove('online_account_$name');
       LogUtil.log('已删除正版账号: $name', level: 'INFO');
     }
     if (type == '2') {
-      final accountList = prefs.getStringList('external_accounts_list') ?? [];
+      final accountList =
+          (await prefs.getStringList('external_accounts_list')) ?? [];
       accountList.remove(name);
       await prefs.setStringList('external_accounts_list', accountList);
       await prefs.remove('external_account_$name');
       LogUtil.log('已删除外置登录账号: $name', level: 'INFO');
     }
-    if (name == prefs.getString('SelectedAccountName')) {
+    if (name == (await prefs.getString('SelectedAccountName'))) {
       await prefs.remove('SelectedAccountName');
       await prefs.remove('SelectedAccountType');
     }
     _loadAccounts();
     if (!mounted) return;
     Navigator.pop(context);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('已删除账号: $name')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('已删除账号: $name')));
   }
 
   // 删除账号提示框
@@ -214,7 +224,7 @@ class AccountPageState extends State<AccountPage> {
                     title: Text(name),
                     subtitle: Text(subtitle),
                     onTap: () async {
-                      final prefs = await SharedPreferences.getInstance();
+                      final prefs = await AppConfig.getInstance();
                       await prefs.setString('SelectedAccountName', name);
                       await prefs.setString('SelectedAccountType', type);
                       if (!mounted) return;
@@ -244,6 +254,7 @@ class AccountPageState extends State<AccountPage> {
               }
               subtitle += _getLoginModeText(type);
               subtitle += '\nUUID: $uuid';
+              if (data['needsLogin'] == true) subtitle += '\n需要重新登录';
               if (type == '2') {
                 subtitle += '\n用户名: ${data['username'] ?? '错误'}';
                 subtitle += '\n服务器URL: ${data['serverUrl'] ?? '错误'}';
@@ -254,13 +265,26 @@ class AccountPageState extends State<AccountPage> {
                   title: Text(name),
                   subtitle: Text(subtitle),
                   onTap: () async {
-                    final prefs = await SharedPreferences.getInstance();
+                    if (data['needsLogin'] == true) {
+                      await Navigator.push(
+                        context,
+                        SlidePageRoute(
+                          page: NewAccountPage(
+                            initialType: type,
+                            serverUrl: data['serverUrl'] as String?,
+                            username: data['username'] as String?,
+                          ),
+                        ),
+                      );
+                      if (mounted) await _loadAccounts();
+                      return;
+                    }
+                    final prefs = await AppConfig.getInstance();
                     await prefs.setString('SelectedAccountName', name);
                     await prefs.setString('SelectedAccountType', type);
                     if (!mounted) return;
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('已切换账号: $name')));
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text('已切换账号: $name')));
                     Navigator.pop(context);
                   },
                   trailing: IconButton(

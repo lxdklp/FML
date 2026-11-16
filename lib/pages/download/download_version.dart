@@ -4,7 +4,7 @@ import 'package:fml/function/minecraft_manifest.dart';
 import 'package:fml/function/slide_page_route.dart';
 import 'package:fml/models/minecraft_version.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'package:fml/pages/download/download_version/download_game.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fml/function/log.dart';
@@ -188,8 +188,8 @@ class DownloadVersionPageState extends State<DownloadVersionPage> {
                         ),
                         onTap: () async {
                           // 读取选择路径
-                          final prefs = await SharedPreferences.getInstance();
-                          final selectedDir = prefs.getString('SelectedPath');
+                          final prefs = await AppConfig.getInstance();
+                          final selectedDir = (await prefs.getString('SelectedPath'));
                           if (!mounted) return;
                           // 检查下载路径是否存在
                           if (selectedDir == null || selectedDir.isEmpty) {

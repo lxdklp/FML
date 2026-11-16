@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/function/log.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:system_info2/system_info2.dart';
@@ -85,11 +85,11 @@ class GameSettingsTabState extends State<GameSettingsTab> {
 
   // 加载游戏配置
   Future<void> _loadGameConfig() async {
-    final prefs = await SharedPreferences.getInstance();
-    final path = prefs.getString('SelectedPath') ?? '';
-    final game = prefs.getString('SelectedGame') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final path = (await prefs.getString('SelectedPath')) ?? '';
+    final game = (await prefs.getString('SelectedGame')) ?? '';
     final gameName = '_$game';
-    final cfg = prefs.getStringList('Config_$path$gameName') ?? [];
+    final cfg = (await prefs.getStringList('Config_$path$gameName')) ?? [];
     final xmx = cfg.isNotEmpty ? cfg[0] : '';
     final isFullScreen = cfg.length > 1 ? (cfg[1] == '1') : false;
     final width = cfg.length > 2 && cfg[2].isNotEmpty ? cfg[2] : _width;
@@ -111,9 +111,9 @@ class GameSettingsTabState extends State<GameSettingsTab> {
 
   // 保存游戏配置
   Future<void> _saveGameConfig() async {
-    final prefs = await SharedPreferences.getInstance();
-    final path = prefs.getString('SelectedPath') ?? '';
-    final game = prefs.getString('SelectedGame') ?? '';
+    final prefs = await AppConfig.getInstance();
+    final path = (await prefs.getString('SelectedPath')) ?? '';
+    final game = (await prefs.getString('SelectedGame')) ?? '';
     final gameName = '_$game';
 
     await prefs.setStringList('Config_$path$gameName', [
@@ -149,13 +149,13 @@ class GameSettingsTabState extends State<GameSettingsTab> {
   //删除版本
   Future<void> _deleteVersion() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final path = prefs.getString('SelectedPath') ?? '';
-      final game = prefs.getString('SelectedGame') ?? '';
-      final gamePath = prefs.getString('Path_$path') ?? '';
+      final prefs = await AppConfig.getInstance();
+      final path = (await prefs.getString('SelectedPath')) ?? '';
+      final game = (await prefs.getString('SelectedGame')) ?? '';
+      final gamePath = (await prefs.getString('Path_$path')) ?? '';
       final gameName = '_$game';
       await prefs.remove('Config_$path$gameName');
-      final gamesList = prefs.getStringList('Game_$path') ?? [];
+      final gamesList = (await prefs.getStringList('Game_$path')) ?? [];
       if (gamesList.contains(game)) {
         gamesList.remove(game);
         await prefs.setStringList('Game_$path', gamesList);

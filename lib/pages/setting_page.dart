@@ -1,3 +1,5 @@
+import 'package:fml/function/config/app_config.dart';
+import 'package:fml/pages/setting/portable_export.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/constants.dart';
 import 'package:fml/models/page/navigation_drawer_item.dart';
@@ -17,7 +19,7 @@ class SettingPage extends StatefulWidget {
 class SettingPageState extends State<SettingPage> {
   int _selectedIndex = 0;
 
-  final List<NavigationDrawerItem> _settingPageItems = const [
+  late final List<NavigationDrawerItem> _settingPageItems = [
     NavigationDrawerItem(
       page: ThemePage(),
       destination: NavigationDrawerDestination(
@@ -53,6 +55,14 @@ class SettingPageState extends State<SettingPage> {
         label: Text('APP日志'),
       ),
     ),
+    if (AppConfig.instance.canExportPortable)
+      NavigationDrawerItem(
+        page: PortableExportPage(config: AppConfig.instance),
+        destination: const NavigationDrawerDestination(
+          icon: Icon(Icons.drive_file_move_outlined),
+          label: Text('转换为便携版'),
+        ),
+      ),
     NavigationDrawerItem(
       page: AboutPage(),
       destination: NavigationDrawerDestination(
@@ -105,9 +115,25 @@ class SettingPageState extends State<SettingPage> {
                           kDefaultPadding,
                           kDefaultPadding,
                         ),
-                        child: Text(
-                          '设置',
-                          style: theme.textTheme.headlineMedium,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('设置', style: theme.textTheme.headlineMedium),
+                            const SizedBox(height: 8),
+                            Text(
+                              AppConfig.instance.canExportPortable
+                                  ? '普通模式'
+                                  : '便携模式',
+                            ),
+                            Tooltip(
+                              message: AppConfig.instance.storageDescription,
+                              child: Text(
+                                AppConfig.instance.storageDescription,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       // Destinations

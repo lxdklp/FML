@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as path;
 import 'dart:io';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fml/function/config/app_config.dart';
 
 import 'package:fml/function/dio_client.dart';
 import 'package:fml/constants.dart';
@@ -173,9 +173,9 @@ class ModPageState extends State<ModPage> {
 
   // 获取当前版本目录
   Future<String> _getCurrentVersionDirectory() async {
-    final prefs = await SharedPreferences.getInstance();
-    final pathStr = prefs.getString('Path_${prefs.getString('SelectedPath')}');
-    final game = prefs.getString('SelectedGame');
+    final prefs = await AppConfig.getInstance();
+    final pathStr = (await prefs.getString('Path_${(await prefs.getString('SelectedPath'))}'));
+    final game = (await prefs.getString('SelectedGame'));
     if (pathStr == null || game == null) return '';
     savePath =
         '$pathStr${Platform.pathSeparator}versions${Platform.pathSeparator}$game${Platform.pathSeparator}mods';
