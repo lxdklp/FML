@@ -1,3 +1,5 @@
+import 'launch_session.dart';
+
 import 'dart:io';
 
 import 'package:fml/function/java/java_launch_check.dart';
@@ -182,6 +184,7 @@ String _getLoginMode(String loginMode) {
 
 // 启动NeoForge
 Future<void> neoforgeLauncher({
+  required LaunchSession session,
   String? javaExecutable,
   ProgressCallback? onProgress,
   ErrorCallback? onError,
@@ -257,6 +260,7 @@ Future<void> neoforgeLauncher({
         '${_getLoginMode(accountType)}_account_$accountName',
       )) ??
       [];
+  session.redactor.addAccount(accountType, accountInfo);
   final assetIndex = await getAssetIndex(jsonPath) ?? '';
   // 基础JVM参数
   final jvmArgs = <String>[
@@ -392,22 +396,13 @@ Future<void> neoforgeLauncher({
   }
   final args = [...jvmArgs, mainClass, ...gameArgs];
   LogUtil.log('使用的Java: $java', level: 'INFO');
-  onProgress?.call('正在启动游戏');
-  try {
-    final out = await Process.start(
-      java,
-      args,
-      workingDirectory:
-          '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
-    );
-    out.stdout.listen((_) {});
-    out.stderr.listen((_) {});
-    onProgress?.call('游戏启动完成');
-    final code = await out.exitCode;
-    LogUtil.log('退出码: $code', level: 'INFO');
-  } catch (e) {
-    LogUtil.log('启动游戏进程失败: $e', level: 'ERROR');
-    onError?.call('启动游戏失败: $e');
-    return;
-  }
+  await session.run(
+    executable: java,
+    arguments: args,
+    workingDirectory:
+        '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
+    gameRoot: gamePath,
+    metadataPath: jsonPath,
+    secrets: [token],
+  );
 }

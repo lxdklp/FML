@@ -1,3 +1,5 @@
+import 'launch_session.dart';
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -102,6 +104,7 @@ List<String> buildForgeCommand({
 }
 
 Future<void> forgeLauncher({
+  required LaunchSession session,
   String? javaExecutable,
   void Function(String)? onProgress,
   void Function(String)? onError,
@@ -113,7 +116,8 @@ Future<void> forgeLauncher({
     final root = (await prefs.getString('Path_$selectedPath')) ?? '';
     final name = (await prefs.getString('SelectedGame')) ?? '';
     final instance = safeChild(p.join(root, 'versions'), name);
-    final config = (await prefs.getStringList('Config_${selectedPath}_$name')) ?? [];
+    final config =
+        (await prefs.getStringList('Config_${selectedPath}_$name')) ?? [];
     if (config.length < 5) throw StateError('游戏配置不完整，请重新安装 Forge');
     final vanilla = jsonDecode(
       await File(p.join(instance, '$name.json')).readAsString(),
@@ -142,7 +146,8 @@ Future<void> forgeLauncher({
       '2' => 'external',
       _ => 'unknown',
     };
-    final account = (await prefs.getStringList('${prefix}_account_$accountName')) ?? [];
+    final account =
+        (await prefs.getStringList('${prefix}_account_$accountName')) ?? [];
     if (account.length <
         (type == '2'
             ? 7
@@ -151,6 +156,7 @@ Future<void> forgeLauncher({
             : 3)) {
       throw StateError('请先选择有效的游戏账号');
     }
+    session.redactor.addAccount(type, account);
     var uuid = account[1];
     var token = '0';
     String? authlib;
@@ -222,27 +228,16 @@ Future<void> forgeLauncher({
       config: config,
       authlib: authlib,
     );
-    onProgress?.call('正在启动 Forge');
-    final process = await Process.start(java, args, workingDirectory: instance);
-    final log = File(p.join(instance, 'forge-launch.log')).openWrite();
-    void writeLine(String line) =>
-        log.writeln(token == '0' ? line : line.replaceAll(token, '[REDACTED]'));
-    final output = process.stdout
-        .transform(const Utf8Decoder(allowMalformed: true))
-        .transform(const LineSplitter())
-        .forEach(writeLine);
-    final errors = process.stderr
-        .transform(const Utf8Decoder(allowMalformed: true))
-        .transform(const LineSplitter())
-        .forEach(writeLine);
-    onProgress?.call('游戏启动完成');
-    final code = await process.exitCode;
-    await Future.wait([output, errors]);
-    await log.close();
-    await LogUtil.log('Forge 退出码: $code');
-    if (code != 0) onError?.call('Forge 异常退出（$code），详见版本目录内 forge-launch.log');
+    await session.run(
+      executable: java,
+      arguments: args,
+      workingDirectory: instance,
+      gameRoot: root,
+      metadataPath: p.join(instance, '$name.json'),
+      secrets: [token],
+    );
   } catch (e) {
-    await LogUtil.log('Forge 启动失败: $e', level: 'ERROR');
+    await LogUtil.log(session.redactor.clean('Forge 启动失败: $e'), level: 'ERROR');
     onError?.call('启动 Forge 失败: $e');
   }
 }

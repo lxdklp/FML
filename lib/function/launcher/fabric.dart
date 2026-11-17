@@ -1,3 +1,5 @@
+import 'launch_session.dart';
+
 import 'dart:async';
 import 'dart:io';
 
@@ -293,6 +295,7 @@ Future<Map<String, dynamic>> getFabricInfoFromFabricJson(
 
 // 启动Fabric游戏
 Future<void> fabricLauncher({
+  required LaunchSession session,
   String? javaExecutable,
   ProgressCallback? onProgress,
   ErrorCallback? onError,
@@ -404,6 +407,7 @@ Future<void> fabricLauncher({
         '${_getLoginMode(accountType)}_account_$accountName',
       )) ??
       [];
+  session.redactor.addAccount(accountType, accountInfo);
   // 账号信息
   String uuid = '';
   String token = '';
@@ -512,16 +516,13 @@ Future<void> fabricLauncher({
     if (cfg[1] == '1') '--fullscreen',
   ];
   LogUtil.log('使用的Java: $java', level: 'INFO');
-  onProgress?.call('正在启动游戏');
-  final out = await Process.start(
-    java,
-    args,
+  await session.run(
+    executable: java,
+    arguments: args,
     workingDirectory:
         '$gamePath${Platform.pathSeparator}versions${Platform.pathSeparator}$game',
+    gameRoot: gamePath,
+    metadataPath: jsonPath,
+    secrets: [token],
   );
-  out.stdout.listen((_) {});
-  out.stderr.listen((_) {});
-  onProgress?.call('游戏启动完成');
-  final code = await out.exitCode;
-  LogUtil.log('退出码: $code', level: 'INFO');
 }
