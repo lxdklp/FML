@@ -1,7 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/function/config/app_config.dart';
+
 import 'dart:io';
+
 import 'package:url_launcher/url_launcher.dart';
 import 'package:system_info2/system_info2.dart';
 import 'package:fml/function/slide_page_route.dart';
@@ -20,6 +22,7 @@ class GameSettingsTab extends StatefulWidget {
   final bool hasSaves;
   final bool hasScreenshots;
   final bool hasLogs;
+  final bool active;
 
   const GameSettingsTab({
     super.key,
@@ -34,6 +37,7 @@ class GameSettingsTab extends StatefulWidget {
     required this.hasSaves,
     required this.hasScreenshots,
     required this.hasLogs,
+    this.active = true,
   });
 
   @override
@@ -50,6 +54,30 @@ class GameSettingsTabState extends State<GameSettingsTab> {
   String _height = '480';
   String _type = '';
   int memory = 0;
+  bool _openingPatch = false;
+
+  Future<void> _openPatch({String? archivePath}) async {
+    if (_openingPatch ||
+        !widget.active ||
+        !(ModalRoute.of(context)?.isCurrent ?? true)) {
+      return;
+    }
+    setState(() => _openingPatch = true);
+    try {
+      await Navigator.push(
+        context,
+        SlidePageRoute(
+          page: PatchPackPage(
+            gamePath: widget.gamePath,
+            gameName: p.basename(widget.gamePath),
+            archivePath: archivePath,
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _openingPatch = false);
+    }
+  }
 
   @override
   void initState() {
@@ -81,7 +109,6 @@ class GameSettingsTabState extends State<GameSettingsTab> {
       memory = physicalMemory;
     });
   }
-
 
   // 加载游戏配置
   Future<void> _loadGameConfig() async {
@@ -172,16 +199,14 @@ class GameSettingsTabState extends State<GameSettingsTab> {
       await prefs.remove('SelectedGame');
       LogUtil.log('已清空 SelectedGame', level: 'INFO');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('版本已成功删除')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('版本已成功删除')));
       }
     } catch (e) {
       LogUtil.log('删除版本时出错: ${e.toString()}', level: 'ERROR');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('删除版本时出错: ${e.toString()}')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('删除版本时出错: ${e.toString()}')));
       }
     } finally {
       Navigator.pop(context);
@@ -208,16 +233,14 @@ class GameSettingsTabState extends State<GameSettingsTab> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('无法打开链接: $url')));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('发生错误: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('发生错误: $e')));
       }
       LogUtil.log(e.toString(), level: 'ERROR');
     }
@@ -225,197 +248,195 @@ class GameSettingsTabState extends State<GameSettingsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return _gameConfig.isEmpty
-        ? const Center(child: Text('配置出错'))
-        : Stack(
-            children: [
-              ListView(
-                padding: const EdgeInsets.only(bottom: 140),
-                children: [
-                  Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ListTile(
-                          title: const Text('最大堆内存 (-Xmx)'),
-                          subtitle: Text(
-                            '设备总内存: ${(memory / 1024).toStringAsFixed(1)} GiB, 当前分配${_xmxController.text} MiB (约 ${(double.parse(_xmxController.text) / 1024).toStringAsFixed(1)} GiB)'),
-                        ),
-                        Slider(
-                          value: double.tryParse(_xmxController.text) ?? 1.0,
-                          min: 0,
-                          max: memory.toDouble(),
-                          onChanged: (value) {
-                            setState(() {
-                              _xmxController.text = value.toStringAsFixed(0);
-                            });
-                          },
-                        )
-                      ],
-                    )
-                  ),
-                  Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Column(
-                      children: [
-                        SwitchListTile(
-                          title: const Text('全屏'),
-                          value: _isFullScreen,
-                          onChanged: (value) {
-                            setState(() {
-                              _isFullScreen = value;
-                            });
-                          },
-                        ),
-                        if (!_isFullScreen) ...[
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            child: TextField(
-                              controller: _widthController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: '宽度',
-                                hintText: '854',
-                                border: OutlineInputBorder(),
-                              ),
-                              onChanged: (value) =>
-                                  setState(() => _width = value),
+    return PatchPackDropTarget(
+      enabled: widget.active && !_openingPatch,
+      onDrop: (path) => _openPatch(archivePath: path),
+      child: _gameConfig.isEmpty
+          ? const Center(child: Text('配置出错'))
+          : Stack(
+              children: [
+                ListView(
+                  padding: const EdgeInsets.only(bottom: 140),
+                  children: [
+                    Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ListTile(
+                            title: const Text('最大堆内存 (-Xmx)'),
+                            subtitle: Text(
+                              '设备总内存: ${(memory / 1024).toStringAsFixed(1)} GiB, 当前分配${_xmxController.text} MiB (约 ${(double.parse(_xmxController.text) / 1024).toStringAsFixed(1)} GiB)',
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            child: TextField(
-                              controller: _heightController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: '高度',
-                                hintText: '480',
-                                border: OutlineInputBorder(),
-                              ),
-                              onChanged: (value) =>
-                                  setState(() => _height = value),
-                            ),
+                          Slider(
+                            value: double.tryParse(_xmxController.text) ?? 1.0,
+                            min: 0,
+                            max: memory.toDouble(),
+                            onChanged: (value) {
+                              setState(() {
+                                _xmxController.text = value.toStringAsFixed(0);
+                              });
+                            },
                           ),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                  Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: ListTile(
-                      title: const Text('打开游戏文件夹'),
-                      subtitle: Text(widget.gamePath),
-                      trailing: const Icon(Icons.open_in_new),
-                      onTap: () => _launchURL(widget.gamePath),
-                    ),
-                  ),
-                  Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: ListTile(
-                      leading: const Icon(Icons.install_desktop),
-                      title: const Text('安装补丁包'),
-                      subtitle: const Text('安装本地汉化或其他补丁包'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        SlidePageRoute(
-                          page: PatchPackPage(
-                            gamePath: widget.gamePath,
-                            gameName: p.basename(widget.gamePath),
+                    Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Column(
+                        children: [
+                          SwitchListTile(
+                            title: const Text('全屏'),
+                            value: _isFullScreen,
+                            onChanged: (value) {
+                              setState(() {
+                                _isFullScreen = value;
+                              });
+                            },
                           ),
+                          if (!_isFullScreen) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: TextField(
+                                controller: _widthController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: '宽度',
+                                  hintText: '854',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (value) =>
+                                    setState(() => _width = value),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: TextField(
+                                controller: _heightController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: '高度',
+                                  hintText: '480',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (value) =>
+                                    setState(() => _height = value),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: ListTile(
+                        title: const Text('打开游戏文件夹'),
+                        subtitle: Text(widget.gamePath),
+                        trailing: const Icon(Icons.open_in_new),
+                        onTap: () => _launchURL(widget.gamePath),
+                      ),
+                    ),
+                    Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: ListTile(
+                        leading: const Icon(Icons.install_desktop),
+                        title: const Text('安装补丁包'),
+                        subtitle: const Text('选择或拖入本地补丁包 ZIP 以预览'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: _openingPatch ? null : () => _openPatch(),
+                      ),
+                    ),
+                    if (widget.hasScreenshots)
+                      Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: ListTile(
+                          title: const Text('打开截图文件夹'),
+                          subtitle: Text(widget.screenshotsPath),
+                          trailing: const Icon(Icons.open_in_new),
+                          onTap: () => _launchURL(widget.screenshotsPath),
                         ),
                       ),
-                    ),
-                  ),
-                  if (widget.hasScreenshots)
-                    Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                    if (widget.hasLogs)
+                      Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: ListTile(
+                          title: const Text('打开日志文件夹'),
+                          subtitle: Text(widget.logsPath),
+                          trailing: const Icon(Icons.open_in_new),
+                          onTap: () => _launchURL(widget.logsPath),
+                        ),
                       ),
-                      child: ListTile(
-                        title: const Text('打开截图文件夹'),
-                        subtitle: Text(widget.screenshotsPath),
-                        trailing: const Icon(Icons.open_in_new),
-                        onTap: () => _launchURL(widget.screenshotsPath),
-                      ),
-                    ),
-                  if (widget.hasLogs)
-                    Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: ListTile(
-                        title: const Text('打开日志文件夹'),
-                        subtitle: Text(widget.logsPath),
-                        trailing: const Icon(Icons.open_in_new),
-                        onTap: () => _launchURL(widget.logsPath),
-                      ),
-                    ),
-                ],
-              ),
-              Positioned(
-                right: 16,
-                bottom: 16,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    FloatingActionButton(
-                      heroTag: "save",
-                      onPressed: () {
-                        if (_widthController.text.isEmpty ||
-                            _heightController.text.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('请填写所有字段')),
-                          );
-                          return;
-                        } if (_xmxController.text == "0") {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('最大堆内存不能为 0')),
-                          );
-                          return;
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('配置已保存')),
-                          );
-                          _saveGameConfig();
-                          Navigator.of(context).pop();
-                        }
-                      },
-                      child: const Icon(Icons.save),
-                    ),
-                    const SizedBox(height: 16),
-                    FloatingActionButton(
-                      heroTag: 'delete',
-                      onPressed: () {
-                        _showDeleteDialog();
-                      },
-                      child: const Icon(Icons.delete),
-                    ),
                   ],
                 ),
-              ),
-            ],
-          );
+                Positioned(
+                  right: 16,
+                  bottom: 16,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      FloatingActionButton(
+                        heroTag: "save",
+                        onPressed: () {
+                          if (_widthController.text.isEmpty ||
+                              _heightController.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('请填写所有字段')),
+                            );
+                            return;
+                          }
+                          if (_xmxController.text == "0") {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('最大堆内存不能为 0')),
+                            );
+                            return;
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('配置已保存')),
+                            );
+                            _saveGameConfig();
+                            Navigator.of(context).pop();
+                          }
+                        },
+                        child: const Icon(Icons.save),
+                      ),
+                      const SizedBox(height: 16),
+                      FloatingActionButton(
+                        heroTag: 'delete',
+                        onPressed: () {
+                          _showDeleteDialog();
+                        },
+                        child: const Icon(Icons.delete),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+    );
   }
 }

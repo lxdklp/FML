@@ -247,10 +247,14 @@ Future<Map<String, dynamic>> getFabricInfoFromFabricJson(
     final Map<String, String> asmVersions = {};
     String? mixinVersion;
     if (json['launcherMeta'] is Map &&
-        json['launcherMeta']['libraries'] is Map &&
-        json['launcherMeta']['libraries']['common'] is List) {
-      final commonLibs = json['launcherMeta']['libraries']['common'] as List;
-      for (final lib in commonLibs) {
+        json['launcherMeta']['libraries'] is Map) {
+      final declared = json['launcherMeta']['libraries'] as Map;
+      // 客户端还需要专用运行库, 与安装阶段保持一致.
+      final clientLibraries = [
+        ...?declared['common'] as List?,
+        ...?declared['client'] as List?,
+      ];
+      for (final lib in clientLibraries) {
         if (lib is Map && lib['name'] is String) {
           final name = lib['name'] as String;
           final parts = name.split(':');

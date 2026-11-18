@@ -1,56 +1,12 @@
-import 'dart:io';
-
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
-import 'package:fml/function/config/app_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:fml/function/log.dart';
 import 'package:fml/function/patchpack/patchpack_info.dart';
 import 'package:fml/function/patchpack/patchpack_service.dart';
-import 'package:fml/function/slide_page_route.dart';
-
-// 打开补丁包安装页面
-Future<void> openPatchPack(BuildContext context, {String? archivePath}) async {
-  final prefs = await AppConfig.getInstance();
-  final selectedPath = (await prefs.getString('SelectedPath'));
-  final game = (await prefs.getString('SelectedGame'));
-  final base = (await prefs.getString('Path_$selectedPath'));
-  if (!context.mounted) return;
-  if (base == null ||
-      base.isEmpty ||
-      game == null ||
-      game.isEmpty ||
-      game == '.' ||
-      game == '..' ||
-      game.contains('/') ||
-      game.contains('\\')) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('请先选择要安装补丁的游戏版本')));
-    return;
-  }
-  final gamePath = p.join(base, 'versions', game);
-  if (!await Directory(gamePath).exists()) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('所选游戏版本的文件夹不存在')));
-    }
-    return;
-  }
-  if (!context.mounted) return;
-  await Navigator.push(
-    context,
-    SlidePageRoute(
-      page: PatchPackPage(
-        gamePath: gamePath,
-        gameName: game,
-        archivePath: archivePath,
-      ),
-    ),
-  );
-}
 
 // 补丁包拖放
 class PatchPackDropTarget extends StatefulWidget {
@@ -84,7 +40,11 @@ class _PatchPackDropTargetState extends State<PatchPackDropTarget> {
       onDragExited: (_) => setState(() => _dragging = false),
       onDragDone: (details) async {
         setState(() => _dragging = false);
-        if (!enabled) return;
+        if (!widget.enabled ||
+            _opening ||
+            !(ModalRoute.of(context)?.isCurrent ?? true)) {
+          return;
+        }
         if (details.files.length != 1 ||
             p.extension(details.files.single.path).toLowerCase() != '.zip') {
           ScaffoldMessenger.of(context)
@@ -118,7 +78,7 @@ class _PatchPackDropTargetState extends State<PatchPackDropTarget> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        '拖放补丁包到此处安装',
+                        '拖放补丁包到此处预览',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ],
@@ -169,7 +129,7 @@ class _PatchPackPageState extends State<PatchPackPage> {
     super.dispose();
   }
 
-// 选择补丁包文件
+  // 选择补丁包文件
   Future<void> _pick() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -185,7 +145,7 @@ class _PatchPackPageState extends State<PatchPackPage> {
     }
   }
 
-// 加载补丁包文件
+  // 加载补丁包文件
   Future<void> _load(String path) async {
     if (_reading || _installing) return;
     final previous = _pack;
@@ -219,7 +179,7 @@ class _PatchPackPageState extends State<PatchPackPage> {
     }
   }
 
-// 安装补丁包
+  // 安装补丁包
   Future<void> _install() async {
     final pack = _pack;
     if (pack == null || _installing || _finished) return;
@@ -247,12 +207,11 @@ class _PatchPackPageState extends State<PatchPackPage> {
     }
   }
 
-// 打开网页
+  // 打开网页
   Future<void> _openWebsite(Uri uri) async {
     try {
       if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
-    } catch (_) {
-    }
+    } catch (_) {}
     if (mounted) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('无法打开补丁发布页面')));
@@ -278,26 +237,52 @@ class _PatchPackPageState extends State<PatchPackPage> {
       canPop: !_installing,
       child: Scaffold(
         appBar: AppBar(title: const Text('安装补丁包')),
-        body: PatchPackDropTarget(
-          enabled: !busy,
-          onDrop: _load,
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 24),
-            children: [
-              _card(
-                ListTile(
-                  leading: const Icon(Icons.videogame_asset),
-                  title: Text('目标版本：${widget.gameName}'),
-                  subtitle: Text(
-                    [
-                      widget.gamePath,
-                      if (_installed?.name != null) '整合包：${_installed!.name}',
-                      if (_installed?.version != null)
-                        '整合包版本：${_installed!.version}',
-                    ].join('\n'),
-                  ),
+        body: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            _card(
+              ListTile(
+                leading: const Icon(Icons.videogame_asset),
+                title: Text('目标版本：${widget.gameName}'),
+                subtitle: Text(
+                  [
+                    widget.gamePath,
+                    if (_installed?.name != null) '整合包：${_installed!.name}',
+                    if (_installed?.version != null)
+                      '整合包版本：${_installed!.version}',
+                  ].join('\n'),
                 ),
               ),
+            ),
+            _card(
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _fileName ?? '选择补丁包',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('选择本地补丁包 ZIP 文件'),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: busy ? null : _pick,
+                      icon: const Icon(Icons.file_open),
+                      label: Text(_fileName == null ? '选择文件' : '重新选择'),
+                    ),
+                    if (_reading) ...[
+                      const SizedBox(height: 16),
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 8),
+                      const Text('正在读取并检查补丁包…'),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            if (info != null) ...[
               _card(
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -305,177 +290,147 @@ class _PatchPackPageState extends State<PatchPackPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _fileName ?? '选择补丁包',
-                        style: Theme.of(context).textTheme.titleMedium,
+                        info.name,
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      const SizedBox(height: 8),
-                      const Text('选择本地 ZIP 文件或将补丁包拖入'),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: busy ? null : _pick,
-                        icon: const Icon(Icons.file_open),
-                        label: Text(_fileName == null ? '选择文件' : '重新选择'),
-                      ),
-                      if (_reading) ...[
-                        const SizedBox(height: 16),
-                        const LinearProgressIndicator(),
+                      if (info.description != null) ...[
                         const SizedBox(height: 8),
-                        const Text('正在读取并检查补丁包…'),
+                        Text(info.description!),
+                      ],
+                      if (info.authors.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text('作者：${info.authors.join('、')}'),
+                      ],
+                      if (info.modpackName != null) ...[
+                        const SizedBox(height: 8),
+                        Text('适用整合包：${info.modpackName}'),
+                      ],
+                      if (info.versionRange != null) ...[
+                        const SizedBox(height: 8),
+                        Text('适用版本：${info.versionRange}'),
+                      ],
+                      if (canOpenUrl) ...[
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: () => _openWebsite(uri),
+                          icon: const Icon(Icons.open_in_new),
+                          label: const Text('补丁发布页面'),
+                        ),
                       ],
                     ],
                   ),
                 ),
               ),
-              if (info != null) ...[
-                _card(
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          info.name,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        if (info.description != null) ...[
-                          const SizedBox(height: 8),
-                          Text(info.description!),
-                        ],
-                        if (info.authors.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text('作者：${info.authors.join('、')}'),
-                        ],
-                        if (info.modpackName != null) ...[
-                          const SizedBox(height: 8),
-                          Text('适用整合包：${info.modpackName}'),
-                        ],
-                        if (info.versionRange != null) ...[
-                          const SizedBox(height: 8),
-                          Text('适用版本：${info.versionRange}'),
-                        ],
-                        if (canOpenUrl) ...[
-                          const SizedBox(height: 8),
-                          TextButton.icon(
-                            onPressed: () => _openWebsite(uri),
-                            icon: const Icon(Icons.open_in_new),
-                            label: const Text('补丁发布页面'),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-                if (messages.isNotEmpty)
-                  _card(
-                    ListTile(
-                      leading: Icon(
-                        Icons.info_outline,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      title: const Text('兼容性提示'),
-                      subtitle: Text(
-                        '${messages.join('\n')}\n确认适用于当前实例后, 仍可继续安装',
-                      ),
-                    ),
-                  ),
-                _card(
-                  Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.folder_copy_outlined),
-                        title: const Text('安装内容'),
-                        subtitle: Text(
-                          '写入 ${_pack!.fileCount} 个文件；删除 ${info.delete.length} 项；重命名 ${info.rename.length} 项',
-                        ),
-                      ),
-                      if (info.delete.isNotEmpty || info.rename.isNotEmpty)
-                        ExpansionTile(
-                          title: const Text('查看删除和重命名操作'),
-                          children: [
-                            for (final path in info.delete)
-                              ListTile(
-                                dense: true,
-                                leading: const Icon(Icons.delete_outline),
-                                title: Text(path),
-                              ),
-                            for (final rename in info.rename)
-                              ListTile(
-                                dense: true,
-                                leading: const Icon(
-                                  Icons.drive_file_rename_outline,
-                                ),
-                                title: Text('${rename.from} → ${rename.to}'),
-                              ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                _card(
-                  const ListTile(
-                    leading: Icon(Icons.warning_amber),
-                    title: Text('注意'),
-                    subtitle: Text(
-                      '请先关闭游戏, 并仅安装可信来源的补丁\n补丁可能包含模组或脚本, 会覆盖、删除或移动实例内的文件',
-                    ),
-                  ),
-                ),
-              ],
-              if (_error != null)
+              if (messages.isNotEmpty)
                 _card(
                   ListTile(
                     leading: Icon(
-                      Icons.error_outline,
-                      color: Theme.of(context).colorScheme.error,
+                      Icons.info_outline,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                    title: const Text('安装失败'),
-                    subtitle: SelectableText(_error!),
-                  ),
-                ),
-              if (_installing)
-                _card(
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        LinearProgressIndicator(value: _progress),
-                        const SizedBox(height: 8),
-                        Text('正在安装补丁… ${(_progress * 100).round()}%'),
-                      ],
+                    title: const Text('兼容性提示'),
+                    subtitle: Text(
+                      '${messages.join('\n')}\n确认适用于当前实例后, 仍可继续安装',
                     ),
                   ),
                 ),
-              if (_finished)
-                _card(
-                  const ListTile(
-                    leading: Icon(Icons.check_circle_outline),
-                    title: Text('补丁包已安装'),
-                    subtitle: Text('如安装的是汉化补丁, 请按补丁说明检查游戏语言设置'),
+              _card(
+                Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.folder_copy_outlined),
+                      title: const Text('安装内容'),
+                      subtitle: Text(
+                        '写入 ${_pack!.fileCount} 个文件；删除 ${info.delete.length} 项；重命名 ${info.rename.length} 项',
+                      ),
+                    ),
+                    if (info.delete.isNotEmpty || info.rename.isNotEmpty)
+                      ExpansionTile(
+                        title: const Text('查看删除和重命名操作'),
+                        children: [
+                          for (final path in info.delete)
+                            ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.delete_outline),
+                              title: Text(path),
+                            ),
+                          for (final rename in info.rename)
+                            ListTile(
+                              dense: true,
+                              leading: const Icon(
+                                Icons.drive_file_rename_outline,
+                              ),
+                              title: Text('${rename.from} → ${rename.to}'),
+                            ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+              _card(
+                const ListTile(
+                  leading: Icon(Icons.warning_amber),
+                  title: Text('注意'),
+                  subtitle: Text(
+                    '请先关闭游戏, 并仅安装可信来源的补丁\n补丁可能包含模组或脚本, 会覆盖、删除或移动实例内的文件',
                   ),
                 ),
-              if (info != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: _finished
-                        ? FilledButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('完成'),
-                          )
-                        : FilledButton.icon(
-                            onPressed: busy ? null : _install,
-                            icon: const Icon(Icons.install_desktop),
-                            label: const Text('安装补丁'),
-                          ),
-                  ),
-                ),
+              ),
             ],
-          ),
+            if (_error != null)
+              _card(
+                ListTile(
+                  leading: Icon(
+                    Icons.error_outline,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  title: const Text('安装失败'),
+                  subtitle: SelectableText(_error!),
+                ),
+              ),
+            if (_installing)
+              _card(
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LinearProgressIndicator(value: _progress),
+                      const SizedBox(height: 8),
+                      Text('正在安装补丁… ${(_progress * 100).round()}%'),
+                    ],
+                  ),
+                ),
+              ),
+            if (_finished)
+              _card(
+                const ListTile(
+                  leading: Icon(Icons.check_circle_outline),
+                  title: Text('补丁包已安装'),
+                  subtitle: Text('如安装的是汉化补丁, 请按补丁说明检查游戏语言设置'),
+                ),
+              ),
+            if (info != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: _finished
+                      ? FilledButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('完成'),
+                        )
+                      : FilledButton.icon(
+                          onPressed: busy ? null : _install,
+                          icon: const Icon(Icons.install_desktop),
+                          label: const Text('安装补丁'),
+                        ),
+                ),
+              ),
+          ],
         ),
       ),
     );

@@ -14,6 +14,24 @@ import 'package:fml/function/log.dart';
 import 'forge_metadata.dart';
 
 typedef ForgeProgress = void Function(String stage, double? progress);
+typedef ForgeJsonLoader = Future<Map<String, dynamic>> Function(String url);
+typedef ForgeChecksumLoader = Future<String> Function(String url);
+typedef ForgeFileDownloader = Future<void> Function(
+  String url,
+  String path, {
+  String? hash,
+  String? sha512Hash,
+  int? size,
+  required List<String> fallbackUrls,
+  void Function(double)? progress,
+});
+typedef ForgeProcessorRunner = Future<void> Function(
+  String java,
+  List<String> args,
+  String workingDirectory,
+);
+
+void _noCancellation() {}
 
 class ForgeBuild {
   const ForgeBuild(this.version, this.coordinate, {this.recommended = false});
@@ -103,11 +121,30 @@ class ForgeInstaller {
     required this.gamePath,
     required this.name,
     required this.onProgress,
-  });
+    this.javaExecutable,
+    this.instanceDirectory,
+    this.checkCancelled = _noCancellation,
+    ForgeJsonLoader? jsonLoader,
+    ForgeFileDownloader? fileDownloader,
+    ForgeChecksumLoader? checksumLoader,
+    this.processorRunner,
+    this.logStages = true,
+  }) : jsonLoader = jsonLoader ?? jsonUrl,
+       fileDownloader = fileDownloader ?? download,
+       checksumLoader = checksumLoader ?? installerChecksum;
+  final String? javaExecutable;
+  final String? instanceDirectory;
+  final void Function() checkCancelled;
+  final ForgeJsonLoader jsonLoader;
+  final ForgeFileDownloader fileDownloader;
+  final ForgeChecksumLoader checksumLoader;
+  final ForgeProcessorRunner? processorRunner;
+  final bool logStages;
   final String gamePath;
   final String name;
   final ForgeProgress onProgress;
-  String get instancePath => safeChild(p.join(gamePath, 'versions'), name);
+  String get instancePath =>
+      instanceDirectory ?? safeChild(p.join(gamePath, 'versions'), name);
   String get librariesPath => p.join(gamePath, 'libraries');
 
   static String mirror(String url) => url
@@ -196,14 +233,14 @@ class ForgeInstaller {
   }
 
   static Future<String> installerChecksum(String url) async {
-    // Verify the executable against its publisher, including when using a mirror.
+    // 直接向发布方读取可执行文件的校验值, 镜像下载也使用该值.
     final response = await DioClient().dio.get(
       '$url.sha1',
       options: Options(responseType: ResponseType.plain),
     );
     final hash = RegExp(r'\b[0-9a-fA-F]{40}\b')
         .firstMatch(response.data.toString())?[0];
-    if (hash == null) throw const FormatException('Forge 安装器校验值无效');
+    if (hash == null) throw const FormatException('安装器或运行库校验值无效');
     return hash.toLowerCase();
   }
 
@@ -234,10 +271,41 @@ class ForgeInstaller {
     if (failure != null) throw failure!;
   }
 
+  Future<Map<String, dynamic>> _json(String url) async {
+    checkCancelled();
+    final result = await jsonLoader(url);
+    checkCancelled();
+    return result;
+  }
+
+  Future<void> _download(
+    String url,
+    String path, {
+    String? hash,
+    String? sha512Hash,
+    int? size,
+    List<String> fallbackUrls = const [],
+    void Function(double)? progress,
+  }) async {
+    checkCancelled();
+    await fileDownloader(
+      url,
+      path,
+      hash: hash,
+      sha512Hash: sha512Hash,
+      size: size,
+      fallbackUrls: fallbackUrls,
+      progress: progress,
+    );
+    checkCancelled();
+  }
+
   Future<void> stage(String title, Future<void> Function() action) async {
+    checkCancelled();
     onProgress(title, null);
-    await LogUtil.log('Forge: $title');
+    if (logStages) await LogUtil.log('运行时安装: $title');
     await action();
+    checkCancelled();
     onProgress(title, 1);
   }
 
@@ -246,15 +314,31 @@ class ForgeInstaller {
     required ForgeBuild build,
     String? versionUrl,
   }) async {
+    final vanilla = await installVanilla(
+      minecraft: minecraft,
+      versionUrl: versionUrl,
+    );
+    await installLoader(
+      minecraft: minecraft,
+      vanilla: vanilla,
+      installerUrl: build.installerUrl,
+      expectedCoordinate: 'net.minecraftforge:forge:${build.coordinate}',
+    );
+  }
+
+  Future<Map<String, dynamic>> installVanilla({
+    required String minecraft,
+    String? versionUrl,
+    void Function(Map<String, dynamic>)? validateMetadata,
+  }) async {
     if (instanceNameError(name) case final String error) {
       throw FormatException(error);
     }
     await Directory(instancePath).create(recursive: true);
     late Map<String, dynamic> vanilla;
-    late String java;
     await stage('正在读取游戏版本', () async {
       if (versionUrl == null) {
-        final manifest = await jsonUrl(
+        final manifest = await _json(
           'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json',
         );
         final entry = (manifest['versions'] as List)
@@ -264,17 +348,24 @@ class ForgeInstaller {
         if (entry == null) throw StateError('找不到 Minecraft $minecraft');
         versionUrl = entry['url'] as String;
       }
-      vanilla = await jsonUrl(versionUrl!);
+      vanilla = await _json(versionUrl!);
       if (vanilla['id'] != minecraft) throw StateError('Minecraft 版本信息不匹配');
-      final prefs = await AppConfig.getInstance();
-      // Installation uses the configured executable without probing its version.
-      java = await configuredJavaExecutable(prefs);
+      validateMetadata?.call(vanilla);
       await File(p.join(instancePath, '$name.json'))
           .writeAsString(jsonEncode(vanilla));
     });
+    await installMetadata(vanilla);
+    return vanilla;
+  }
+
+  /// 安装已经解析的客户端元数据, MMC 自定义组件复用相同校验和下载流程.
+  Future<void> installMetadata(Map<String, dynamic> vanilla) async {
+    await Directory(instancePath).create(recursive: true);
+    await File(p.join(instancePath, '$name.json'))
+        .writeAsString(jsonEncode(vanilla));
     await stage('正在下载客户端', () async {
       final client = vanilla['downloads']['client'] as Map;
-      await download(
+      await _download(
         client['url'],
         p.join(instancePath, '$name.jar'),
         hash: client['sha1'],
@@ -294,7 +385,7 @@ class ForgeInstaller {
     if (logging != null) {
       await stage(
         '正在下载日志配置',
-        () => download(
+        () => _download(
           logging['url'],
           safeChild(p.join(gamePath, 'assets', 'log_configs'), logging['id']),
           hash: logging['sha1'],
@@ -303,16 +394,32 @@ class ForgeInstaller {
       );
     }
     await stage('正在提取本地运行库', () => _natives(vanilla));
+  }
+
+  Future<void> installLoader({
+    required String minecraft,
+    required Map<String, dynamic> vanilla,
+    required String installerUrl,
+    String loaderName = 'Forge',
+    String? expectedCoordinate,
+  }) async {
+    checkCancelled();
+    final java =
+        javaExecutable ??
+        await configuredJavaExecutable(await AppConfig.getInstance());
     late Archive archive;
     late Map<String, dynamic> profile;
     late Map<String, dynamic> forge;
-    final installerPath = p.join(instancePath, 'forge-installer.jar');
-    await stage('正在下载 Forge 安装器', () async {
-      await download(
-        build.installerUrl,
+    final installerPath = p.join(
+      instancePath,
+      '${loaderName.toLowerCase()}-installer.jar',
+    );
+    await stage('正在下载 $loaderName 安装器', () async {
+      await _download(
+        installerUrl,
         installerPath,
-        hash: await installerChecksum(build.installerUrl),
-        progress: (v) => onProgress('正在下载 Forge 安装器', v),
+        hash: await checksumLoader(installerUrl),
+        progress: (v) => onProgress('正在下载 $loaderName 安装器', v),
       );
       archive = ZipDecoder().decodeBytes(
         await File(installerPath).readAsBytes(),
@@ -323,14 +430,37 @@ class ForgeInstaller {
           forge['inheritsFrom'] ??
           profile['minecraft'] ??
           profile['install']?['minecraft'];
-      if (inherited != null && inherited != minecraft) {
-        throw StateError('Forge 安装器与 Minecraft 版本不匹配');
+      if (inherited != minecraft) {
+        throw StateError('$loaderName 安装器与 Minecraft 版本不匹配');
+      }
+      if (expectedCoordinate != null) {
+        final expected = expectedCoordinate.split(':');
+        final declared = <String>[
+          if (profile['path'] is String) profile['path'] as String,
+          if (profile['install']?['path'] is String)
+            profile['install']['path'] as String,
+          for (final lib in [
+            ...?profile['libraries'] as List?,
+            ...?forge['libraries'] as List?,
+          ])
+            if (lib['name'] is String) lib['name'] as String,
+        ];
+        if (!declared.any((coordinate) {
+          final parts = coordinate.split('@').first.split(':');
+          return parts.length >= 3 &&
+              parts[0] == expected[0] &&
+              parts[1] == expected[1] &&
+              parts[2] == expected[2];
+        })) {
+          throw StateError('$loaderName 安装器与请求的加载器版本不匹配');
+        }
       }
     });
-    await stage('正在下载 Forge 运行库', () async {
+    await stage('正在下载 $loaderName 运行库', () async {
       for (final file in archive.files.where(
-        (f) => f.isFile && f.name.startsWith('maven/'),
+        (f) => f.isFile && !f.isSymbolicLink && f.name.startsWith('maven/'),
       )) {
+        checkCancelled();
         final output = File(safeChild(librariesPath, file.name.substring(6)));
         await output.parent.create(recursive: true);
         await output.writeAsBytes(file.content);
@@ -340,7 +470,7 @@ class ForgeInstaller {
           legacy['filePath'] != null &&
           legacy['path'] != null) {
         final file = archive.findFile(legacy['filePath']);
-        if (file == null) throw StateError('安装器缺少 Forge 核心文件');
+        if (file == null) throw StateError('安装器缺少 $loaderName 核心文件');
         final output = File(
           safeChild(librariesPath, mavenPath(legacy['path'])),
         );
@@ -352,15 +482,24 @@ class ForgeInstaller {
           ...?profile['libraries'] as List?,
           ...?forge['libraries'] as List?,
         ].cast<Map>(),
-        '正在下载 Forge 运行库',
+        '正在下载 $loaderName 运行库',
       );
     });
     await stage(
-      '正在安装 Forge',
-      () => runProcessors(profile, archive, java, installerPath, vanilla),
+      '正在安装 $loaderName',
+      () => runProcessors(
+        profile,
+        archive,
+        java,
+        installerPath,
+        vanilla,
+        loaderName: loaderName,
+      ),
     );
-    await stage('正在检查 Forge 安装结果', () async {
-      if (forge['mainClass'] is! String) throw StateError('Forge 配置缺少启动主类');
+    await stage('正在检查 $loaderName 安装结果', () async {
+      if (forge['mainClass'] is! String) {
+        throw StateError('$loaderName 配置缺少启动主类');
+      }
       for (final lib in mergedLibraries(vanilla, forge)) {
         if (!rulesAllow(lib['rules'])) continue;
         final artifact = libraryArtifact(lib);
@@ -369,10 +508,10 @@ class ForgeInstaller {
           safeChild(librariesPath, artifact['path']),
           hash: artifact['sha1'],
         )) {
-          throw StateError('Forge 安装后缺少或损坏的运行库: ${lib['name']}');
+          throw StateError('$loaderName 安装后缺少或损坏的运行库: ${lib['name']}');
         }
       }
-      await File(p.join(instancePath, 'Forge.json'))
+      await File(p.join(instancePath, '$loaderName.json'))
           .writeAsString(jsonEncode(forge));
     });
   }
@@ -400,6 +539,7 @@ class ForgeInstaller {
       if (!rulesAllow(lib['rules']) || lib['clientreq'] == false) continue;
       final artifact = libraryArtifact(lib);
       if (artifact != null) artifacts[artifact['path']] = artifact;
+      checkCancelled();
       final native = (lib['natives'] as Map?)?[minecraftOS()] as String?;
       if (native != null) {
         final classifier = native.replaceAll(
@@ -412,9 +552,9 @@ class ForgeInstaller {
     }
     await parallel(artifacts.values.toList(), (artifact) async {
       final url = artifact['url'] as String? ?? '';
-      // Empty URLs designate embedded or processor-generated files.
+      // 空 URL 表示文件由安装器内嵌或由处理器生成.
       if (url.isEmpty) return;
-      await download(
+      await _download(
         url,
         safeChild(librariesPath, artifact['path']),
         hash: artifact['sha1'],
@@ -429,7 +569,7 @@ class ForgeInstaller {
       p.join(gamePath, 'assets', 'indexes'),
       '${info['id']}.json',
     );
-    await download(info['url'], path, hash: info['sha1'], size: info['size']);
+    await _download(info['url'], path, hash: info['sha1'], size: info['size']);
     final index = jsonDecode(await File(path).readAsString()) as Map;
     final objects = (index['objects'] as Map).entries.toList();
     await parallel(
@@ -440,7 +580,7 @@ class ForgeInstaller {
           p.join(gamePath, 'assets', 'objects'),
           '${hash.substring(0, 2)}/$hash',
         );
-        await download(
+        await _download(
           'https://resources.download.minecraft.net/${hash.substring(0, 2)}/$hash',
           objectPath,
           hash: hash,
@@ -461,6 +601,11 @@ class ForgeInstaller {
             safeChild(p.join(instancePath, 'resources'), entry.key),
           );
           await target.parent.create(recursive: true);
+          if (instanceDirectory != null &&
+              await target.exists() &&
+              !await validFile(target.path, hash: hash)) {
+            throw FormatException('整合包文件与游戏资源冲突: ${entry.key}');
+          }
           await File(objectPath).copy(target.path);
         }
       },
@@ -474,6 +619,7 @@ class ForgeInstaller {
     await Directory(target).create(recursive: true);
     for (final lib in vanilla['libraries'] as List) {
       if (!rulesAllow(lib['rules'])) continue;
+      checkCancelled();
       final native = (lib['natives'] as Map?)?[minecraftOS()] as String?;
       if (native == null) continue;
       final classifier = native.replaceAll(
@@ -503,8 +649,9 @@ class ForgeInstaller {
     Archive archive,
     String java,
     String installer,
-    Map vanilla,
-  ) async {
+    Map vanilla, {
+    String loaderName = 'Forge',
+  }) async {
     final temp = await Directory(instancePath).createTemp('.forge-processors-');
     try {
       final data = <String, String>{
@@ -516,6 +663,7 @@ class ForgeInstaller {
         'MINECRAFT_JAR': p.join(instancePath, '$name.jar'),
       };
       for (final entry in (profile['data'] as Map? ?? {}).entries) {
+        checkCancelled();
         final value = entry.value['client'] as String?;
         if (value == null) continue;
         if (value.startsWith('[') || value.startsWith("'")) {
@@ -538,6 +686,7 @@ class ForgeInstaller {
           )
           .toList();
       for (var i = 0; i < processors.length; i++) {
+        checkCancelled();
         final processor = processors[i];
         String resolve(String value) =>
             resolveProcessorValue(value, data, librariesPath);
@@ -554,12 +703,12 @@ class ForgeInstaller {
               .cast<String>()
               .map(resolve)
               .toList();
-          // Download mappings ourselves so mirror/fallback and hash validation also apply here.
+          // 单独下载映射文件, 确保镜像回退和哈希校验同样生效.
           if (args.contains('DOWNLOAD_MOJMAPS') &&
               vanilla['downloads']?['client_mappings'] != null) {
             final mapping = vanilla['downloads']['client_mappings'];
             final output = args[args.indexOf('--output') + 1];
-            await download(
+            await _download(
               mapping['url'],
               output,
               hash: mapping['sha1'],
@@ -595,7 +744,7 @@ class ForgeInstaller {
               cp.join(Platform.isWindows ? ';' : ':'),
               main,
               ...args,
-            ]);
+            ], loaderName: loaderName);
           }
           for (final entry in outputs.entries) {
             if (!await validFile(entry.key, hash: entry.value)) {
@@ -603,15 +752,14 @@ class ForgeInstaller {
             }
           }
         }
-        onProgress('正在安装 Forge', (i + 1) / processors.length);
+        checkCancelled();
+        onProgress('正在安装 $loaderName', (i + 1) / processors.length);
       }
-      // Some installer generations omit outputs on the final processor.
-      // They still declare the expected patched client and split JAR hashes.
+      // 新安装器可能省略 outputs 和 SHA, 仍需检查声明的补丁客户端和拆分 JAR 非空.
       for (final key in ['PATCHED', 'MC_SLIM', 'MC_EXTRA']) {
         if (data[key] != null &&
-            data['${key}_SHA'] != null &&
             !await validFile(data[key]!, hash: data['${key}_SHA'])) {
-          throw StateError('Forge 生成文件校验失败: $key');
+          throw StateError('$loaderName 生成文件校验失败: $key');
         }
       }
     } finally {
@@ -619,7 +767,15 @@ class ForgeInstaller {
     }
   }
 
-  Future<void> _processor(String java, List<String> args) async {
+  Future<void> _processor(
+    String java,
+    List<String> args, {
+    String loaderName = 'Forge',
+  }) async {
+    if (processorRunner != null) {
+      await processorRunner!(java, args, instancePath);
+      return;
+    }
     final process = await Process.start(
       java,
       args,
@@ -634,12 +790,14 @@ class ForgeInstaller {
         const Duration(minutes: 15),
         onTimeout: () {
           process.kill();
-          throw StateError('Forge 安装处理器超时');
+          throw StateError('$loaderName 安装处理器超时');
         },
       );
       await Future.wait([stdout, stderr]);
       if (code != 0) {
-        throw StateError('Forge 安装失败（退出码 $code），详见版本目录内 forge-install.log');
+        throw StateError(
+          '$loaderName 安装失败 (退出码 $code), 详见版本目录内 forge-install.log',
+        );
       }
     } finally {
       await Future.wait([stdout, stderr]);

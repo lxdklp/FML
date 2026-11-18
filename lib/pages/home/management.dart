@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:fml/function/config/app_config.dart';
+
 import 'dart:io';
+
 import 'package:path/path.dart' as p;
 import 'package:fml/pages/home/management/game_settings.dart';
 import 'package:fml/pages/home/management/mod_management.dart';
@@ -19,6 +21,7 @@ class ManagementPage extends StatefulWidget {
 class ManagementPageState extends State<ManagementPage>
     with SingleTickerProviderStateMixin {
   TabController? _tabController;
+  final ValueNotifier<bool> _settingsActive = ValueNotifier(true);
   String _gamePath = '';
   String _logsPath = '';
   String _savesPath = '';
@@ -48,6 +51,7 @@ class ManagementPageState extends State<ManagementPage>
   @override
   void dispose() {
     _tabController?.dispose();
+    _settingsActive.dispose();
     super.dispose();
   }
 
@@ -146,18 +150,22 @@ class ManagementPageState extends State<ManagementPage>
     _tabs.add(
       _TabInfo(
         tab: const Tab(text: '游戏设置'),
-        content: GameSettingsTab(
-          gamePath: _gamePath,
-          savesPath: _savesPath,
-          screenshotsPath: _screenshotsPath,
-          logsPath: _logsPath,
-          resourcepacksPath: _resourcepacksPath,
-          modsPath: _modsPath,
-          shaderpacksPath: _shaderpacksPath,
-          schematicsPath: _schematicsPath,
-          hasSaves: _save,
-          hasScreenshots: _screenshots,
-          hasLogs: _logs,
+        content: ValueListenableBuilder<bool>(
+          valueListenable: _settingsActive,
+          builder: (context, active, _) => GameSettingsTab(
+            active: active,
+            gamePath: _gamePath,
+            savesPath: _savesPath,
+            screenshotsPath: _screenshotsPath,
+            logsPath: _logsPath,
+            resourcepacksPath: _resourcepacksPath,
+            modsPath: _modsPath,
+            shaderpacksPath: _shaderpacksPath,
+            schematicsPath: _schematicsPath,
+            hasSaves: _save,
+            hasScreenshots: _screenshots,
+            hasLogs: _logs,
+          ),
         ),
       ),
     );
@@ -211,6 +219,16 @@ class ManagementPageState extends State<ManagementPage>
     // 初始化 TabController
     if (_tabs.length > 1) {
       _tabController = TabController(length: _tabs.length, vsync: this);
+      void updateActive() {
+        final controller = _tabController!;
+        _settingsActive.value =
+            controller.index == 0 &&
+            !controller.indexIsChanging &&
+            controller.animation!.value == 0;
+      }
+
+      _tabController!.addListener(updateActive);
+      _tabController!.animation!.addListener(updateActive);
     }
   }
 

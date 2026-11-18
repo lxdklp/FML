@@ -260,6 +260,8 @@ void _checkReserved(String relative) {
     'forge-installer.jar',
     'forge-modpack.zip',
     'fml-modpack.json',
+    'fml-mmc-profile.json',
+    '.fml-mmc-runtime',
     'mrpack',
     'curseforge',
     _manifestName,

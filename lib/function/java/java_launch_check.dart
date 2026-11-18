@@ -9,7 +9,8 @@ import 'models/java_info.dart';
 
 Future<String> configuredJavaExecutable(AppConfig prefs) async {
   final selected =
-      (await prefs.getString('javaSelectedPath')) ?? JavaService.javaSelectedPath;
+      (await prefs.getString('javaSelectedPath')) ??
+      JavaService.javaSelectedPath;
   return selected.isEmpty ? 'java' : selected;
 }
 
@@ -26,25 +27,45 @@ class JavaLaunchCheck {
     required this.executable,
     this.minecraft,
     this.expectedMajor,
+    this.compatibleJavaMajors,
     this.actualVersion,
   });
 
   final String executable;
   final String? minecraft;
   final int? expectedMajor;
+  final List<int>? compatibleJavaMajors;
   final String? actualVersion;
 
   int? get actualMajor =>
       actualVersion == null ? null : javaMajorVersion(actualVersion!);
-  bool get needsWarning =>
-      expectedMajor == null ||
-      actualMajor == null ||
-      expectedMajor != actualMajor;
+  bool get _hasValidCompatibleJavaMajors =>
+      compatibleJavaMajors != null &&
+      compatibleJavaMajors!.isNotEmpty &&
+      compatibleJavaMajors!.every((major) => major > 0);
+
+  bool get needsWarning {
+    if (compatibleJavaMajors != null) {
+      return !_hasValidCompatibleJavaMajors ||
+          actualMajor == null ||
+          !compatibleJavaMajors!.contains(actualMajor);
+    }
+    return expectedMajor == null ||
+        actualMajor == null ||
+        expectedMajor != actualMajor;
+  }
 
   String get message {
-    final expected = expectedMajor == null
-        ? '无法读取此游戏声明的 Java 版本。'
-        : 'Minecraft ${minecraft ?? ''} 的版本文件声明使用 Java $expectedMajor。';
+    final String expected;
+    if (compatibleJavaMajors != null) {
+      expected = _hasValidCompatibleJavaMajors
+          ? '此游戏组件声明的兼容 Java 主版本集合为：${compatibleJavaMajors!.join('、')}。'
+          : '无法读取此游戏组件声明的 Java 兼容版本集合。';
+    } else {
+      expected = expectedMajor == null
+          ? '无法读取此游戏声明的 Java 版本。'
+          : 'Minecraft ${minecraft ?? ''} 的版本文件声明使用 Java $expectedMajor。';
+    }
     final actual = actualMajor == null
         ? '无法识别当前选择的 Java 版本。'
         : '当前选择的是 Java $actualVersion。';
@@ -60,6 +81,7 @@ Future<JavaLaunchCheck> checkLaunchJava({
 }) async {
   String? minecraft;
   int? expectedMajor;
+  List<int>? compatibleJavaMajors;
   try {
     final metadata = jsonDecode(await File(metadataPath).readAsString());
     if (metadata is Map) {
@@ -70,20 +92,30 @@ Future<JavaLaunchCheck> checkLaunchJava({
           java['majorVersion'] > 0) {
         expectedMajor = java['majorVersion'];
       }
+      if (metadata.containsKey('compatibleJavaMajors')) {
+        final compatible = metadata['compatibleJavaMajors'];
+        compatibleJavaMajors =
+            compatible is List &&
+                compatible.isNotEmpty &&
+                compatible.every((major) => major is int && major > 0)
+            ? List<int>.unmodifiable(compatible.cast<int>())
+            : const [];
+      }
     }
   } catch (_) {
-    // Missing or invalid metadata cannot establish Java compatibility.
+    // 元数据缺失或无效时无法确认 Java 兼容性.
   }
   JavaInfo? info;
   try {
     info = await probe(executable).timeout(const Duration(seconds: 5));
   } catch (_) {
-    // An inconclusive check also allows the user to authorize a launch.
+    // 检查失败时仍允许用户授权本次启动.
   }
   return JavaLaunchCheck(
     executable: executable,
     minecraft: minecraft,
     expectedMajor: expectedMajor,
+    compatibleJavaMajors: compatibleJavaMajors,
     actualVersion: info?.version,
   );
 }

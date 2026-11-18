@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:fml/function/log.dart';
 import 'package:fml/function/java/models/java_info.dart';
 import 'package:fml/function/java/models/java_runtime.dart';
@@ -246,6 +247,32 @@ class JavaUtils {
   ///
   /// Java 可执行文件信息
   ///
+  /// 按所选 JVM 的属性识别架构, 不把启动器本身的 Dart 平台字符串当作 Java 架构.
+  static String? parseJavaArchitecture(String output) => RegExp(
+    r'^\s*os\.arch\s*=\s*([A-Za-z0-9_\-]+)\s*$',
+    multiLine: true,
+  ).firstMatch(output)?[1];
+
+  static Future<String?> probeJavaArchitecture(String executable) async {
+    Process? process;
+    try {
+      process = await Process.start(executable, [
+        '-XshowSettings:properties',
+        '-version',
+      ]);
+      final stdout = process.stdout.transform(SystemEncoding().decoder).join();
+      final stderr = process.stderr.transform(SystemEncoding().decoder).join();
+      final code = await process.exitCode.timeout(const Duration(seconds: 5));
+      final output = await Future.wait([stdout, stderr])
+          .timeout(const Duration(seconds: 2));
+      if (code != 0) return null;
+      return parseJavaArchitecture(output.join('\n'));
+    } catch (_) {
+      process?.kill();
+      return null;
+    }
+  }
+
   static Future<JavaInfo?> probeJavaExecutable(String exe) async {
     // 首先尝试“java -version”
     try {

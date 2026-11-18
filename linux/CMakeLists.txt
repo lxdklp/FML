@@ -132,7 +132,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/flutter/ephemeral/generated_config.cmake")
 install(CODE "
   execute_process(
     COMMAND \"${FLUTTER_ROOT}/bin/cache/dart-sdk/bin/dart\"
-      \"${CMAKE_CURRENT_SOURCE_DIR}/../tool/runtime_manifest.dart\"
+      \"${CMAKE_CURRENT_SOURCE_DIR}/../.github/scripts/runtime_manifest.dart\"
       \"${CMAKE_INSTALL_PREFIX}\"
     RESULT_VARIABLE manifest_result
   )

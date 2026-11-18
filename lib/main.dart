@@ -22,7 +22,6 @@ import 'package:fml/constants.dart';
 import 'package:fml/function/log.dart';
 import 'package:fml/pages/download_page.dart';
 import 'package:fml/pages/home_page.dart';
-import 'package:fml/pages/home/management/patchpack.dart';
 import 'package:fml/pages/friends_page.dart';
 import 'package:fml/pages/online_page.dart';
 import 'package:fml/pages/online/owner.dart';
@@ -286,15 +285,27 @@ class MainStartPageState extends State<MainStartPage> {
   int _selectedIndex = 0;
   bool _startupComplete = false;
   String? _startupError;
+  final ValueNotifier<bool> _downloadActive = ValueNotifier(false);
 
   // 使页面仅被初始化一次
-  final List<Widget> _mainPages = const [
-    HomePage(),
-    FriendsPage(),
-    OnlinePage(),
-    DownloadPage(),
-    SettingPage(),
+  late final List<Widget> _mainPages = [
+    const HomePage(),
+    const FriendsPage(),
+    const OnlinePage(),
+    DownloadPage(active: _downloadActive),
+    const SettingPage(),
   ];
+
+  void _selectPage(int index) {
+    _downloadActive.value = index == 3;
+    setState(() => _selectedIndex = index);
+  }
+
+  @override
+  void dispose() {
+    _downloadActive.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -365,7 +376,7 @@ class MainStartPageState extends State<MainStartPage> {
           NavigationRail(
             selectedIndex: _selectedIndex,
             onDestinationSelected: (int index) {
-              setState(() => _selectedIndex = index);
+              _selectPage(index);
             },
             labelType: NavigationRailLabelType.all,
             destinations: const [
@@ -402,11 +413,6 @@ class MainStartPageState extends State<MainStartPage> {
       ),
     );
 
-    mainContent = PatchPackDropTarget(
-      onDrop: (path) => openPatchPack(context, archivePath: path),
-      child: mainContent,
-    );
-
     // macOS 菜单栏
     if (Platform.isMacOS) {
       return PlatformMenuBar(
@@ -426,7 +432,7 @@ class MainStartPageState extends State<MainStartPage> {
                   LogicalKeyboardKey.comma,
                   meta: true,
                 ),
-                onSelected: () => setState(() => _selectedIndex = 4),
+                onSelected: () => _selectPage(4),
               ),
               PlatformMenuItem(
                 label: '退出',
@@ -448,7 +454,7 @@ class MainStartPageState extends State<MainStartPage> {
                   LogicalKeyboardKey.digit1,
                   meta: true,
                 ),
-                onSelected: () => setState(() => _selectedIndex = 0),
+                onSelected: () => _selectPage(0),
               ),
               PlatformMenuItem(
                 label: '联机',
@@ -456,7 +462,7 @@ class MainStartPageState extends State<MainStartPage> {
                   LogicalKeyboardKey.digit2,
                   meta: true,
                 ),
-                onSelected: () => setState(() => _selectedIndex = 1),
+                onSelected: () => _selectPage(1),
               ),
               PlatformMenuItem(
                 label: '下载',
@@ -464,7 +470,7 @@ class MainStartPageState extends State<MainStartPage> {
                   LogicalKeyboardKey.digit3,
                   meta: true,
                 ),
-                onSelected: () => setState(() => _selectedIndex = 2),
+                onSelected: () => _selectPage(3),
               ),
               PlatformMenuItem(
                 label: '设置',
@@ -472,7 +478,7 @@ class MainStartPageState extends State<MainStartPage> {
                   LogicalKeyboardKey.digit4,
                   meta: true,
                 ),
-                onSelected: () => setState(() => _selectedIndex = 4),
+                onSelected: () => _selectPage(4),
               ),
             ],
           ),

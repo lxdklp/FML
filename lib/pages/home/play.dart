@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:io';
+
+import 'package:fml/function/launcher/mmc.dart';
 
 import 'package:flutter/services.dart';
 import 'package:fml/constants.dart';
@@ -151,12 +154,23 @@ class PlayPageState extends State<PlayPage> {
         return;
       }
     }
-    final launcher = switch (type) {
-      'Vanilla' => vanillaLauncher,
-      'Fabric' => fabricLauncher,
-      'Forge' => forgeLauncher,
-      _ => neoforgeLauncher,
-    };
+    final instancePath = p.join(
+      (await prefs.getString('Path_$selectedPath')) ?? '',
+      'versions',
+      selectedGame ?? '',
+    );
+    final hasMmcProfile = await File(
+      p.join(instancePath, 'fml-mmc-profile.json'),
+    ).exists();
+    if (!mounted || _session.stopRequested) return;
+    final launcher = hasMmcProfile
+        ? mmcLauncher
+        : switch (type) {
+            'Vanilla' => vanillaLauncher,
+            'Fabric' => fabricLauncher,
+            'Forge' => forgeLauncher,
+            _ => neoforgeLauncher,
+          };
     await launcher(
       session: _session,
       javaExecutable: java,

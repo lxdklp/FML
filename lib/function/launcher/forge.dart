@@ -1,4 +1,9 @@
 import 'launch_session.dart';
+import 'mmc_command.dart';
+import 'forge_command.dart';
+export 'forge_command.dart' show buildForgeCommand;
+
+import 'package:crypto/crypto.dart';
 
 import 'dart:convert';
 import 'dart:io';
@@ -12,106 +17,17 @@ import 'package:fml/function/log.dart';
 import 'login/microsoft_login.dart' as microsoft;
 import 'login/external_login.dart' as external_login;
 
-/// Builds an argument vector, never a shell command (paths may contain spaces).
-List<String> buildForgeCommand({
-  required Map vanilla,
-  required Map forge,
-  required Map<String, String> variables,
-  required List<String> config,
-  String? os,
-  String? arch,
-  String? authlib,
-}) {
-  final features = {'has_custom_resolution': true};
-  final jvm = <String>[
-    '-Xmx${config[0]}M',
-    if (minecraftOS(os) == 'osx') '-XstartOnFirstThread',
-    '-Djava.library.path=${variables['natives_directory']}',
-    '-Djna.tmpdir=${variables['natives_directory']}',
-    ?authlib,
-  ];
-  jvm.addAll(
-    resolveArguments(
-      vanilla['arguments']?['jvm'],
-      variables,
-      os: os,
-      arch: arch,
-      features: features,
-    ),
-  );
-  jvm.addAll(
-    resolveArguments(
-      forge['arguments']?['jvm'],
-      variables,
-      os: os,
-      arch: arch,
-      features: features,
-    ),
-  );
-  if (!jvm.contains('-cp') &&
-      !jvm.contains('-classpath') &&
-      !jvm.contains('--class-path')) {
-    jvm.addAll(['-cp', variables['classpath']!]);
-  }
-  final game = <String>[];
-  final loggingArgument = vanilla['logging']?['client']?['argument'] as String?;
-  if (loggingArgument != null) jvm.add(substitute(loggingArgument, variables));
-  final legacy = forge['minecraftArguments'] ?? vanilla['minecraftArguments'];
-  if (forge['minecraftArguments'] != null || vanilla['arguments'] == null) {
-    if (legacy is! String) throw const FormatException('缺少游戏启动参数');
-    game.addAll(
-      splitLegacyArguments(legacy).map((v) => substitute(v, variables)),
-    );
-    if (forge['minecraftArguments'] == null) {
-      game.addAll(
-        resolveArguments(
-          forge['arguments']?['game'],
-          variables,
-          os: os,
-          arch: arch,
-          features: features,
-        ),
-      );
-    }
-  } else {
-    game.addAll(
-      resolveArguments(
-        vanilla['arguments']?['game'],
-        variables,
-        os: os,
-        arch: arch,
-        features: features,
-      ),
-    );
-    game.addAll(
-      resolveArguments(
-        forge['arguments']?['game'],
-        variables,
-        os: os,
-        arch: arch,
-        features: features,
-      ),
-    );
-  }
-  if (!game.contains('--width')) game.addAll(['--width', config[2]]);
-  if (!game.contains('--height')) game.addAll(['--height', config[3]]);
-  if (config[1] == '1') game.add('--fullscreen');
-  final main = forge['mainClass'] as String?;
-  if (main == null || main.isEmpty) {
-    throw const FormatException('Forge 配置缺少启动主类');
-  }
-  return [...jvm, main, ...game];
-}
-
 Future<void> forgeLauncher({
   required LaunchSession session,
   String? javaExecutable,
   void Function(String)? onProgress,
   void Function(String)? onError,
+  AppConfig? configuration,
+  Map? mmcProfile,
 }) async {
   try {
     onProgress?.call('正在准备 Forge');
-    final prefs = await AppConfig.getInstance();
+    final prefs = configuration ?? await AppConfig.getInstance();
     final selectedPath = (await prefs.getString('SelectedPath')) ?? '';
     final root = (await prefs.getString('Path_$selectedPath')) ?? '';
     final name = (await prefs.getString('SelectedGame')) ?? '';
@@ -122,16 +38,30 @@ Future<void> forgeLauncher({
     final vanilla = jsonDecode(
       await File(p.join(instance, '$name.json')).readAsString(),
     ) as Map;
-    final forge = jsonDecode(
-      await File(p.join(instance, 'Forge.json')).readAsString(),
-    ) as Map;
+    final forge =
+        mmcProfile ??
+        jsonDecode(await File(p.join(instance, 'Forge.json')).readAsString())
+            as Map;
     final java = javaExecutable ?? await configuredJavaExecutable(prefs);
     final libraries = <String>[];
-    for (final lib in mergedLibraries(vanilla, forge)) {
+    for (final lib
+        in mmcProfile != null
+            ? (mmcProfile['libraries'] as List).cast<Map>()
+            : mergedLibraries(vanilla, forge)) {
       if (!rulesAllow(lib['rules'])) continue;
       final artifact = libraryArtifact(lib);
       if (artifact == null) continue;
-      final path = safeChild(p.join(root, 'libraries'), artifact['path']);
+      final local = artifact['mmcLocalPath'] as String?;
+      final path = local == null
+          ? safeChild(p.join(root, 'libraries'), artifact['path'])
+          : safeChild(instance, local);
+      if (local != null &&
+          (artifact['sha1'] == null ||
+              !await File(path).exists() ||
+              (await sha1.bind(File(path).openRead()).first).toString() !=
+                  artifact['sha1'])) {
+        throw StateError('MMC 本地运行库已丢失或改变: ${lib['name']}');
+      }
       if (!await File(path).exists()) {
         throw StateError('缺少运行库 ${lib['name']}，请重新安装');
       }
@@ -221,13 +151,20 @@ Future<void> forgeLauncher({
           vanilla['logging']['client']['file']['id'],
         ),
     };
-    final args = buildForgeCommand(
-      vanilla: vanilla,
-      forge: forge,
-      variables: variables,
-      config: config,
-      authlib: authlib,
-    );
+    final args = mmcProfile == null
+        ? buildForgeCommand(
+            vanilla: vanilla,
+            forge: forge,
+            variables: variables,
+            config: config,
+            authlib: authlib,
+          )
+        : buildMmcCommand(
+            profile: mmcProfile,
+            variables: variables,
+            config: config,
+            authlib: authlib,
+          );
     await session.run(
       executable: java,
       arguments: args,
