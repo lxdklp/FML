@@ -1,18 +1,20 @@
-import 'package:material_ui/material_ui.dart';
 import 'dart:io';
 
 import 'package:fml/pages/home/management/saves_management/save/save_info.dart';
 import 'package:fml/pages/home/management/saves_management/save/save_backups.dart';
+import 'package:material_ui/material_ui.dart';
 
 class SavePage extends StatefulWidget {
   final String savePath;
   final String saveName;
+  final String instancePath;
 
   const SavePage({
     super.key,
     required this.savePath,
     required this.saveName,
-    });
+    required this.instancePath,
+  });
 
   @override
   SavePageState createState() => SavePageState();
@@ -58,7 +60,11 @@ class SavePageState extends State<SavePage> with TickerProviderStateMixin {
       body: TabBarView(
         controller: _tabController,
         children: [
-          SaveInfoTab(savePath: widget.savePath, saveName: widget.saveName),
+          SaveInfoTab(
+            savePath: widget.savePath,
+            saveName: widget.saveName,
+            instancePath: widget.instancePath,
+          ),
           SaveBackupsTab(savePath: widget.savePath),
         ],
       ),

@@ -212,7 +212,10 @@ class ManagementPageState extends State<ManagementPage>
       _tabs.add(
         _TabInfo(
           tab: const Tab(text: '存档管理'),
-          content: SavesManagementTab(savesPath: _savesPath),
+          content: SavesManagementTab(
+            savesPath: _savesPath,
+            instancePath: _gamePath,
+          ),
         ),
       );
     }

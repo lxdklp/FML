@@ -193,6 +193,7 @@ class SaveBackupsTabState extends State<SaveBackupsTab> {
     return Scaffold(
       body: _buildContent(),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: _backupSave,
         child: const Icon(Icons.save),
       ),

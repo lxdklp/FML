@@ -2,16 +2,20 @@ import 'dart:io';
 import 'package:material_ui/material_ui.dart';
 import 'package:dart_nbt/dart_nbt.dart';
 import 'package:flutter/services.dart';
+import 'package:fml/function/chunkbase.dart';
+import 'package:fml/function/launcher/instance_minecraft_version.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SaveInfoTab extends StatefulWidget {
   final String savePath;
   final String saveName;
+  final String instancePath;
 
   const SaveInfoTab({
     super.key,
     required this.savePath,
     required this.saveName,
+    required this.instancePath,
   });
 
   @override
@@ -26,7 +30,7 @@ class _SaveInfoTabState extends State<SaveInfoTab> {
   bool _allowCommands = false;
   bool _generateFeatures = true;
   String _levelName = '';
-  String _gameVersion = '';
+  String? _gameVersion;
   int _gameType = 0;
   int _lastPlayed = 0;
   int _dayTime = 0;
@@ -37,6 +41,7 @@ class _SaveInfoTabState extends State<SaveInfoTab> {
   String _seed = '';
   List<PlayerData> _players = [];
   bool _isLoadingPlayers = false;
+  bool _isOpeningChunkbaseMap = false;
 
   @override
   void initState() {
@@ -60,13 +65,13 @@ class _SaveInfoTabState extends State<SaveInfoTab> {
       final compound = nbt.read(bytes);
       _levelData = compound;
       final data = compound['Data'] as NbtCompound?;
+      final version = data?['Version'];
+      final versionName = version is NbtCompound ? version['Name'] : null;
+      final name = versionName is NbtString ? versionName.value.trim() : '';
+      _gameVersion = name.isEmpty ? null : name;
       if (data != null) {
         _levelName =
             (data['LevelName'] as NbtString?)?.value ?? widget.saveName;
-        final version = data['Version'] as NbtCompound?;
-        if (version != null) {
-          _gameVersion = (version['Name'] as NbtString?)?.value ?? '未知';
-        }
         _gameType = (data['GameType'] as NbtInt?)?.value ?? 0;
         final lastPlayedValue = data['LastPlayed'] as NbtLong?;
         _lastPlayed = lastPlayedValue != null
@@ -83,8 +88,11 @@ class _SaveInfoTabState extends State<SaveInfoTab> {
         final worldGenSettings = data['WorldGenSettings'] as NbtCompound?;
         if (worldGenSettings != null) {
           _generateFeatures = ((worldGenSettings['generate_features'] as NbtByte?)?.value ?? 1) == 1;
-          _seed = (worldGenSettings['seed'] as NbtLong?)?.value.toString() ?? '';
         }
+        final seed =
+            (worldGenSettings?['seed'] as NbtLong?) ??
+            (data['RandomSeed'] as NbtLong?);
+        _seed = seed?.value.toString() ?? '';
       }
       await _loadPlayerData();
       setState(() {
@@ -193,21 +201,44 @@ class _SaveInfoTabState extends State<SaveInfoTab> {
     }
   }
 
-  // 打开URL
-  Future<void> _launchURL(String url) async {
+  Future<void> _openChunkbaseMap(String dimension) async {
+    if (_isOpeningChunkbaseMap) return;
+    setState(() => _isOpeningChunkbaseMap = true);
     try {
-      final Uri uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
+      final version =
+          _gameVersion ??
+          await readInstanceMinecraftVersion(widget.instancePath);
+      final platform = await ChunkbaseVersions.shared.platformFor(version);
+      if (!mounted) return;
+
+      final fragment = Uri(
+        queryParameters: {
+          'seed': _seed,
+          'platform': ?platform,
+          'dimension': dimension,
+          'x': '$_spawnX',
+          'z': '$_spawnZ',
+          'zoom': '0.5',
+        },
+      ).query;
+      final uri = ChunkbaseVersions.mapUrl.replace(fragment: fragment);
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!mounted) return;
+      if (!opened || platform == null) {
+        final message = opened
+            ? '无法自动匹配游戏版本，请在 Chunkbase 页面手动选择'
+            : '无法打开链接: $uri';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法打开链接: $url')),
+          SnackBar(content: Text(message)),
         );
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('发生错误: $e')),
       );
+    } finally {
+      if (mounted) setState(() => _isOpeningChunkbaseMap = false);
     }
   }
 
@@ -265,6 +296,7 @@ class _SaveInfoTabState extends State<SaveInfoTab> {
     return Scaffold(
       body: _buildBody(),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: _saveAllData,
         child: const Icon(Icons.save),
       ),
@@ -321,7 +353,7 @@ class _SaveInfoTabState extends State<SaveInfoTab> {
             ),
             const Divider(),
             _buildInfoRow('存档名称', _levelName),
-            _buildInfoRow('游戏版本', _gameVersion),
+            _buildInfoRow('游戏版本', _gameVersion ?? '未知'),
             _buildInfoRow('游戏模式', _getGameTypeName(_gameType)),
             _buildInfoRow('当前难度', _getDifficultyName(_currentDifficulty)),
             _buildInfoRow('极限模式', _hardcore ? '是' : '否'),
@@ -577,21 +609,37 @@ class _SaveInfoTabState extends State<SaveInfoTab> {
               children: [
                 const Icon(Icons.map),
                 const SizedBox(width: 8),
-                Text('种子地图 (chunkbase)', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  '种子地图 (Chunkbase)',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                if (_isOpeningChunkbaseMap) ...[
+                  const SizedBox(width: 12),
+                  const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ],
               ],
             ),
             const Divider(),
             ListTile(
               title: const Text('主世界'),
-              onTap: () => _launchURL('https://www.chunkbase.com/apps/biome-finder#seed=$_seed&platform=java_${_gameVersion.replaceAll('.', '_')}&dimension=overworld&x=$_spawnX&z=$_spawnZ&zoom=0.5'),
+              onTap: _isOpeningChunkbaseMap
+                  ? null
+                  : () => _openChunkbaseMap('overworld'),
             ),
             ListTile(
               title: const Text('下界'),
-              onTap: () => _launchURL('https://www.chunkbase.com/apps/biome-finder#seed=$_seed&platform=java_${_gameVersion.replaceAll('.', '_')}&dimension=nether&x=$_spawnX&z=$_spawnZ&zoom=0.5'),
+              onTap: _isOpeningChunkbaseMap
+                  ? null
+                  : () => _openChunkbaseMap('nether'),
             ),
             ListTile(
               title: const Text('末地'),
-              onTap: () => _launchURL('https://www.chunkbase.com/apps/biome-finder#seed=$_seed&platform=java_${_gameVersion.replaceAll('.', '_')}&dimension=end&x=$_spawnX&z=$_spawnZ&zoom=0.5'),
+              onTap: _isOpeningChunkbaseMap
+                  ? null
+                  : () => _openChunkbaseMap('end'),
             ),
           ],
         ),

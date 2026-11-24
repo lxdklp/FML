@@ -7,7 +7,12 @@ import 'package:fml/pages/home/management/saves_management/save.dart';
 
 class SavesManagementTab extends StatefulWidget {
   final String savesPath;
-  const SavesManagementTab({super.key, required this.savesPath});
+  final String instancePath;
+  const SavesManagementTab({
+    super.key,
+    required this.savesPath,
+    required this.instancePath,
+  });
 
   @override
   SavesManagementTabState createState() => SavesManagementTabState();
@@ -167,6 +172,7 @@ class SavesManagementTabState extends State<SavesManagementTab> {
                           page: SavePage(
                             savePath: save.folderPath,
                             saveName: save.folderName,
+                            instancePath: widget.instancePath,
                           ),
                         ),
                       ),
