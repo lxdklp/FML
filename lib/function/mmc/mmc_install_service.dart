@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
@@ -45,6 +46,37 @@ class MmcInstallCancellation {
   }
 }
 
+enum MmcFileConflictChoice { existing, incoming }
+
+class MmcConflictFile {
+  const MmcConflictFile({
+    required this.relativePath,
+    required this.size,
+    required this.preview,
+  });
+
+  final String relativePath;
+  final int size;
+  final Uint8List preview;
+}
+
+class MmcFileConflict {
+  const MmcFileConflict({
+    required this.existing,
+    required this.incoming,
+    required this.identical,
+  });
+
+  final MmcConflictFile existing;
+  final MmcConflictFile incoming;
+  final bool identical;
+}
+
+/// 返回 null 会取消导入, 并清理本次安装的暂存文件.
+typedef MmcFileConflictResolver = Future<MmcFileConflictChoice?> Function(
+  MmcFileConflict conflict,
+);
+
 class MmcInstallService {
   MmcInstallService({
     required this.config,
@@ -71,6 +103,7 @@ class MmcInstallService {
     required String name,
     required void Function(String, double?) onProgress,
     MmcInstallCancellation? cancellation,
+    MmcFileConflictResolver? onFileConflict,
   }) async {
     final cancel = cancellation ?? MmcInstallCancellation();
     cancel.check();
@@ -134,6 +167,7 @@ class MmcInstallService {
         name,
         cancel,
         (value) => onProgress('正在复制整合包文件', value),
+        onFileConflict,
       );
       cancel.check();
       final javaExecutable = await configuredJavaExecutable(config);
@@ -410,6 +444,7 @@ class MmcInstallService {
     String name,
     MmcInstallCancellation cancel,
     void Function(double?) onProgress,
+    MmcFileConflictResolver? onFileConflict,
   ) async {
     onProgress(0);
     final root = _TargetEntry(target, '', directory: true);
@@ -477,14 +512,32 @@ class MmcInstallService {
           }
         }
         if (existing != null) {
-          if (existing.reserved || !directory || !existing.directory) {
+          if (!existing.reserved && directory && existing.directory) {
+            parent.children[segment] = existing;
+            parent = existing;
+            continue;
+          }
+          if (existing.reserved ||
+              directory ||
+              existing.directory ||
+              existing.relative == entry.relative ||
+              onFileConflict == null) {
             throw FormatException(
               '整合包路径冲突: ${existing.relative} / ${entry.relative}',
             );
           }
-          parent.children[segment] = existing;
-          parent = existing;
-          continue;
+          final conflict = await _describeConflict(existing, entry, cancel);
+          cancel.check();
+          final choice = await onFileConflict(conflict);
+          cancel.check();
+          if (choice == null) throw const MmcInstallCancelled();
+          if (choice == MmcFileConflictChoice.existing) {
+            parent.children[segment] = existing;
+            break;
+          }
+          // 先删除暂存副本, 随后用选中的文件名排他创建, 保留选中的大小写.
+          await File(existing.output).delete();
+          parent.children.removeWhere((_, child) => child == existing);
         }
         final created = _TargetEntry(
           output,
@@ -519,6 +572,65 @@ class MmcInstallService {
       await placeholder.delete();
     }
     onProgress(1);
+  }
+
+  static Future<MmcFileConflict> _describeConflict(
+    _TargetEntry existing,
+    _GameEntry incoming,
+    MmcInstallCancellation cancel,
+  ) async {
+    cancel.check();
+    final written = await File(existing.output).open();
+    RandomAccessFile? source;
+    try {
+      source = await File(incoming.sourcePath!).open();
+      final existingSize = await written.length();
+      final incomingSize = await source.length();
+      final existingPreview = await written.read(16 * 1024);
+      final incomingPreview = await source.read(16 * 1024);
+      var identical =
+          existingSize == incomingSize &&
+          _sameBytes(existingPreview, incomingPreview);
+      var remaining = existingSize - existingPreview.length;
+      while (identical && remaining > 0) {
+        cancel.check();
+        final count = remaining > 64 * 1024 ? 64 * 1024 : remaining;
+        final left = await written.read(count);
+        final right = await source.read(count);
+        if (left.length != count || right.length != count) {
+          throw const FileSystemException('读取待比较文件时文件大小发生变化');
+        }
+        identical = _sameBytes(left, right);
+        remaining -= count;
+      }
+      return MmcFileConflict(
+        existing: MmcConflictFile(
+          relativePath: existing.relative,
+          size: existingSize,
+          preview: existingPreview,
+        ),
+        incoming: MmcConflictFile(
+          relativePath: incoming.relative,
+          size: incomingSize,
+          preview: incomingPreview,
+        ),
+        identical: identical,
+      );
+    } finally {
+      try {
+        await source?.close();
+      } finally {
+        await written.close();
+      }
+    }
+  }
+
+  static bool _sameBytes(Uint8List left, Uint8List right) {
+    if (left.length != right.length) return false;
+    for (var i = 0; i < left.length; i++) {
+      if (left[i] != right[i]) return false;
+    }
+    return true;
   }
 
   static Future<void> _validateRuntime(

@@ -11,6 +11,7 @@ import 'package:fml/function/forge/forge_metadata.dart';
 import 'package:fml/function/mmc/mmc_install_service.dart';
 import 'package:fml/function/mmc/mmc_pack.dart';
 import 'package:fml/function/slide_page_route.dart';
+import 'package:fml/pages/download/mmc_file_conflict_dialog.dart';
 
 Future<void> openMmcImport(BuildContext context, {String? archivePath}) =>
     Navigator.push<void>(
@@ -303,6 +304,12 @@ class _MmcImportPageState extends State<MmcImportPage> {
         gamePath: gamePath,
         name: name,
         cancellation: cancellation,
+        onFileConflict: (conflict) async {
+          if (!mounted || cancellation.isCancelled) return null;
+          final choice = await showMmcFileConflictDialog(context, conflict);
+          if (!mounted || cancellation.isCancelled) return null;
+          return choice;
+        },
         onProgress: (stage, progress) {
           if (mounted) {
             setState(() {
